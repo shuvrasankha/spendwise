@@ -510,6 +510,42 @@ button { cursor: pointer; border: none; outline: none; }
 }
 
 /* =====================
+   CHART CARD
+===================== */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.chart-header {
+  margin-bottom: 20px;
+}
+
+.chart-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.chart-header p {
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+
+.chart-container {
+  position: relative;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =====================
    TABLE CARD
 ===================== */
 .table-card {

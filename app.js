@@ -32,7 +32,7 @@ function dec(encoded) {
   catch { return encoded; }
 }
 
-let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null;
+let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null;
 
 onAuthStateChanged(auth, user => {
   if (user) {
@@ -94,7 +94,7 @@ window.showPage = (page) => {
   document.getElementById("page-" + page).classList.remove("hidden");
   const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
   const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
-  if (page === "dashboard") renderDashboardTable();
+  if (page === "dashboard") { renderDashboardTable(); renderPieChart(); }
   if (page === "history") renderHistory();
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
@@ -112,7 +112,7 @@ async function loadExpenses() {
     }));
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    updateCards(); renderDashboardTable(); renderHistory();
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart();
     populateYearPicker(); initPeriodPicker(); updatePeriodSummary();
   } catch (e) { console.error(e); showToast("Error loading data.", "error"); }
 }
@@ -131,7 +131,7 @@ window.addExpense = async () => {
     const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: enc(amount.toString()), category, date, payment, description: enc(description || "-"), notes: enc(notes), createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    updateCards(); renderDashboardTable(); renderHistory(); resetForm();
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); resetForm();
     showFormMsg("Expense added successfully!", "success"); showToast("Expense added!", "success");
   } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); }
 };
@@ -151,7 +151,7 @@ window.confirmDelete = async () => {
   try {
     await deleteDoc(doc(db, "expenses", deleteTarget));
     allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
-    updateCards(); renderDashboardTable(); renderHistory(); showToast("Deleted.", "success");
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); showToast("Deleted.", "success");
   } catch (e) { showToast("Delete failed.", "error"); }
   closeModal();
 };
@@ -191,6 +191,7 @@ window.switchTableTab = (tab) => {
   document.querySelectorAll(".table-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("ttab-" + tab).classList.add("active");
   renderDashboardTable();
+  renderPieChart();
 };
 
 function renderDashboardTable() {
@@ -287,6 +288,7 @@ window.toggleTheme = () => {
   html.setAttribute("data-theme", dark ? "light" : "dark");
   document.getElementById("theme-icon").textContent = dark ? "🌙" : "☀️";
   localStorage.setItem("theme", dark ? "light" : "dark");
+  renderPieChart();
 };
 
 const saved = localStorage.getItem("theme") || "dark";
@@ -306,6 +308,128 @@ function getWeekStart() { const d=new Date(); const day=d.getDay(); const diff=d
 function formatDate(ds) { return new Date(ds+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}); }
 function setGreeting() { const h=new Date().getHours(); const g=h<12?"Good morning":h<17?"Good afternoon":"Good evening"; const n=(currentUser&&currentUser.displayName)?currentUser.displayName.split(" ")[0]:""; document.getElementById("dashboard-greeting").textContent=g+(n?", "+n:"")+"!"; }
 function showFormMsg(msg,type) { const el=document.getElementById("form-msg"); el.textContent=msg; el.className="form-msg "+type; el.classList.remove("hidden"); if(type==="success") setTimeout(()=>el.classList.add("hidden"),3000); }
+
+// ============================================================
+//  PIE CHART - SPENDING BY CATEGORY
+// ============================================================
+function getCategoryBreakdown() {
+  // Get current displayed expenses based on both period picker AND active tab
+  const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
+  const y = document.getElementById('picker-year')  ? document.getElementById('picker-year').value  : '';
+  
+  let periodExpenses = allExpenses.filter(e => {
+    if (!e.date) return false;
+    if (y && e.date.substring(0,4) !== String(y)) return false;
+    if (m && e.date.substring(5,7) !== String(m)) return false;
+    return true;
+  });
+  
+  // Now filter by active tab
+  const now = new Date();
+  const today = todayStr();
+  let displayExpenses = [];
+  
+  if (activeTab === 'daily') {
+    displayExpenses = periodExpenses.filter(e => e.date === today);
+  } else if (activeTab === 'weekly') {
+    const ws = getWeekStart();
+    displayExpenses = periodExpenses.filter(e => e.date >= ws && e.date <= today);
+  } else if (activeTab === 'monthly') {
+    let displayYear = y || now.getFullYear();
+    let displayMonth = m || pad(now.getMonth()+1);
+    const ms = displayYear + '-' + displayMonth + '-01';
+    const lastDay = new Date(displayYear, parseInt(displayMonth), 0).getDate();
+    const me = displayYear + '-' + displayMonth + '-' + pad(lastDay);
+    displayExpenses = periodExpenses.filter(e => e.date >= ms && e.date <= me);
+  } else {
+    displayExpenses = periodExpenses;
+  }
+  
+  // Aggregate by category
+  const categoryTotals = {};
+  displayExpenses.forEach(e => {
+    if (!categoryTotals[e.category]) {
+      categoryTotals[e.category] = 0;
+    }
+    categoryTotals[e.category] += e.amount;
+  });
+  
+  return categoryTotals;
+}
+
+function renderPieChart() {
+  const categoryData = getCategoryBreakdown();
+  const labels = Object.keys(categoryData);
+  const data = Object.values(categoryData);
+  
+  // Colors for different categories
+  const colors = [
+    '#4a9eff', '#ec4899', '#10b981', '#f59e0b', '#ef4444',
+    '#8b5cf6', '#06b6d4', '#f97316', '#06b6d4', '#14b8a6'
+  ];
+  
+  const chartCanvas = document.getElementById('categoryPieChart');
+  if (!chartCanvas) return;
+  
+  // Destroy existing chart if it exists
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+  
+  const ctx = chartCanvas.getContext('2d');
+  
+  // Use lighter colors for dark mode, darker for light mode
+  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+  const adjustedColors = colors.slice(0, labels.length);
+  
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: adjustedColors,
+        borderColor: isDarkMode ? '#262626' : '#ffffff',
+        borderWidth: 2,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 16,
+            font: { size: 12, weight: '500' },
+            color: isDarkMode ? '#b0b0b0' : '#666666',
+            usePointStyle: true,
+            pointStyle: 'circle'
+          }
+        },
+        tooltip: {
+          backgroundColor: isDarkMode ? 'rgba(38, 38, 38, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          titleColor: isDarkMode ? '#e8e8e8' : '#1a1a1a',
+          bodyColor: isDarkMode ? '#b0b0b0' : '#666666',
+          borderColor: isDarkMode ? '#3a3a3a' : '#e5e5e5',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { size: 13, weight: '600' },
+          bodyFont: { size: 12 },
+          callbacks: {
+            label: function(context) {
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return fmt(value) + ' (' + percentage + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const icon = document.getElementById("theme-icon");
@@ -360,7 +484,7 @@ function initPeriodPicker() {
   updatePeriodSummary();
 }
 
-window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); }
+window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); renderPieChart(); }
 
 window.resetPeriodPicker = function() {
   const now = new Date();
@@ -441,6 +565,7 @@ window.switchTableTab = (tab) => {
   document.querySelectorAll('.table-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('ttab-' + tab).classList.add('active');
   renderDashboardTable();
+  renderPieChart();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
