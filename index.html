@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SpendWise - Daily Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon"><i data-lucide="wallet"></i></div>
+      <h1>SpendWise</h1>
+      <p>Track every rupee, effortlessly.</p>
+    </div>
+    <div class="tab-switcher">
+      <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+      <button class="tab-btn" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+    <div id="login-form" class="auth-form">
+      <div class="form-group">
+        <label>Email</label>
+        <div class="input-icon-wrap"><i data-lucide="mail"></i>
+          <input type="email" id="login-email" placeholder="you@example.com"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="password-label-row">
+          <label>Password</label>
+          <button type="button" class="btn-forgot" onclick="showForgotPassword()">Forgot password?</button>
+        </div>
+        <div class="input-icon-wrap"><i data-lucide="lock"></i>
+          <input type="password" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Login</button>
+      <div class="divider"><span>or</span></div>
+      <button class="btn-google" onclick="handleGoogleLogin()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </button>
+    </div>
+    <div id="signup-form" class="auth-form hidden">
+      <div class="form-group">
+        <label>Full Name</label>
+        <div class="input-icon-wrap"><i data-lucide="user"></i>
+          <input type="text" id="signup-name" placeholder="Your Name"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <div class="input-icon-wrap"><i data-lucide="mail"></i>
+          <input type="email" id="signup-email" placeholder="you@example.com"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="input-icon-wrap"><i data-lucide="lock"></i>
+          <input type="password" id="signup-password" placeholder="Min 6 characters"/>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+      <div class="divider"><span>or</span></div>
+      <button class="btn-google" onclick="handleGoogleLogin()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </button>
+    </div>
+    <div id="auth-error" class="auth-error hidden"></div>
+  </div>
+</div>
+
+<div id="app" class="app hidden">
+  <nav class="navbar">
+    <div class="nav-left">
+      <div class="nav-logo-icon"><i data-lucide="wallet"></i></div>
+      <span class="nav-brand">SpendWise</span>
+    </div>
+    <div class="nav-right">
+      <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
+        <i data-lucide="sun"></i>
+      </button>
+      <div class="user-avatar" id="user-avatar">U</div>
+      <button class="btn-logout" onclick="handleLogout()">
+        <i data-lucide="log-out"></i><span class="logout-text"> Logout</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="bottom-nav">
+    <button class="bottom-nav-btn active" onclick="showPage('dashboard')" id="bnav-dashboard">
+      <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="showPage('add')" id="bnav-add">
+      <i data-lucide="circle-plus"></i><span>Add</span>
+    </button>
+    <button class="bottom-nav-btn" onclick="showPage('history')" id="bnav-history">
+      <i data-lucide="history"></i><span>History</span>
+    </button>
+  </div>
+
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <button class="sidebar-btn active" onclick="showPage('dashboard')" id="snav-dashboard">
+        <i data-lucide="layout-dashboard"></i> Dashboard
+      </button>
+      <button class="sidebar-btn" onclick="showPage('add')" id="snav-add">
+        <i data-lucide="circle-plus"></i> Add Expense
+      </button>
+      <button class="sidebar-btn" onclick="showPage('history')" id="snav-history">
+        <i data-lucide="history"></i> History
+      </button>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h2>Dashboard</h2>
+        <p id="dashboard-greeting">Good morning!</p>
+      </div>
+      <div class="summary-cards">
+        <div class="summary-card" id="card-daily">
+          <div class="summary-card-top">
+            <span class="summary-label">Today</span>
+            <div class="summary-icon"><i data-lucide="sun"></i></div>
+          </div>
+          <div class="summary-amount" id="sum-daily">Rs 0.00</div>
+          <div class="summary-sub" id="sum-daily-count">0 transactions</div>
+        </div>
+        <div class="summary-card" id="card-weekly">
+          <div class="summary-card-top">
+            <span class="summary-label">This Week</span>
+            <div class="summary-icon"><i data-lucide="calendar-days"></i></div>
+          </div>
+          <div class="summary-amount" id="sum-weekly">Rs 0.00</div>
+          <div class="summary-sub" id="sum-weekly-count">0 transactions</div>
+        </div>
+        <div class="summary-card" id="card-monthly">
+          <div class="summary-card-top">
+            <span class="summary-label">This Month</span>
+            <div class="summary-icon"><i data-lucide="calendar"></i></div>
+          </div>
+          <div class="summary-amount" id="sum-monthly">Rs 0.00</div>
+          <div class="summary-sub" id="sum-monthly-count">0 transactions</div>
+        </div>
+        <div class="summary-card" id="card-yearly">
+          <div class="summary-card-top">
+            <span class="summary-label">This Year</span>
+            <div class="summary-icon"><i data-lucide="trending-up"></i></div>
+          </div>
+          <div class="summary-amount" id="sum-yearly">Rs 0.00</div>
+          <div class="summary-sub" id="sum-yearly-count">0 transactions</div>
+        </div>
+      </div>
+      <!-- Month / Year Picker -->
+      <div class="period-picker-card">
+        <div class="period-picker-left">
+          <div class="period-picker-icon"><i data-lucide="calendar-search"></i></div>
+          <div>
+            <div class="period-picker-label">Browse by Period</div>
+            <div class="period-picker-sub" id="period-picker-sub">Showing all time</div>
+          </div>
+        </div>
+        <div class="period-picker-controls">
+          <div class="period-select-wrap">
+            <i data-lucide="calendar"></i>
+            <select id="picker-month">
+              <option value="">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div class="period-select-wrap">
+            <i data-lucide="calendar-range"></i>
+            <select id="picker-year">
+              <option value="">All Years</option>
+            </select>
+          </div>
+          <button class="btn-period-reset" onclick="resetPeriodPicker()" title="Reset to current month">
+            <i data-lucide="rotate-ccw"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Period Summary Bar -->
+      <div class="period-summary-bar" id="period-summary-bar">
+        <div class="period-summary-item">
+          <span class="period-summary-label">Total Spent</span>
+          <span class="period-summary-value" id="period-total">Rs 0.00</span>
+        </div>
+        <div class="period-summary-divider"></div>
+        <div class="period-summary-item">
+          <span class="period-summary-label">Transactions</span>
+          <span class="period-summary-value" id="period-count">0</span>
+        </div>
+        <div class="period-summary-divider"></div>
+        <div class="period-summary-item">
+          <span class="period-summary-label">Avg per Day</span>
+          <span class="period-summary-value" id="period-avg">Rs 0.00</span>
+        </div>
+        <div class="period-summary-divider"></div>
+        <div class="period-summary-item">
+          <span class="period-summary-label">Highest Spend</span>
+          <span class="period-summary-value" id="period-max">Rs 0.00</span>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-tabs">
+            <button class="table-tab active" onclick="switchTableTab('daily')" id="ttab-daily">Daily</button>
+            <button class="table-tab" onclick="switchTableTab('weekly')" id="ttab-weekly">Weekly</button>
+            <button class="table-tab" onclick="switchTableTab('monthly')" id="ttab-monthly">Monthly</button>
+            <button class="table-tab" onclick="switchTableTab('yearly')" id="ttab-yearly">Yearly</button>
+          </div>
+          <button class="btn-download" onclick="downloadCSV()">
+            <i data-lucide="download"></i> Download CSV
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr>
+              <th>Date</th><th>Category</th><th>Description</th><th>Payment</th>
+              <th class="text-right">Amount</th>
+            </tr></thead>
+            <tbody id="table-body">
+              <tr><td colspan="5" class="empty-row">No expenses yet. Add your first one!</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-add" class="page hidden">
+      <div class="page-header">
+        <h2>Add Expense</h2>
+        <p>Record a new spending entry</p>
+      </div>
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Amount (Rs) *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="indian-rupee"></i>
+              <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Date *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="calendar"></i>
+              <input type="date" id="exp-date"/>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Category *</label>
+            <input type="hidden" id="exp-category"/>
+            <div class="category-picker" id="category-picker">
+              <button type="button" class="cat-tile" data-value="Food &amp; Dining">
+                <div class="cat-icon"><i data-lucide="utensils"></i></div>
+                <span>Food</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Transport">
+                <div class="cat-icon"><i data-lucide="car"></i></div>
+                <span>Transport</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Shopping">
+                <div class="cat-icon"><i data-lucide="shopping-bag"></i></div>
+                <span>Shopping</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Entertainment">
+                <div class="cat-icon"><i data-lucide="clapperboard"></i></div>
+                <span>Fun</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Health">
+                <div class="cat-icon"><i data-lucide="heart-pulse"></i></div>
+                <span>Health</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Bills &amp; Utilities">
+                <div class="cat-icon"><i data-lucide="zap"></i></div>
+                <span>Bills</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Education">
+                <div class="cat-icon"><i data-lucide="graduation-cap"></i></div>
+                <span>Education</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Travel">
+                <div class="cat-icon"><i data-lucide="plane"></i></div>
+                <span>Travel</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Groceries">
+                <div class="cat-icon"><i data-lucide="shopping-cart"></i></div>
+                <span>Groceries</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Other">
+                <div class="cat-icon"><i data-lucide="folder-open"></i></div>
+                <span>Other</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Payment Method</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="credit-card"></i>
+              <select id="exp-payment">
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Debit Card">Debit Card</option>
+                <option value="Net Banking">Net Banking</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="pencil-line"></i>
+              <input type="text" id="exp-description" placeholder="What did you spend on?"/>
+            </div>
+          </div>
+          <div class="form-group full-width">
+            <label>Notes <span class="optional-tag">optional</span></label>
+            <textarea id="exp-notes" rows="2" placeholder="Any additional notes..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" onclick="resetForm()">
+            <i data-lucide="rotate-ccw"></i> Clear
+          </button>
+          <button class="btn-primary" onclick="addExpense()">
+            <i data-lucide="plus-circle"></i> Add Expense
+          </button>
+        </div>
+        <div id="form-msg" class="form-msg hidden"></div>
+      </div>
+    </div>
+
+    <div id="page-history" class="page hidden">
+      <div class="page-header">
+        <h2>Expense History</h2>
+        <p>All your recorded expenses</p>
+      </div>
+      <div class="filter-card">
+        <div class="filter-row">
+          <div class="form-group">
+            <label>From</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="calendar"></i>
+              <input type="date" id="filter-from"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>To</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="calendar"></i>
+              <input type="date" id="filter-to"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="tag"></i>
+              <select id="filter-category">
+                <option value="">All Categories</option>
+                <option value="Food &amp; Dining">Food &amp; Dining</option>
+                <option value="Transport">Transport</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Health">Health</option>
+                <option value="Bills &amp; Utilities">Bills &amp; Utilities</option>
+                <option value="Education">Education</option>
+                <option value="Travel">Travel</option>
+                <option value="Groceries">Groceries</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group filter-actions">
+            <button class="btn-primary" onclick="applyFilters()">
+              <i data-lucide="filter"></i> Filter
+            </button>
+            <button class="btn-secondary" onclick="clearFilters()">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <span id="history-count" class="result-count">All entries</span>
+          <button class="btn-download" onclick="downloadHistoryCSV()">
+            <i data-lucide="download"></i> Download CSV
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead><tr>
+              <th>Date</th><th>Category</th><th>Description</th>
+              <th>Payment</th><th>Notes</th>
+              <th class="text-right">Amount</th><th></th>
+            </tr></thead>
+            <tbody id="history-body">
+              <tr><td colspan="7" class="empty-row">No expenses recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer" id="history-total"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-icon"><i data-lucide="trash-2"></i></div>
+    <h3>Delete Expense?</h3>
+    <p>This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-danger" onclick="confirmDelete()">
+        <i data-lucide="trash-2"></i> Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Forgot Password Modal -->
+<div id="forgot-modal" class="modal-overlay hidden">
+  <div class="modal-box forgot-modal-box">
+
+    <!-- Step 1: Enter email -->
+    <div id="forgot-step-1">
+      <div class="forgot-icon"><i data-lucide="key-round"></i></div>
+      <h3>Reset Password</h3>
+      <p>Enter your email and we will send you a reset link.</p>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Email Address</label>
+        <div class="input-icon-wrap">
+          <i data-lucide="mail"></i>
+          <input type="email" id="forgot-email" placeholder="you@example.com"/>
+        </div>
+      </div>
+      <div id="forgot-error" class="auth-error hidden" style="margin-bottom:12px"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeForgotModal()">Cancel</button>
+        <button class="btn-primary" onclick="handleForgotPassword()">
+          <i data-lucide="send"></i> Send Reset Link
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Success -->
+    <div id="forgot-step-2" class="hidden">
+      <div class="forgot-success-icon"><i data-lucide="mail-check"></i></div>
+      <h3>Check Your Email</h3>
+      <p id="forgot-success-msg">We sent a password reset link to your email. Check your inbox and follow the instructions.</p>
+      <div class="forgot-tip">
+        <i data-lucide="info"></i>
+        <span>Didn&apos;t receive it? Check your spam folder or try again.</span>
+      </div>
+      <div class="modal-actions" style="justify-content:center;margin-top:20px">
+        <button class="btn-primary" onclick="closeForgotModal()">Done</button>
+        <button class="btn-secondary" onclick="resetForgotModal()">Try Again</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
+</script>
+</body>
+</html>

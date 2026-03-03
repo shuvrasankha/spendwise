@@ -1,0 +1,469 @@
+// SpendWise app.js - Firebase Modular SDK
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// REPLACE with your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyBKOgU4yeEhwGedRfVZfp8p0LGibfPO2hI",
+  authDomain: "spendwise-app-f7227.firebaseapp.com",
+  projectId: "spendwise-app-f7227",
+  storageBucket: "spendwise-app-f7227.firebasestorage.app",
+  messagingSenderId: "243303574314",
+  appId: "1:243303574314:web:e1c66c625f814559c38c53",
+  measurementId: "G-W8LZXEF75G"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const gProvider = new GoogleAuthProvider();
+
+// Simple XOR encryption
+const KEY = "SpendWise_2024_K";
+function enc(text) {
+  const s = String(text); let r = "";
+  for (let i = 0; i < s.length; i++) r += String.fromCharCode(s.charCodeAt(i) ^ KEY.charCodeAt(i % KEY.length));
+  return btoa(r);
+}
+function dec(encoded) {
+  try { const s = atob(encoded); let r = ""; for (let i = 0; i < s.length; i++) r += String.fromCharCode(s.charCodeAt(i) ^ KEY.charCodeAt(i % KEY.length)); return r; }
+  catch { return encoded; }
+}
+
+let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null;
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById("auth-screen").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("user-avatar").textContent = (user.displayName || user.email || "U")[0].toUpperCase();
+    setGreeting(); loadExpenses();
+  } else {
+    currentUser = null;
+    document.getElementById("auth-screen").classList.remove("hidden");
+    document.getElementById("app").classList.add("hidden");
+  }
+});
+
+window.switchTab = (tab) => {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".auth-form").forEach(f => f.classList.add("hidden"));
+  document.querySelectorAll(".tab-btn")[tab === "login" ? 0 : 1].classList.add("active");
+  document.getElementById(tab + "-form").classList.remove("hidden");
+  document.getElementById("auth-error").classList.add("hidden");
+};
+
+window.handleLogin = async () => {
+  const email = document.getElementById("login-email").value.trim();
+  const pass = document.getElementById("login-password").value;
+  if (!email || !pass) { showAuthError("Please fill in all fields."); return; }
+  try { await signInWithEmailAndPassword(auth, email, pass); }
+  catch (e) { showAuthError(friendlyErr(e.code)); }
+};
+
+window.handleSignup = async () => {
+  const name = document.getElementById("signup-name").value.trim();
+  const email = document.getElementById("signup-email").value.trim();
+  const pass = document.getElementById("signup-password").value;
+  if (!name || !email || !pass) { showAuthError("Please fill in all fields."); return; }
+  if (pass.length < 6) { showAuthError("Password must be at least 6 characters."); return; }
+  try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name }); }
+  catch (e) { showAuthError(friendlyErr(e.code)); }
+};
+
+window.handleGoogleLogin = async () => {
+  try { await signInWithPopup(auth, gProvider); }
+  catch (e) { showAuthError(friendlyErr(e.code)); }
+};
+
+window.handleLogout = async () => { await signOut(auth); allExpenses = []; };
+
+function showAuthError(msg) { const el = document.getElementById("auth-error"); el.textContent = msg; el.classList.remove("hidden"); }
+
+function friendlyErr(code) {
+  const m = { "auth/user-not-found": "No account with this email.", "auth/wrong-password": "Incorrect password.", "auth/email-already-in-use": "Email already registered.", "auth/invalid-email": "Invalid email.", "auth/weak-password": "Password too short.", "auth/popup-closed-by-user": "Sign-in cancelled.", "auth/invalid-credential": "Invalid email or password." };
+  return m[code] || "Something went wrong. Try again.";
+}
+
+window.showPage = (page) => {
+  document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+  document.querySelectorAll(".sidebar-btn, .bottom-nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("page-" + page).classList.remove("hidden");
+  const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
+  const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
+  if (page === "dashboard") renderDashboardTable();
+  if (page === "history") renderHistory();
+  if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
+};
+
+async function loadExpenses() {
+  if (!currentUser) return;
+  try {
+    const q = query(collection(db, "expenses"), where("uid", "==", currentUser.uid));
+    const snap = await getDocs(q);
+    allExpenses = snap.docs.map(d => ({
+      id: d.id, ...d.data(),
+      amount:      parseFloat(dec(d.data().amount)),
+      description: dec(d.data().description),
+      notes:       dec(d.data().notes || "")
+    }));
+    // Sort client-side — no Firestore index required
+    allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+    updateCards(); renderDashboardTable(); renderHistory();
+    populateYearPicker(); initPeriodPicker(); updatePeriodSummary();
+  } catch (e) { console.error(e); showToast("Error loading data.", "error"); }
+}
+
+window.addExpense = async () => {
+  const amount = parseFloat(document.getElementById("exp-amount").value);
+  const category = document.getElementById("exp-category").value;
+  const date = document.getElementById("exp-date").value;
+  const payment = document.getElementById("exp-payment").value;
+  const description = document.getElementById("exp-description").value.trim();
+  const notes = document.getElementById("exp-notes").value.trim();
+  if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
+  if (!category) { showFormMsg("Select a category.", "error"); return; }
+  if (!date) { showFormMsg("Select a date.", "error"); return; }
+  try {
+    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: enc(amount.toString()), category, date, payment, description: enc(description || "-"), notes: enc(notes), createdAt: serverTimestamp() });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
+    allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+    updateCards(); renderDashboardTable(); renderHistory(); resetForm();
+    showFormMsg("Expense added successfully!", "success"); showToast("Expense added!", "success");
+  } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); }
+};
+
+window.resetForm = () => {
+  ["exp-amount","exp-description","exp-notes"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("exp-category").value = "";
+  document.getElementById("exp-payment").value = "UPI";
+  document.getElementById("exp-date").value = todayStr();
+  document.getElementById("form-msg").classList.add("hidden");
+};
+
+window.deleteExpense = (id) => { deleteTarget = id; document.getElementById("modal").classList.remove("hidden"); };
+window.closeModal = () => { document.getElementById("modal").classList.add("hidden"); deleteTarget = null; };
+window.confirmDelete = async () => {
+  if (!deleteTarget) return;
+  try {
+    await deleteDoc(doc(db, "expenses", deleteTarget));
+    allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
+    updateCards(); renderDashboardTable(); renderHistory(); showToast("Deleted.", "success");
+  } catch (e) { showToast("Delete failed.", "error"); }
+  closeModal();
+};
+
+function updateCards() {
+  const now = new Date(); const today = todayStr();
+  const ws = getWeekStart();
+  const ms = now.getFullYear() + "-" + pad(now.getMonth()+1) + "-01";
+  const ys = now.getFullYear() + "-01-01";
+  function calc(f, t) { const r = allExpenses.filter(e => e.date >= f && e.date <= t); return { total: r.reduce((s,e) => s+e.amount, 0), count: r.length }; }
+  const d=calc(today,today), w=calc(ws,today), m=calc(ms,today), y=calc(ys,today);
+  document.getElementById("sum-daily").textContent = fmt(d.total);
+  document.getElementById("sum-weekly").textContent = fmt(w.total);
+  document.getElementById("sum-monthly").textContent = fmt(m.total);
+  document.getElementById("sum-yearly").textContent = fmt(y.total);
+  document.getElementById("sum-daily-count").textContent = d.count + " transaction" + (d.count!==1?"s":"");
+  document.getElementById("sum-weekly-count").textContent = w.count + " transaction" + (w.count!==1?"s":"");
+  document.getElementById("sum-monthly-count").textContent = m.count + " transaction" + (m.count!==1?"s":"");
+  document.getElementById("sum-yearly-count").textContent = y.count + " transaction" + (y.count!==1?"s":"");
+
+  // Dynamically highlight the card with the highest spend
+  const totals = { daily: d.total, weekly: w.total, monthly: m.total, yearly: y.total };
+  const maxKey = Object.keys(totals).reduce((a,b) => totals[a] >= totals[b] ? a : b);
+  ["daily","weekly","monthly","yearly"].forEach(k => {
+    const card = document.getElementById("card-" + k);
+    if (!card) return;
+    if (k === maxKey && totals[maxKey] > 0) {
+      card.classList.add("accent");
+    } else {
+      card.classList.remove("accent");
+    }
+  });
+}
+
+window.switchTableTab = (tab) => {
+  activeTab = tab;
+  document.querySelectorAll(".table-tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("ttab-" + tab).classList.add("active");
+  renderDashboardTable();
+};
+
+function renderDashboardTable() {
+  const now = new Date(); const today = todayStr(); let from;
+  if (activeTab==="daily") from=today;
+  else if (activeTab==="weekly") from=getWeekStart();
+  else if (activeTab==="monthly") from=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-01";
+  else from=now.getFullYear()+"-01-01";
+  renderTable("table-body", allExpenses.filter(e => e.date >= from && e.date <= today), false);
+}
+
+function renderHistory(data) {
+  const rows = data !== undefined ? data : allExpenses;
+  filteredExpenses = rows;
+  renderTable("history-body", rows, true);
+  const total = rows.reduce((s,e) => s+e.amount, 0);
+  document.getElementById("history-count").textContent = rows.length + " entr" + (rows.length!==1?"ies":"y");
+  document.getElementById("history-total").textContent = rows.length ? "Total: " + fmt(total) : "";
+}
+
+window.applyFilters = () => {
+  const from=document.getElementById("filter-from").value, to=document.getElementById("filter-to").value, cat=document.getElementById("filter-category").value;
+  let data = allExpenses.slice();
+  if (from) data = data.filter(e => e.date >= from);
+  if (to)   data = data.filter(e => e.date <= to);
+  if (cat)  data = data.filter(e => e.category === cat);
+  renderHistory(data);
+};
+
+window.clearFilters = () => {
+  ["filter-from","filter-to","filter-category"].forEach(id => document.getElementById(id).value = "");
+  renderHistory(allExpenses);
+};
+
+function renderTable(tbodyId, rows, del) {
+  const tbody = document.getElementById(tbodyId);
+  const cols = del ? 7 : 5;
+  if (!rows.length) { tbody.innerHTML = "<tr><td colspan='" + cols + "' class='empty-row'>No expenses found.</td></tr>"; return; }
+  tbody.innerHTML = rows.map(e =>
+    "<tr><td>" + formatDate(e.date) + "</td><td><span class='category-badge'>" + e.category + "</span></td><td>" + e.description + "</td><td>" + e.payment + "</td>" +
+    (del ? "<td>" + (e.notes||"-") + "</td>" : "") +
+    "<td class='text-right'>" + fmt(e.amount) + "</td>" +
+    (del ? "<td><button class='btn-delete' onclick=\"deleteExpense('" + e.id + "')\">Delete</button></td>" : "") +
+    "</tr>"
+  ).join("");
+}
+
+window.downloadCSV = () => {
+  const now=new Date(); const today=todayStr(); let from, label;
+  if (activeTab==="daily"){from=today;label="Today";}
+  else if (activeTab==="weekly"){from=getWeekStart();label="This_Week";}
+  else if (activeTab==="monthly"){from=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-01";label="This_Month";}
+  else{from=now.getFullYear()+"-01-01";label="This_Year";}
+  exportCSV(allExpenses.filter(e=>e.date>=from&&e.date<=today), "SpendWise_"+label);
+};
+
+window.downloadHistoryCSV = () => exportCSV(filteredExpenses||allExpenses, "SpendWise_History");
+
+function exportCSV(rows, name) {
+  if (!rows.length) { showToast("No data to export.", "error"); return; }
+  const hdr = ["Date","Category","Description","Payment Method","Notes","Amount (Rs)"];
+  const csv = [hdr.join(","), ...rows.map(e => [e.date, '"'+e.category+'"', '"'+e.description+'"', '"'+e.payment+'"', '"'+(e.notes||"").replace(/"/g,'""')+'"', e.amount.toFixed(2)].join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  a.download = name + "_" + todayStr() + ".csv";
+  a.click(); showToast("CSV downloaded!", "success");
+}
+
+window.toggleTheme = () => {
+  const html = document.documentElement;
+  const dark = html.getAttribute("data-theme") === "dark";
+  html.setAttribute("data-theme", dark ? "light" : "dark");
+  document.getElementById("theme-icon").textContent = dark ? "🌙" : "☀️";
+  localStorage.setItem("theme", dark ? "light" : "dark");
+};
+
+const saved = localStorage.getItem("theme") || "dark";
+document.documentElement.setAttribute("data-theme", saved);
+
+function showToast(msg, type) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.className = "toast " + (type||"success");
+  t.classList.remove("hidden");
+  setTimeout(() => t.classList.add("hidden"), 3000);
+}
+
+function fmt(n) { return "Rs " + Number(n).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pad(n) { return String(n).padStart(2,"0"); }
+function todayStr() { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function getWeekStart() { const d=new Date(); const day=d.getDay(); const diff=d.getDate()-day+(day===0?-6:1); const m=new Date(d.setDate(diff)); return m.getFullYear()+"-"+pad(m.getMonth()+1)+"-"+pad(m.getDate()); }
+function formatDate(ds) { return new Date(ds+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}); }
+function setGreeting() { const h=new Date().getHours(); const g=h<12?"Good morning":h<17?"Good afternoon":"Good evening"; const n=(currentUser&&currentUser.displayName)?currentUser.displayName.split(" ")[0]:""; document.getElementById("dashboard-greeting").textContent=g+(n?", "+n:"")+"!"; }
+function showFormMsg(msg,type) { const el=document.getElementById("form-msg"); el.textContent=msg; el.className="form-msg "+type; el.classList.remove("hidden"); if(type==="success") setTimeout(()=>el.classList.add("hidden"),3000); }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const icon = document.getElementById("theme-icon");
+  if (icon) icon.textContent = (localStorage.getItem("theme")||"dark")==="dark" ? "☀️" : "🌙";
+  const d = document.getElementById("exp-date"); if (d) d.value = todayStr();
+});
+
+// ============================================================
+//  CATEGORY TILE PICKER
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Re-init Lucide icons after module loads
+  if (window.lucide) lucide.createIcons();
+
+  document.querySelectorAll('.cat-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      document.querySelectorAll('.cat-tile').forEach(t => t.classList.remove('selected'));
+      tile.classList.add('selected');
+      document.getElementById('exp-category').value = tile.dataset.value;
+    });
+  });
+});
+
+// Patch resetForm to also clear category tiles
+const _baseReset = window.resetForm;
+window.resetForm = () => {
+  _baseReset();
+  document.querySelectorAll('.cat-tile').forEach(t => t.classList.remove('selected'));
+  document.getElementById('exp-category').value = '';
+};
+
+// PERIOD PICKER
+function populateYearPicker() {
+  const yearSelect = document.getElementById('picker-year');
+  const currentYear = new Date().getFullYear();
+  const years = new Set([currentYear]);
+  allExpenses.forEach(e => { if (e.date) years.add(parseInt(e.date.substring(0,4))); });
+  const sorted = Array.from(years).sort((a,b) => b-a);
+  yearSelect.innerHTML = '<option value="">All Years</option>';
+  sorted.forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    yearSelect.appendChild(opt);
+  });
+}
+
+function initPeriodPicker() {
+  const now = new Date();
+  document.getElementById('picker-month').value = String(now.getMonth()+1).padStart(2,'0');
+  document.getElementById('picker-year').value  = now.getFullYear();
+  updatePeriodLabel();
+}
+
+window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); }
+
+window.resetPeriodPicker = function() {
+  const now = new Date();
+  document.getElementById('picker-month').value = String(now.getMonth()+1).padStart(2,'0');
+  document.getElementById('picker-year').value  = now.getFullYear();
+  updatePeriodLabel(); renderDashboardTable();
+}
+
+function updatePeriodLabel() {
+  const m = document.getElementById('picker-month').value;
+  const y = document.getElementById('picker-year').value;
+  const months = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  let label = 'Showing all time';
+  if (m && y) label = 'Showing ' + months[parseInt(m)] + ' ' + y;
+  else if (m) label = 'Showing ' + months[parseInt(m)] + ' (all years)';
+  else if (y) label = 'Showing all of ' + y;
+  document.getElementById('period-picker-sub').textContent = label;
+}
+
+function getPeriodExpenses() {
+  const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
+  const y = document.getElementById('picker-year')  ? document.getElementById('picker-year').value  : '';
+  return allExpenses.filter(e => {
+    if (!e.date) return false;
+    if (y && e.date.substring(0,4) !== String(y)) return false;
+    if (m && e.date.substring(5,7) !== String(m)) return false;
+    return true;
+  });
+}
+
+function updatePeriodSummary() {
+  const rows = getPeriodExpenses();
+  const total = rows.reduce((s,e) => s+e.amount, 0);
+  const max   = rows.length ? Math.max(...rows.map(e => e.amount)) : 0;
+  const uniqueDays = new Set(rows.map(e => e.date)).size;
+  const avg = uniqueDays > 0 ? total / uniqueDays : 0;
+  document.getElementById('period-total').textContent = fmt(total);
+  document.getElementById('period-count').textContent = rows.length;
+  document.getElementById('period-avg').textContent   = fmt(avg);
+  document.getElementById('period-max').textContent   = fmt(max);
+}
+
+// Override renderDashboardTable to respect period picker
+const _baseRenderDashboard = renderDashboardTable;
+renderDashboardTable = function() {
+  const pm = document.getElementById('picker-month');
+  if (!pm) { _baseRenderDashboard(); return; }
+  const periodRows = getPeriodExpenses();
+  const now = new Date(); const today = todayStr();
+  let rows;
+  if (activeTab === 'daily') {
+    rows = periodRows.filter(e => e.date === today);
+  } else if (activeTab === 'weekly') {
+    const ws = getWeekStart();
+    rows = periodRows.filter(e => e.date >= ws && e.date <= today);
+  } else if (activeTab === 'monthly') {
+    const ms = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-01';
+    rows = periodRows.filter(e => e.date >= ms && e.date <= today);
+  } else {
+    rows = periodRows;
+  }
+  renderTable('table-body', rows, false);
+  updatePeriodSummary();
+};
+
+// After data loads, init the picker
+const _baseSwitchTab = window.switchTableTab;
+window.switchTableTab = (tab) => {
+  activeTab = tab;
+  document.querySelectorAll('.table-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('ttab-' + tab).classList.add('active');
+  renderDashboardTable();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const pm = document.getElementById('picker-month');
+  const py = document.getElementById('picker-year');
+  if (pm) pm.addEventListener('change', window.onPeriodChange);
+  if (py) py.addEventListener('change', window.onPeriodChange);
+});
+
+// FORGOT PASSWORD
+window.showForgotPassword = function() {
+  const loginEmail = document.getElementById('login-email').value.trim();
+  if (loginEmail) document.getElementById('forgot-email').value = loginEmail;
+  resetForgotModal();
+  document.getElementById('forgot-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+  setTimeout(() => document.getElementById('forgot-email').focus(), 100);
+};
+window.closeForgotModal = function() {
+  document.getElementById('forgot-modal').classList.add('hidden');
+};
+window.resetForgotModal = function() {
+  document.getElementById('forgot-step-1').classList.remove('hidden');
+  document.getElementById('forgot-step-2').classList.add('hidden');
+  const e = document.getElementById('forgot-error');
+  e.classList.add('hidden'); e.textContent = '';
+};
+window.handleForgotPassword = async function() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const errEl = document.getElementById('forgot-error');
+  if (!email) { errEl.textContent = 'Please enter your email address.'; errEl.classList.remove('hidden'); return; }
+  const emailOk = /^[^@]+@[^@]+[.][^@]+/.test(email);
+  if (!emailOk) { errEl.textContent = 'Please enter a valid email address.'; errEl.classList.remove('hidden'); return; }
+  const btn = document.querySelector('#forgot-step-1 .btn-primary');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    await sendPasswordResetEmail(auth, email);
+    document.getElementById('forgot-step-1').classList.add('hidden');
+    document.getElementById('forgot-step-2').classList.remove('hidden');
+    document.getElementById('forgot-success-msg').textContent = 'We sent a password reset link to ' + email + '. Check your inbox and follow the instructions.';
+    if (window.lucide) lucide.createIcons();
+  } catch(e2) {
+    const msgs = { 'auth/user-not-found': 'No account found with this email.', 'auth/invalid-email': 'Invalid email address.', 'auth/too-many-requests': 'Too many attempts. Try again later.' };
+    errEl.textContent = msgs[e2.code] || 'Something went wrong. Try again.';
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.innerHTML = orig;
+    if (window.lucide) lucide.createIcons();
+  }
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('forgot-modal');
+  if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeForgotModal(); });
+  const inp = document.getElementById('forgot-email');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotPassword(); });
+});
