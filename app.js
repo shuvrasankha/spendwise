@@ -239,6 +239,28 @@ function renderTable(tbodyId, rows, del) {
 }
 
 window.downloadCSV = () => {
+  const pm = document.getElementById('picker-month');
+  const selectedMonth = pm ? pm.value : '';
+  const selectedYear = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
+  
+  // If period picker is active, use filtered data
+  if (selectedMonth || selectedYear) {
+    const periodData = getPeriodExpenses();
+    let label = 'Export';
+    if (selectedMonth && selectedYear) {
+      const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      label = months[parseInt(selectedMonth)] + '_' + selectedYear;
+    } else if (selectedMonth) {
+      const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      label = months[parseInt(selectedMonth)];
+    } else if (selectedYear) {
+      label = 'Year_' + selectedYear;
+    }
+    exportCSV(periodData, "SpendWise_" + label);
+    return;
+  }
+  
+  // Otherwise, use the current date logic
   const now=new Date(); const today=todayStr(); let from, label;
   if (activeTab==="daily"){from=today;label="Today";}
   else if (activeTab==="weekly"){from=getWeekStart();label="This_Week";}
@@ -335,6 +357,7 @@ function initPeriodPicker() {
   document.getElementById('picker-month').value = String(now.getMonth()+1).padStart(2,'0');
   document.getElementById('picker-year').value  = now.getFullYear();
   updatePeriodLabel();
+  updatePeriodSummary();
 }
 
 window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); }
@@ -387,6 +410,8 @@ renderDashboardTable = function() {
   if (!pm) { _baseRenderDashboard(); return; }
   const periodRows = getPeriodExpenses();
   const now = new Date(); const today = todayStr();
+  const selectedMonth = document.getElementById('picker-month').value;
+  const selectedYear = document.getElementById('picker-year').value;
   let rows;
   if (activeTab === 'daily') {
     rows = periodRows.filter(e => e.date === today);
@@ -394,8 +419,14 @@ renderDashboardTable = function() {
     const ws = getWeekStart();
     rows = periodRows.filter(e => e.date >= ws && e.date <= today);
   } else if (activeTab === 'monthly') {
-    const ms = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-01';
-    rows = periodRows.filter(e => e.date >= ms && e.date <= today);
+    // Use selected month/year if available, otherwise use current
+    let displayYear = selectedYear || now.getFullYear();
+    let displayMonth = selectedMonth || pad(now.getMonth()+1);
+    const ms = displayYear + '-' + displayMonth + '-01';
+    // Calculate the last day of the selected month
+    const lastDay = new Date(displayYear, parseInt(displayMonth), 0).getDate();
+    const me = displayYear + '-' + displayMonth + '-' + pad(lastDay);
+    rows = periodRows.filter(e => e.date >= ms && e.date <= me);
   } else {
     rows = periodRows;
   }
