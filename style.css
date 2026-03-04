@@ -545,6 +545,11 @@ button { cursor: pointer; border: none; outline: none; }
   justify-content: center;
 }
 
+.line-chart-container {
+  height: 400px;
+}
+
+
 /* =====================
    TABLE CARD
 ===================== */

@@ -94,7 +94,7 @@ window.showPage = (page) => {
   document.getElementById("page-" + page).classList.remove("hidden");
   const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
   const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
-  if (page === "dashboard") { renderDashboardTable(); renderPieChart(); }
+  if (page === "dashboard") { renderDashboardTable(); renderPieChart(); renderTrendChart(); }
   if (page === "history") renderHistory();
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
@@ -112,7 +112,7 @@ async function loadExpenses() {
     }));
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart();
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart();
     populateYearPicker(); initPeriodPicker(); updatePeriodSummary();
   } catch (e) { console.error(e); showToast("Error loading data.", "error"); }
 }
@@ -131,7 +131,7 @@ window.addExpense = async () => {
     const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: enc(amount.toString()), category, date, payment, description: enc(description || "-"), notes: enc(notes), createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); resetForm();
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart(); resetForm();
     showFormMsg("Expense added successfully!", "success"); showToast("Expense added!", "success");
   } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); }
 };
@@ -151,7 +151,7 @@ window.confirmDelete = async () => {
   try {
     await deleteDoc(doc(db, "expenses", deleteTarget));
     allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); showToast("Deleted.", "success");
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart(); showToast("Deleted.", "success");
   } catch (e) { showToast("Delete failed.", "error"); }
   closeModal();
 };
@@ -242,7 +242,7 @@ window.saveEditExpense = async () => {
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
     
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart();
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart();
     closeEditModal();
     showToast("Expense updated!", "success");
   } catch (e) {
@@ -295,6 +295,7 @@ window.switchTableTab = (tab) => {
   document.getElementById("ttab-" + tab).classList.add("active");
   renderDashboardTable();
   renderPieChart();
+  renderTrendChart();
 };
 
 function renderDashboardTable() {
@@ -393,6 +394,7 @@ window.toggleTheme = () => {
   document.getElementById("theme-icon").textContent = dark ? "🌙" : "☀️";
   localStorage.setItem("theme", dark ? "light" : "dark");
   renderPieChart();
+  renderTrendChart();
 };
 
 const saved = localStorage.getItem("theme") || "dark";
@@ -535,6 +537,189 @@ function renderPieChart() {
   });
 }
 
+// ============================================================
+//  LINE CHART - SPENDING TRENDS
+// ============================================================
+let trendChartInstance = null;
+
+function getTrendData() {
+  // Get current displayed expenses based on period picker
+  const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
+  const y = document.getElementById('picker-year')  ? document.getElementById('picker-year').value  : '';
+  
+  let periodExpenses = allExpenses.filter(e => {
+    if (!e.date) return false;
+    if (y && e.date.substring(0,4) !== String(y)) return false;
+    if (m && e.date.substring(5,7) !== String(m)) return false;
+    return true;
+  });
+  
+  const now = new Date();
+  const today = todayStr();
+  let displayExpenses = [];
+  let labels = [];
+  let dateGroups = {};
+  
+  if (activeTab === 'daily') {
+    // For daily view, show last 7 days with hourly or by individual transactions
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 6);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate());
+      labels.push(formatDate(dateStr));
+      const dayExpenses = periodExpenses.filter(e => e.date === dateStr);
+      dateGroups[dateStr] = dayExpenses.reduce((s, e) => s + e.amount, 0);
+    }
+  } else if (activeTab === 'weekly') {
+    // Show last 4 weeks
+    labels = [];
+    for (let i = 3; i >= 0; i--) {
+      const weekDate = new Date();
+      weekDate.setDate(weekDate.getDate() - (i * 7));
+      const weekStart = new Date(weekDate);
+      weekStart.setDate(weekStart.getDate() - weekDate.getDay() + (weekDate.getDay() === 0 ? -6 : 1));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      
+      const weekLabel = 'Week of ' + formatDate(weekStart.toISOString().split('T')[0]);
+      labels.push(weekLabel);
+      
+      const weekExpenses = periodExpenses.filter(e => {
+        return e.date >= weekStart.toISOString().split('T')[0] && e.date <= weekEnd.toISOString().split('T')[0];
+      });
+      dateGroups[weekLabel] = weekExpenses.reduce((s, e) => s + e.amount, 0);
+    }
+  } else if (activeTab === 'monthly') {
+    // Show all months in the year with data
+    let displayYear = y || now.getFullYear();
+    for (let month = 1; month <= 12; month++) {
+      const monthStr = pad(month);
+      const monthLabel = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month-1];
+      labels.push(monthLabel);
+      
+      const monthExpenses = periodExpenses.filter(e => {
+        return e.date.substring(0,4) === String(displayYear) && e.date.substring(5,7) === monthStr;
+      });
+      dateGroups[monthLabel] = monthExpenses.reduce((s, e) => s + e.amount, 0);
+    }
+  } else {
+    // Yearly view - show all years
+    const years = new Set();
+    periodExpenses.forEach(e => {
+      if (e.date) years.add(e.date.substring(0,4));
+    });
+    const sortedYears = Array.from(years).sort();
+    sortedYears.forEach(year => {
+      labels.push(year);
+      const yearExpenses = periodExpenses.filter(e => e.date.substring(0,4) === year);
+      dateGroups[year] = yearExpenses.reduce((s, e) => s + e.amount, 0);
+    });
+  }
+  
+  const data = labels.map(label => dateGroups[label] || 0);
+  
+  return { labels, data };
+}
+
+function renderTrendChart() {
+  const { labels, data } = getTrendData();
+  
+  const chartCanvas = document.getElementById('trendLineChart');
+  if (!chartCanvas) return;
+  
+  // Destroy existing chart
+  if (trendChartInstance) {
+    trendChartInstance.destroy();
+  }
+  
+  const ctx = chartCanvas.getContext('2d');
+  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+  
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Spending',
+        data: data,
+        borderColor: '#4a9eff',
+        backgroundColor: 'rgba(74, 158, 255, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: '#4a9eff',
+        pointBorderColor: isDarkMode ? '#262626' : '#ffffff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 7,
+        pointHoverBackgroundColor: '#0066cc'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: isDarkMode ? '#b0b0b0' : '#666666',
+            font: { size: 12, weight: '500' },
+            padding: 16,
+            usePointStyle: false
+          }
+        },
+        tooltip: {
+          backgroundColor: isDarkMode ? 'rgba(38, 38, 38, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          titleColor: isDarkMode ? '#e8e8e8' : '#1a1a1a',
+          bodyColor: isDarkMode ? '#b0b0b0' : '#666666',
+          borderColor: isDarkMode ? '#3a3a3a' : '#e5e5e5',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { size: 13, weight: '600' },
+          bodyFont: { size: 12 },
+          callbacks: {
+            label: function(context) {
+              return 'Spent: ' + fmt(context.parsed.y);
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: isDarkMode ? 'rgba(58, 58, 58, 0.5)' : 'rgba(229, 229, 229, 0.5)',
+            drawBorder: false
+          },
+          ticks: {
+            color: isDarkMode ? '#b0b0b0' : '#666666',
+            font: { size: 11 },
+            callback: function(value) {
+              return fmt(value);
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false,
+            drawBorder: false
+          },
+          ticks: {
+            color: isDarkMode ? '#b0b0b0' : '#666666',
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const icon = document.getElementById("theme-icon");
   if (icon) icon.textContent = (localStorage.getItem("theme")||"dark")==="dark" ? "☀️" : "🌙";
@@ -600,7 +785,7 @@ function initPeriodPicker() {
   updatePeriodSummary();
 }
 
-window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); renderPieChart(); }
+window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); renderPieChart(); renderTrendChart(); }
 
 window.resetPeriodPicker = function() {
   const now = new Date();
@@ -682,6 +867,7 @@ window.switchTableTab = (tab) => {
   document.getElementById('ttab-' + tab).classList.add('active');
   renderDashboardTable();
   renderPieChart();
+  renderTrendChart();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
