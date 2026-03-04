@@ -2,7 +2,7 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // REPLACE with your Firebase config
 const firebaseConfig = {
@@ -32,7 +32,7 @@ function dec(encoded) {
   catch { return encoded; }
 }
 
-let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null;
+let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
 onAuthStateChanged(auth, user => {
   if (user) {
@@ -156,6 +156,109 @@ window.confirmDelete = async () => {
   closeModal();
 };
 
+// ============================================================
+//  EDIT EXPENSE MODAL
+// ============================================================
+window.openEditExpense = (id) => {
+  const expense = allExpenses.find(e => e.id === id);
+  if (!expense) return;
+  
+  editingExpenseId = id;
+  document.getElementById("edit-amount").value = expense.amount;
+  document.getElementById("edit-date").value = expense.date;
+  document.getElementById("edit-category").value = expense.category;
+  document.getElementById("edit-payment").value = expense.payment;
+  document.getElementById("edit-description").value = expense.description;
+  document.getElementById("edit-notes").value = expense.notes || "";
+  
+  // Set category tile selection
+  document.querySelectorAll("#edit-category-picker .cat-tile").forEach(tile => {
+    tile.classList.remove("selected");
+    if (tile.dataset.value === expense.category) {
+      tile.classList.add("selected");
+    }
+  });
+  
+  document.getElementById("edit-error").classList.add("hidden");
+  document.getElementById("edit-modal").classList.remove("hidden");
+};
+
+window.closeEditModal = () => {
+  document.getElementById("edit-modal").classList.add("hidden");
+  editingExpenseId = null;
+};
+
+window.saveEditExpense = async () => {
+  if (!editingExpenseId) return;
+  
+  const amount = parseFloat(document.getElementById("edit-amount").value);
+  const category = document.getElementById("edit-category").value;
+  const date = document.getElementById("edit-date").value;
+  const payment = document.getElementById("edit-payment").value;
+  const description = document.getElementById("edit-description").value.trim();
+  const notes = document.getElementById("edit-notes").value.trim();
+  
+  const errEl = document.getElementById("edit-error");
+  
+  if (!amount || amount <= 0) { 
+    errEl.textContent = "Enter a valid amount.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (!category) {
+    errEl.textContent = "Select a category.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (!date) {
+    errEl.textContent = "Select a date.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  
+  try {
+    const expenseRef = doc(db, "expenses", editingExpenseId);
+    await updateDoc(expenseRef, {
+      amount: enc(amount.toString()),
+      category,
+      date,
+      payment,
+      description: enc(description || "-"),
+      notes: enc(notes)
+    });
+    
+    // Update local array
+    const idx = allExpenses.findIndex(e => e.id === editingExpenseId);
+    if (idx >= 0) {
+      allExpenses[idx] = {
+        ...allExpenses[idx],
+        amount,
+        category,
+        date,
+        payment,
+        description: description || "-",
+        notes
+      };
+      allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+    }
+    
+    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart();
+    closeEditModal();
+    showToast("Expense updated!", "success");
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "Failed to update. Try again.";
+    errEl.classList.remove("hidden");
+  }
+};
+
+window.deleteFromEdit = async () => {
+  if (!editingExpenseId) return;
+  deleteTarget = editingExpenseId;
+  closeEditModal();
+  document.getElementById("modal").classList.remove("hidden");
+};
+
 function updateCards() {
   const now = new Date(); const today = todayStr();
   const ws = getWeekStart();
@@ -228,15 +331,16 @@ window.clearFilters = () => {
 
 function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
-  const cols = del ? 7 : 5;
+  const cols = del ? 8 : 5;
   if (!rows.length) { tbody.innerHTML = "<tr><td colspan='" + cols + "' class='empty-row'>No expenses found.</td></tr>"; return; }
   tbody.innerHTML = rows.map(e =>
     "<tr><td>" + formatDate(e.date) + "</td><td><span class='category-badge'>" + e.category + "</span></td><td>" + e.description + "</td><td>" + e.payment + "</td>" +
     (del ? "<td>" + (e.notes||"-") + "</td>" : "") +
     "<td class='text-right'>" + fmt(e.amount) + "</td>" +
-    (del ? "<td><button class='btn-delete' onclick=\"deleteExpense('" + e.id + "')\">Delete</button></td>" : "") +
+    (del ? "<td class='text-center'><div class='action-buttons'><button class='btn-action edit' onclick=\"openEditExpense('" + e.id + "')\" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick=\"deleteExpense('" + e.id + "')\" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div></td>" : "") +
     "</tr>"
   ).join("");
+  if (window.lucide) lucide.createIcons();
 }
 
 window.downloadCSV = () => {
@@ -446,9 +550,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.cat-tile').forEach(tile => {
     tile.addEventListener('click', () => {
-      document.querySelectorAll('.cat-tile').forEach(t => t.classList.remove('selected'));
-      tile.classList.add('selected');
-      document.getElementById('exp-category').value = tile.dataset.value;
+      // Determine which picker this tile belongs to
+      const editPicker = tile.closest('#edit-category-picker');
+      const addPicker = tile.closest('#category-picker');
+      
+      if (editPicker) {
+        // Edit modal
+        document.querySelectorAll('#edit-category-picker .cat-tile').forEach(t => t.classList.remove('selected'));
+        tile.classList.add('selected');
+        document.getElementById('edit-category').value = tile.dataset.value;
+      } else if (addPicker) {
+        // Add modal
+        document.querySelectorAll('#category-picker .cat-tile').forEach(t => t.classList.remove('selected'));
+        tile.classList.add('selected');
+        document.getElementById('exp-category').value = tile.dataset.value;
+      }
     });
   });
 });
@@ -457,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const _baseReset = window.resetForm;
 window.resetForm = () => {
   _baseReset();
-  document.querySelectorAll('.cat-tile').forEach(t => t.classList.remove('selected'));
+  document.querySelectorAll('#category-picker .cat-tile').forEach(t => t.classList.remove('selected'));
   document.getElementById('exp-category').value = '';
 };
 
@@ -622,4 +738,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeForgotModal(); });
   const inp = document.getElementById('forgot-email');
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotPassword(); });
+  
+  // Edit modal cleanup
+  const editOverlay = document.getElementById('edit-modal');
+  if (editOverlay) editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
 });
