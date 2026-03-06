@@ -40,7 +40,9 @@ onAuthStateChanged(auth, user => {
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
     document.getElementById("user-avatar").textContent = (user.displayName || user.email || "U")[0].toUpperCase();
-    setGreeting(); loadExpenses();
+    setGreeting();
+    // Load expenses asynchronously to avoid blocking UI
+    setTimeout(() => loadExpenses(), 0);
   } else {
     currentUser = null;
     document.getElementById("auth-screen").classList.remove("hidden");
@@ -94,7 +96,14 @@ window.showPage = (page) => {
   document.getElementById("page-" + page).classList.remove("hidden");
   const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
   const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
-  if (page === "dashboard") { renderDashboardTable(); renderPieChart(); renderTrendChart(); }
+  if (page === "dashboard") {
+    renderDashboardTable();
+    // Defer chart rendering to avoid blocking UI interactions
+    requestAnimationFrame(() => {
+      renderPieChart();
+      renderTrendChart();
+    });
+  }
   if (page === "history") renderHistory();
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
@@ -112,8 +121,20 @@ async function loadExpenses() {
     }));
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart();
-    populateYearPicker(); initPeriodPicker(); updatePeriodSummary();
+    
+    // Render lightweight content immediately
+    updateCards();
+    renderDashboardTable();
+    renderHistory();
+    populateYearPicker();
+    initPeriodPicker();
+    updatePeriodSummary();
+    
+    // Defer chart rendering to next frame to avoid blocking
+    requestAnimationFrame(() => {
+      renderPieChart();
+      renderTrendChart();
+    });
   } catch (e) { console.error(e); showToast("Error loading data.", "error"); }
 }
 
@@ -131,8 +152,17 @@ window.addExpense = async () => {
     const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: enc(amount.toString()), category, date, payment, description: enc(description || "-"), notes: enc(notes), createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart(); resetForm();
-    showFormMsg("Expense added successfully!", "success"); showToast("Expense added!", "success");
+    updateCards();
+    renderDashboardTable();
+    renderHistory();
+    // Defer chart rendering
+    requestAnimationFrame(() => {
+      renderPieChart();
+      renderTrendChart();
+    });
+    resetForm();
+    showFormMsg("Expense added successfully!", "success");
+    showToast("Expense added!", "success");
   } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); }
 };
 
@@ -151,7 +181,15 @@ window.confirmDelete = async () => {
   try {
     await deleteDoc(doc(db, "expenses", deleteTarget));
     allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart(); showToast("Deleted.", "success");
+    updateCards();
+    renderDashboardTable();
+    renderHistory();
+    // Defer chart rendering
+    requestAnimationFrame(() => {
+      renderPieChart();
+      renderTrendChart();
+    });
+    showToast("Deleted.", "success");
   } catch (e) { showToast("Delete failed.", "error"); }
   closeModal();
 };
@@ -242,7 +280,14 @@ window.saveEditExpense = async () => {
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
     
-    updateCards(); renderDashboardTable(); renderHistory(); renderPieChart(); renderTrendChart();
+    updateCards();
+    renderDashboardTable();
+    renderHistory();
+    // Defer chart rendering
+    requestAnimationFrame(() => {
+      renderPieChart();
+      renderTrendChart();
+    });
     closeEditModal();
     showToast("Expense updated!", "success");
   } catch (e) {
@@ -294,8 +339,11 @@ window.switchTableTab = (tab) => {
   document.querySelectorAll(".table-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("ttab-" + tab).classList.add("active");
   renderDashboardTable();
-  renderPieChart();
-  renderTrendChart();
+  // Defer chart updates to avoid blocking
+  requestAnimationFrame(() => {
+    renderPieChart();
+    renderTrendChart();
+  });
 };
 
 function renderDashboardTable() {
@@ -785,7 +833,15 @@ function initPeriodPicker() {
   updatePeriodSummary();
 }
 
-window.onPeriodChange = function() { updatePeriodLabel(); renderDashboardTable(); renderPieChart(); renderTrendChart(); }
+window.onPeriodChange = function() {
+  updatePeriodLabel();
+  renderDashboardTable();
+  // Defer chart updates
+  requestAnimationFrame(() => {
+    renderPieChart();
+    renderTrendChart();
+  });
+}
 
 window.resetPeriodPicker = function() {
   const now = new Date();
@@ -859,16 +915,8 @@ renderDashboardTable = function() {
   updatePeriodSummary();
 };
 
-// After data loads, init the picker
+// After data loads, init the picker (removed duplicate - using main optimization)
 const _baseSwitchTab = window.switchTableTab;
-window.switchTableTab = (tab) => {
-  activeTab = tab;
-  document.querySelectorAll('.table-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('ttab-' + tab).classList.add('active');
-  renderDashboardTable();
-  renderPieChart();
-  renderTrendChart();
-};
 
 document.addEventListener('DOMContentLoaded', () => {
   const pm = document.getElementById('picker-month');
