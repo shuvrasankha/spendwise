@@ -34,6 +34,17 @@ function dec(encoded) {
 
 let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
+// Helper functions for loading animation
+function showLoader() {
+  const loader = document.getElementById("loading-spinner");
+  if (loader) loader.classList.remove("hidden");
+}
+
+function hideLoader() {
+  const loader = document.getElementById("loading-spinner");
+  if (loader) loader.classList.add("hidden");
+}
+
 onAuthStateChanged(auth, user => {
   if (user) {
     currentUser = user;
@@ -110,6 +121,7 @@ window.showPage = (page) => {
 
 async function loadExpenses() {
   if (!currentUser) return;
+  showLoader();
   try {
     const q = query(collection(db, "expenses"), where("uid", "==", currentUser.uid));
     const snap = await getDocs(q);
@@ -134,8 +146,9 @@ async function loadExpenses() {
     requestAnimationFrame(() => {
       renderPieChart();
       renderTrendChart();
+      hideLoader();
     });
-  } catch (e) { console.error(e); showToast("Error loading data.", "error"); }
+  } catch (e) { console.error(e); showToast("Error loading data.", "error"); hideLoader(); }
 }
 
 window.addExpense = async () => {
@@ -149,6 +162,7 @@ window.addExpense = async () => {
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
+    showLoader();
     const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: enc(amount.toString()), category, date, payment, description: enc(description || "-"), notes: enc(notes), createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
@@ -159,11 +173,12 @@ window.addExpense = async () => {
     requestAnimationFrame(() => {
       renderPieChart();
       renderTrendChart();
+      hideLoader();
     });
     resetForm();
     showFormMsg("Expense added successfully!", "success");
     showToast("Expense added!", "success");
-  } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); }
+  } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); hideLoader(); }
 };
 
 window.resetForm = () => {
@@ -179,6 +194,7 @@ window.closeModal = () => { document.getElementById("modal").classList.add("hidd
 window.confirmDelete = async () => {
   if (!deleteTarget) return;
   try {
+    showLoader();
     await deleteDoc(doc(db, "expenses", deleteTarget));
     allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
     updateCards();
@@ -188,9 +204,10 @@ window.confirmDelete = async () => {
     requestAnimationFrame(() => {
       renderPieChart();
       renderTrendChart();
+      hideLoader();
     });
     showToast("Deleted.", "success");
-  } catch (e) { showToast("Delete failed.", "error"); }
+  } catch (e) { showToast("Delete failed.", "error"); hideLoader(); }
   closeModal();
 };
 
@@ -255,6 +272,7 @@ window.saveEditExpense = async () => {
   }
   
   try {
+    showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
     await updateDoc(expenseRef, {
       amount: enc(amount.toString()),
@@ -287,6 +305,7 @@ window.saveEditExpense = async () => {
     requestAnimationFrame(() => {
       renderPieChart();
       renderTrendChart();
+      hideLoader();
     });
     closeEditModal();
     showToast("Expense updated!", "success");
@@ -294,6 +313,7 @@ window.saveEditExpense = async () => {
     console.error(e);
     errEl.textContent = "Failed to update. Try again.";
     errEl.classList.remove("hidden");
+    hideLoader();
   }
 };
 
