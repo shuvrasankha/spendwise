@@ -36,13 +36,13 @@ let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = nu
 
 // Helper functions for loading animation
 function showLoader() {
-  const loader = document.getElementById("loading-spinner");
-  if (loader) loader.classList.remove("hidden");
+  const cardsContainer = document.querySelector(".summary-cards");
+  if (cardsContainer) cardsContainer.classList.add("loading");
 }
 
 function hideLoader() {
-  const loader = document.getElementById("loading-spinner");
-  if (loader) loader.classList.add("hidden");
+  const cardsContainer = document.querySelector(".summary-cards");
+  if (cardsContainer) cardsContainer.classList.remove("loading");
 }
 
 onAuthStateChanged(auth, user => {
