@@ -14,6 +14,13 @@
 </head>
 <body>
 
+<!-- Full-page loader: shown until Firebase Auth resolves -->
+<div id="page-loader" class="page-loader">
+  <div class="page-loader-logo"><i data-lucide="wallet"></i></div>
+  <div class="page-loader-spinner"></div>
+  <span class="page-loader-text">Loading SpendWise…</span>
+</div>
+
 <div id="auth-screen" class="auth-screen hidden">
   <div class="auth-card">
     <div class="auth-logo">
@@ -262,8 +269,8 @@
         <div class="table-wrapper">
           <table class="data-table">
             <thead><tr>
-              <th>Date</th><th>Category</th><th>Description</th><th>Payment</th>
-              <th class="text-right">Amount</th>
+              <th data-col="date">Date</th><th data-col="category">Category</th><th data-col="description">Description</th><th data-col="payment">Payment</th>
+              <th class="text-right" data-col="amount">Amount</th>
             </tr></thead>
             <tbody id="table-body">
               <tr><td colspan="5" class="empty-row">No expenses yet. Add your first one!</td></tr>
@@ -438,9 +445,9 @@
         <div class="table-wrapper">
           <table class="data-table">
             <thead><tr>
-              <th>Date</th><th>Category</th><th>Description</th>
-              <th>Payment</th><th>Notes</th>
-              <th class="text-right">Amount</th><th class="text-center">Actions</th>
+              <th data-col="date">Date</th><th data-col="category">Category</th><th data-col="description">Description</th>
+              <th data-col="payment">Payment</th><th data-col="notes">Notes</th>
+              <th class="text-right" data-col="amount">Amount</th><th class="text-center" data-col="actions">Actions</th>
             </tr></thead>
             <tbody id="history-body">
               <tr><td colspan="7" class="empty-row">No expenses recorded yet.</td></tr>

@@ -57,7 +57,15 @@ function dec(encoded) {
 
 let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
-// Helper functions for loading animation
+// ── Page loader ─────────────────────────────────────────────────────────────
+function dismissPageLoader() {
+  const loader = document.getElementById('page-loader');
+  if (!loader) return;
+  loader.classList.add('fade-out');
+  setTimeout(() => loader.remove(), 450);
+}
+
+// ── Card shimmer ─────────────────────────────────────────────────────────────
 function showLoader() {
   const cardsContainer = document.querySelector(".summary-cards");
   if (cardsContainer) cardsContainer.classList.add("loading");
@@ -68,13 +76,29 @@ function hideLoader() {
   if (cardsContainer) cardsContainer.classList.remove("loading");
 }
 
+// ── Table skeleton rows ───────────────────────────────────────────────────────
+function showTableSkeleton(tbodyId, cols) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const rows = Array.from({ length: 4 }, () =>
+    `<tr class="skeleton-row">${Array.from({ length: cols }, (_, i) =>
+      `<td><span class="skeleton-cell" style="width:${[70,90,110,80,60,50,40][i % 7]}px"></span></td>`
+    ).join('')}</tr>`
+  ).join('');
+  tbody.innerHTML = rows;
+}
+
 onAuthStateChanged(auth, user => {
+  dismissPageLoader();
   if (user) {
     currentUser = user;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
     document.getElementById("user-avatar").textContent = (user.displayName || user.email || "U")[0].toUpperCase();
     setGreeting();
+    // Show skeleton while data loads
+    showTableSkeleton("table-body", 5);
+    showTableSkeleton("history-body", 7);
     // Load expenses asynchronously to avoid blocking UI
     setTimeout(() => loadExpenses(), 0);
   } else {
@@ -424,18 +448,23 @@ window.clearFilters = () => {
 function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
   const cols = del ? 8 : 5;
-  if (!rows.length) { tbody.innerHTML = "<tr><td colspan='" + cols + "' class='empty-row'>No expenses found.</td></tr>"; return; }
-  // escapeHtml() is called on every user-supplied field to prevent XSS.
-  // e.id comes from Firestore document IDs (alphanumeric, safe to use as-is).
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan='${cols}' class='empty-row'>No expenses found.</td></tr>`; return; }
+  // data-label attributes power the mobile card layout (CSS ::before { content: attr(data-label) })
+  // escapeHtml() on every user-supplied field to prevent XSS.
   tbody.innerHTML = rows.map(e =>
-    "<tr><td>" + formatDate(e.date) + "</td><td><span class='category-badge'>" + escapeHtml(e.category) + "</span></td><td>" + escapeHtml(e.description) + "</td><td>" + escapeHtml(e.payment) + "</td>" +
-    (del ? "<td>" + escapeHtml(e.notes || "-") + "</td>" : "") +
-    "<td class='text-right'>" + fmt(e.amount) + "</td>" +
-    (del ? "<td class='text-center'><div class='action-buttons'><button class='btn-action edit' onclick=\"openEditExpense('" + e.id + "')\" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick=\"deleteExpense('" + e.id + "')\" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div></td>" : "") +
-    "</tr>"
-  ).join("");
+    `<tr>
+      <td data-label="Date">${formatDate(e.date)}</td>
+      <td data-label="Category"><span class='category-badge'>${escapeHtml(e.category)}</span></td>
+      <td data-label="Description">${escapeHtml(e.description)}</td>
+      <td data-label="Payment">${escapeHtml(e.payment)}</td>
+      ${del ? `<td data-label="Notes">${escapeHtml(e.notes || '-')}</td>` : ''}
+      <td data-label="Amount" class='text-right'>${fmt(e.amount)}</td>
+      ${del ? `<td class='text-center'><div class='action-buttons'><button class='btn-action edit' onclick="openEditExpense('${e.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteExpense('${e.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div></td>` : ''}
+    </tr>`
+  ).join('');
   if (window.lucide) lucide.createIcons();
 }
+
 
 window.downloadCSV = () => {
   const pm = document.getElementById('picker-month');
