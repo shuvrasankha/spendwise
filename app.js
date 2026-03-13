@@ -3,33 +3,42 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-// REPLACE with your Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyBKOgU4yeEhwGedRfVZfp8p0LGibfPO2hI",
-  authDomain: "spendwise-app-f7227.firebaseapp.com",
-  projectId: "spendwise-app-f7227",
-  storageBucket: "spendwise-app-f7227.firebasestorage.app",
-  messagingSenderId: "243303574314",
-  appId: "1:243303574314:web:e1c66c625f814559c38c53",
-  measurementId: "G-W8LZXEF75G"
-};
+import { firebaseConfig } from './firebase-config.js';
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const gProvider = new GoogleAuthProvider();
 
-// Simple XOR encryption
-const KEY = "SpendWise_2024_K";
-function enc(text) {
-  const s = String(text); let r = "";
-  for (let i = 0; i < s.length; i++) r += String.fromCharCode(s.charCodeAt(i) ^ KEY.charCodeAt(i % KEY.length));
-  return btoa(r);
+// ── Security helpers ────────────────────────────────────────────────────────
+
+// escapeHtml: neutralises XSS — always call this before injecting any
+// user-supplied text into innerHTML.
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
+
+// dec: legacy migration decoder only.
+// Old Firestore records were stored with a XOR+base64 scheme. We keep this
+// decoder so loadExpenses() can still display existing data. All NEW writes
+// store plain text (enc() has been removed).
+const _LEGACY_KEY = "SpendWise_2024_K";
 function dec(encoded) {
-  try { const s = atob(encoded); let r = ""; for (let i = 0; i < s.length; i++) r += String.fromCharCode(s.charCodeAt(i) ^ KEY.charCodeAt(i % KEY.length)); return r; }
-  catch { return encoded; }
+  try {
+    const s = atob(encoded);
+    let r = "";
+    for (let i = 0; i < s.length; i++)
+      r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
+    return r;
+  } catch {
+    // Not base64 → already plain text (new-format record)
+    return encoded;
+  }
 }
 
 let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
@@ -163,7 +172,7 @@ window.addExpense = async () => {
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
     showLoader();
-    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: enc(amount.toString()), category, date, payment, description: enc(description || "-"), notes: enc(notes), createdAt: serverTimestamp() });
+    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: amount.toString(), category, date, payment, description: description || "-", notes: notes, createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     updateCards();
@@ -275,12 +284,12 @@ window.saveEditExpense = async () => {
     showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
     await updateDoc(expenseRef, {
-      amount: enc(amount.toString()),
+      amount: amount.toString(),
       category,
       date,
       payment,
-      description: enc(description || "-"),
-      notes: enc(notes)
+      description: description || "-",
+      notes: notes
     });
     
     // Update local array
@@ -402,9 +411,11 @@ function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
   const cols = del ? 8 : 5;
   if (!rows.length) { tbody.innerHTML = "<tr><td colspan='" + cols + "' class='empty-row'>No expenses found.</td></tr>"; return; }
+  // escapeHtml() is called on every user-supplied field to prevent XSS.
+  // e.id comes from Firestore document IDs (alphanumeric, safe to use as-is).
   tbody.innerHTML = rows.map(e =>
-    "<tr><td>" + formatDate(e.date) + "</td><td><span class='category-badge'>" + e.category + "</span></td><td>" + e.description + "</td><td>" + e.payment + "</td>" +
-    (del ? "<td>" + (e.notes||"-") + "</td>" : "") +
+    "<tr><td>" + formatDate(e.date) + "</td><td><span class='category-badge'>" + escapeHtml(e.category) + "</span></td><td>" + escapeHtml(e.description) + "</td><td>" + escapeHtml(e.payment) + "</td>" +
+    (del ? "<td>" + escapeHtml(e.notes || "-") + "</td>" : "") +
     "<td class='text-right'>" + fmt(e.amount) + "</td>" +
     (del ? "<td class='text-center'><div class='action-buttons'><button class='btn-action edit' onclick=\"openEditExpense('" + e.id + "')\" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick=\"deleteExpense('" + e.id + "')\" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div></td>" : "") +
     "</tr>"

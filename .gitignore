@@ -1,0 +1,8 @@
+# Firebase config — contains API keys, never commit this file
+firebase-config.js
+
+# OS / editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
