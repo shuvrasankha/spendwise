@@ -422,26 +422,84 @@ function renderDashboardTable() {
   renderTable("table-body", allExpenses.filter(e => e.date >= from && e.date <= today), false);
 }
 
+// ── Pagination state ─────────────────────────────────────────
+const HISTORY_PER_PAGE = 10;
+let historyPage = 1;
+
 function renderHistory(data) {
   const rows = data !== undefined ? data : allExpenses;
   filteredExpenses = rows;
-  renderTable("history-body", rows, true);
-  const total = rows.reduce((s,e) => s+e.amount, 0);
-  document.getElementById("history-count").textContent = rows.length + " entr" + (rows.length!==1?"ies":"y");
-  document.getElementById("history-total").textContent = rows.length ? "Total: " + fmt(total) : "";
+
+  const total = rows.reduce((s, e) => s + e.amount, 0);
+  document.getElementById("history-count").textContent =
+    rows.length + " entr" + (rows.length !== 1 ? "ies" : "y");
+  const totalEl = document.getElementById("history-total");
+  if (totalEl) totalEl.textContent = rows.length ? "Total: " + fmt(total) : "";
+
+  // Clamp current page
+  const totalPages = Math.max(1, Math.ceil(rows.length / HISTORY_PER_PAGE));
+  if (historyPage > totalPages) historyPage = totalPages;
+
+  const start = (historyPage - 1) * HISTORY_PER_PAGE;
+  renderTable("history-body", rows.slice(start, start + HISTORY_PER_PAGE), true);
+  renderPagination(rows.length, totalPages);
+}
+
+window.goToHistoryPage = (p) => {
+  historyPage = p;
+  renderHistory(filteredExpenses || allExpenses);
+  const card = document.querySelector("#page-history .table-card");
+  if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+function renderPagination(totalItems, totalPages) {
+  const el = document.getElementById("history-pagination");
+  if (!el) return;
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+
+  const MAX_VISIBLE = 7;
+  let startP = Math.max(1, historyPage - Math.floor(MAX_VISIBLE / 2));
+  let endP   = Math.min(totalPages, startP + MAX_VISIBLE - 1);
+  if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
+
+  let html = `<button class="page-btn" onclick="goToHistoryPage(${historyPage - 1})" ${historyPage === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
+
+  if (startP > 1) {
+    html += `<button class="page-btn" onclick="goToHistoryPage(1)">1</button>`;
+    if (startP > 2) html += `<span class="pagination-dots">…</span>`;
+  }
+  for (let i = startP; i <= endP; i++) {
+    html += `<button class="page-btn${i === historyPage ? " active" : ""}" onclick="goToHistoryPage(${i})">${i}</button>`;
+  }
+  if (endP < totalPages) {
+    if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
+    html += `<button class="page-btn" onclick="goToHistoryPage(${totalPages})">${totalPages}</button>`;
+  }
+
+  const from = (historyPage - 1) * HISTORY_PER_PAGE + 1;
+  const to   = Math.min(historyPage * HISTORY_PER_PAGE, totalItems);
+  html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
+  html += `<button class="page-btn" onclick="goToHistoryPage(${historyPage + 1})" ${historyPage === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>`;
+
+  el.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
 }
 
 window.applyFilters = () => {
-  const from=document.getElementById("filter-from").value, to=document.getElementById("filter-to").value, cat=document.getElementById("filter-category").value;
+  const from = document.getElementById("filter-from").value,
+        to   = document.getElementById("filter-to").value,
+        cat  = document.getElementById("filter-category").value;
   let data = allExpenses.slice();
   if (from) data = data.filter(e => e.date >= from);
   if (to)   data = data.filter(e => e.date <= to);
   if (cat)  data = data.filter(e => e.category === cat);
+  historyPage = 1;
   renderHistory(data);
 };
 
 window.clearFilters = () => {
   ["filter-from","filter-to","filter-category"].forEach(id => document.getElementById(id).value = "");
+  historyPage = 1;
   renderHistory(allExpenses);
 };
 
