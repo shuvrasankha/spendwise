@@ -481,17 +481,30 @@ function renderPagination(totalItems, totalPages) {
 window.applyFilters = () => {
   const from = document.getElementById("filter-from").value,
         to   = document.getElementById("filter-to").value,
-        cat  = document.getElementById("filter-category").value;
+        cat  = document.getElementById("filter-category").value,
+        q    = document.getElementById("filter-search") ? document.getElementById("filter-search").value.toLowerCase().trim() : "";
+        
   let data = allExpenses.slice();
   if (from) data = data.filter(e => e.date >= from);
   if (to)   data = data.filter(e => e.date <= to);
   if (cat)  data = data.filter(e => e.category === cat);
+  if (q) {
+    data = data.filter(e => 
+      e.description.toLowerCase().includes(q) || 
+      e.category.toLowerCase().includes(q) || 
+      (e.notes && e.notes.toLowerCase().includes(q))
+    );
+  }
+  
   historyPage = 1;
   renderHistory(data);
 };
 
 window.clearFilters = () => {
-  ["filter-from","filter-to","filter-category"].forEach(id => document.getElementById(id).value = "");
+  ["filter-from","filter-to","filter-category","filter-search"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
   historyPage = 1;
   renderHistory(allExpenses);
 };
