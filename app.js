@@ -387,18 +387,6 @@ function updateCards() {
   document.getElementById("sum-monthly-count").textContent = m.count + " transaction" + (m.count!==1?"s":"");
   document.getElementById("sum-yearly-count").textContent = y.count + " transaction" + (y.count!==1?"s":"");
 
-  // Dynamically highlight the card with the highest spend
-  const totals = { daily: d.total, weekly: w.total, monthly: m.total, yearly: y.total };
-  const maxKey = Object.keys(totals).reduce((a,b) => totals[a] >= totals[b] ? a : b);
-  ["daily","weekly","monthly","yearly"].forEach(k => {
-    const card = document.getElementById("card-" + k);
-    if (!card) return;
-    if (k === maxKey && totals[maxKey] > 0) {
-      card.classList.add("accent");
-    } else {
-      card.classList.remove("accent");
-    }
-  });
 }
 
 window.switchTableTab = (tab) => {

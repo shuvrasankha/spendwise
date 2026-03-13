@@ -485,14 +485,7 @@ button { cursor: pointer; border: none; outline: none; }
 
 .summary-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
-.summary-card.accent {
-  background: var(--accent);
-  border-color: transparent;
-}
 
-.summary-card.accent .summary-label,
-.summary-card.accent .summary-amount,
-.summary-card.accent .summary-sub { color: #fff; }
 
 .summary-label {
   font-size: 0.7rem;
@@ -1024,7 +1017,7 @@ button { cursor: pointer; border: none; outline: none; }
 .summary-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .summary-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-bg); display: flex; align-items: center; justify-content: center; color: var(--accent); }
 .summary-icon i { width: 15px; height: 15px; }
-.summary-card.accent .summary-icon { background: rgba(255,255,255,0.2); color: #fff; }
+
 
 /* CATEGORY PICKER */
 .category-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 6px; }
