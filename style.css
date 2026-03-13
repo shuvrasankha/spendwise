@@ -364,16 +364,35 @@ button { cursor: pointer; border: none; outline: none; }
 }
 
 .btn-logout {
-  padding: 7px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
   background: transparent;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text2);
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  color: var(--text3);
   font-size: 0.83rem;
   font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
 }
 
-.btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+.btn-logout i { width: 16px; height: 16px; flex-shrink: 0; }
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: var(--danger);
+}
+
+/* Hide the text label — icon-only, tooltip via title attr */
+.btn-logout .logout-text { display: none; }
+
+@media (min-width: 640px) {
+  .btn-logout .logout-text { display: inline; }  
+}
 
 /* Sidebar (Desktop) */
 .sidebar {
