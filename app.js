@@ -3,7 +3,21 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { firebaseConfig } from './firebase-config.js';
+
+// Firebase Web API keys are safe to be public — Firebase explicitly documents this.
+// Security is enforced by Firebase Auth (only authenticated users can read/write)
+// and Firestore Security Rules (uid-scoped data access).
+// To further restrict this key: Firebase Console → Project Settings → API key restrictions
+// → add your production domain (e.g. yourapp.netlify.app) under "Application restrictions".
+const firebaseConfig = {
+  apiKey: "AIzaSyBKOgU4yeEhwGedRfVZfp8p0LGibfPO2hI",
+  authDomain: "spendwise-app-f7227.firebaseapp.com",
+  projectId: "spendwise-app-f7227",
+  storageBucket: "spendwise-app-f7227.firebasestorage.app",
+  messagingSenderId: "243303574314",
+  appId: "1:243303574314:web:e1c66c625f814559c38c53",
+  measurementId: "G-W8LZXEF75G"
+};
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
