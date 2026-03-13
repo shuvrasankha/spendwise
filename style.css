@@ -680,6 +680,39 @@ button { cursor: pointer; border: none; outline: none; }
   transition: background 0.15s;
 }
 
+/* Sorting */
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s, background 0.15s;
+}
+
+.data-table th.sortable:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.data-table th.sortable .sort-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-left: 4px;
+  opacity: 0.3;
+  transition: opacity 0.15s, transform 0.2s;
+}
+
+.data-table th.sortable.active {
+  color: var(--accent);
+}
+
+.data-table th.sortable.active .sort-icon {
+  opacity: 1;
+}
+
+.data-table th.sortable.active.asc .sort-icon {
+  transform: rotate(180deg);
+}
+
 .data-table tbody tr:last-child { border-bottom: none; }
 .data-table tbody tr:hover { background: var(--accent-bg); }
 

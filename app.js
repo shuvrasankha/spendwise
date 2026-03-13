@@ -415,19 +415,52 @@ function renderDashboardTable() {
   renderTable("table-body", allExpenses.filter(e => e.date >= from && e.date <= today), false);
 }
 
-// ── Pagination state ─────────────────────────────────────────
+// ── Pagination & Sorting state ────────────────────────────────
 const HISTORY_PER_PAGE = 10;
 let historyPage = 1;
+let sortCol = "date";
+let sortAsc = false;
+
+window.sortHistory = (col) => {
+  if (sortCol === col) {
+    sortAsc = !sortAsc;
+  } else {
+    sortCol = col;
+    sortAsc = col === "amount" ? false : true; // Default amount to high-to-low initially
+  }
+  historyPage = 1;
+  renderHistory(filteredExpenses);
+};
 
 function renderHistory(data) {
   const rows = data !== undefined ? data : allExpenses;
   filteredExpenses = rows;
 
-  const total = rows.reduce((s, e) => s + e.amount, 0);
+  // Apply sorting
+  filteredExpenses.sort((a, b) => {
+    let valA = a[sortCol];
+    let valB = b[sortCol];
+    if (typeof valA === "string") valA = valA.toLowerCase();
+    if (typeof valB === "string") valB = valB.toLowerCase();
+    
+    if (valA < valB) return sortAsc ? -1 : 1;
+    if (valA > valB) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  // Update header icons
+  document.querySelectorAll(".sortable").forEach(th => {
+    th.classList.remove("active", "asc", "desc");
+    if (th.dataset.col === sortCol) {
+      th.classList.add("active", sortAsc ? "asc" : "desc");
+    }
+  });
+
+  const total = filteredExpenses.reduce((s, e) => s + e.amount, 0);
   document.getElementById("history-count").textContent =
-    rows.length + " entr" + (rows.length !== 1 ? "ies" : "y");
+    filteredExpenses.length + " entr" + (filteredExpenses.length !== 1 ? "ies" : "y");
   const totalEl = document.getElementById("history-total");
-  if (totalEl) totalEl.textContent = rows.length ? "Total: " + fmt(total) : "";
+  if (totalEl) totalEl.textContent = filteredExpenses.length ? "Total: " + fmt(total) : "";
 
   // Clamp current page
   const totalPages = Math.max(1, Math.ceil(rows.length / HISTORY_PER_PAGE));
