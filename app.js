@@ -94,7 +94,12 @@ onAuthStateChanged(auth, user => {
     currentUser = user;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
-    document.getElementById("user-avatar").textContent = (user.displayName || user.email || "U")[0].toUpperCase();
+    const avatarEl = document.getElementById("user-avatar");
+    if (user.photoURL) {
+      avatarEl.innerHTML = `<img src="${user.photoURL}" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName||user.email||'U')[0].toUpperCase()}'"/>`;
+    } else {
+      avatarEl.textContent = (user.displayName || user.email || "U")[0].toUpperCase();
+    }
     setGreeting();
     // Show skeleton while data loads
     showTableSkeleton("table-body", 5);
