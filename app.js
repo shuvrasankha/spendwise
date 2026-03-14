@@ -38,11 +38,11 @@ function escapeHtml(str) {
 }
 
 // dec: legacy migration decoder only.
-// Old Firestore records were stored with a XOR+base64 scheme. We keep this
-// decoder so loadExpenses() can still display existing data. All NEW writes
-// store plain text (enc() has been removed).
+// Old Firestore records were stored with a XOR+base64 scheme.
+// Numbers (new-format records) need no decoding — return them directly.
 const _LEGACY_KEY = "SpendWise_2024_K";
 function dec(encoded) {
+  if (typeof encoded !== "string") return encoded;  // plain number
   try {
     const s = atob(encoded);
     let r = "";
@@ -50,8 +50,7 @@ function dec(encoded) {
       r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
     return r;
   } catch {
-    // Not base64 → already plain text (new-format record)
-    return encoded;
+    return encoded; // not base64 → already plain text
   }
 }
 
@@ -177,12 +176,16 @@ async function loadExpenses() {
   try {
     const q = query(collection(db, "expenses"), where("uid", "==", currentUser.uid));
     const snap = await getDocs(q);
-    allExpenses = snap.docs.map(d => ({
-      id: d.id, ...d.data(),
-      amount:      parseFloat(dec(d.data().amount)),
-      description: dec(d.data().description),
-      notes:       dec(d.data().notes || "")
-    }));
+    allExpenses = snap.docs.map(d => {
+      const raw = d.data();
+      const amt = parseFloat(dec(raw.amount));
+      return {
+        id: d.id, ...raw,
+        amount:      isNaN(amt) ? 0 : amt,
+        description: dec(raw.description),
+        notes:       dec(raw.notes || "")
+      };
+    });
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     
@@ -618,7 +621,9 @@ window.toggleTheme = () => {
   renderTrendChart();
 };
 
-const saved = localStorage.getItem("theme") || "dark";
+// Auto-detect OS theme on first visit; honour saved preference on return visits
+const saved = localStorage.getItem("theme") ||
+  (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 document.documentElement.setAttribute("data-theme", saved);
 
 function showToast(msg, type) {
@@ -943,7 +948,8 @@ function renderTrendChart() {
 
 document.addEventListener("DOMContentLoaded", () => {
   const icon = document.getElementById("theme-icon");
-  if (icon) icon.textContent = (localStorage.getItem("theme")||"dark")==="dark" ? "☀️" : "🌙";
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+  if (icon) icon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
   const d = document.getElementById("exp-date"); if (d) d.value = todayStr();
 });
 
