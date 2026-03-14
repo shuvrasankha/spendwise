@@ -1058,7 +1058,7 @@ button { cursor: pointer; border: none; outline: none; }
 .auth-logo-icon i { width: 26px; height: 26px; }
 
 .auth-logo-image {
-  height: 48px;
+  height: 80px;
   width: auto;
   object-fit: contain;
   margin: 0 auto 16px;
@@ -1070,7 +1070,7 @@ button { cursor: pointer; border: none; outline: none; }
 .nav-logo-icon i { width: 15px; height: 15px; }
 
 .nav-logo-image {
-  height: 28px;
+  height: 40px;
   width: auto;
   object-fit: contain;
 }
