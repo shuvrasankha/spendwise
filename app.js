@@ -615,8 +615,8 @@ window.toggleTheme = () => {
   const html = document.documentElement;
   const dark = html.getAttribute("data-theme") === "dark";
   html.setAttribute("data-theme", dark ? "light" : "dark");
-  document.getElementById("theme-icon").textContent = dark ? "🌙" : "☀️";
   localStorage.setItem("theme", dark ? "light" : "dark");
+  updateThemeIcon();
   renderPieChart();
   renderTrendChart();
 };
@@ -946,10 +946,16 @@ function renderTrendChart() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function updateThemeIcon() {
   const icon = document.getElementById("theme-icon");
-  const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
-  if (icon) icon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+  if (!icon) return;
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  icon.setAttribute("data-lucide", isDark ? "moon" : "sun");
+  if (window.lucide) lucide.createIcons();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  updateThemeIcon();
   const d = document.getElementById("exp-date"); if (d) d.value = todayStr();
 });
 
