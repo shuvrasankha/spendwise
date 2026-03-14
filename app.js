@@ -426,15 +426,18 @@ window.sortHistory = (col) => {
     sortAsc = !sortAsc;
   } else {
     sortCol = col;
-    sortAsc = col === "amount" ? false : true; // Default amount to high-to-low initially
+    // Default: Amount descending, others ascending
+    sortAsc = col === "amount" ? false : true;
   }
   historyPage = 1;
+  // Re-render with the current filtered set (not sorted — renderHistory will sort)
   renderHistory(filteredExpenses);
 };
 
 function renderHistory(data) {
-  const rows = data !== undefined ? data : allExpenses;
-  filteredExpenses = rows;
+  // Always work on a copy so we never mutate allExpenses or the filter result
+  const source = data !== undefined ? data : allExpenses;
+  filteredExpenses = source.slice();   // ← key fix: copy, not reference
 
   // Apply sorting
   filteredExpenses.sort((a, b) => {
@@ -442,13 +445,12 @@ function renderHistory(data) {
     let valB = b[sortCol];
     if (typeof valA === "string") valA = valA.toLowerCase();
     if (typeof valB === "string") valB = valB.toLowerCase();
-    
     if (valA < valB) return sortAsc ? -1 : 1;
     if (valA > valB) return sortAsc ? 1 : -1;
     return 0;
   });
 
-  // Update header icons
+  // Update header sort icons
   document.querySelectorAll(".sortable").forEach(th => {
     th.classList.remove("active", "asc", "desc");
     if (th.dataset.col === sortCol) {
@@ -462,13 +464,13 @@ function renderHistory(data) {
   const totalEl = document.getElementById("history-total");
   if (totalEl) totalEl.textContent = filteredExpenses.length ? "Total: " + fmt(total) : "";
 
-  // Clamp current page
-  const totalPages = Math.max(1, Math.ceil(rows.length / HISTORY_PER_PAGE));
+  // Pagination against filteredExpenses (already sorted copy)
+  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / HISTORY_PER_PAGE));
   if (historyPage > totalPages) historyPage = totalPages;
 
   const start = (historyPage - 1) * HISTORY_PER_PAGE;
-  renderTable("history-body", rows.slice(start, start + HISTORY_PER_PAGE), true);
-  renderPagination(rows.length, totalPages);
+  renderTable("history-body", filteredExpenses.slice(start, start + HISTORY_PER_PAGE), true);
+  renderPagination(filteredExpenses.length, totalPages);
 }
 
 window.goToHistoryPage = (p) => {
