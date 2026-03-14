@@ -1057,9 +1057,25 @@ button { cursor: pointer; border: none; outline: none; }
 .auth-logo-icon { width: 56px; height: 56px; border-radius: 16px; background: var(--accent-bg); border: 1.5px solid rgba(0,102,204,0.2); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: var(--accent); }
 .auth-logo-icon i { width: 26px; height: 26px; }
 
+.auth-logo-image {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  object-fit: contain;
+  margin: 0 auto 14px;
+  display: block;
+}
+
 /* NAV LOGO ICON */
 .nav-logo-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-bg); display: flex; align-items: center; justify-content: center; color: var(--accent); }
 .nav-logo-icon i { width: 15px; height: 15px; }
+
+.nav-logo-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: contain;
+}
 
 /* DIVIDER */
 .divider {
