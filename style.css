@@ -1058,11 +1058,10 @@ button { cursor: pointer; border: none; outline: none; }
 .auth-logo-icon i { width: 26px; height: 26px; }
 
 .auth-logo-image {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
+  height: 48px;
+  width: auto;
   object-fit: contain;
-  margin: 0 auto 14px;
+  margin: 0 auto 16px;
   display: block;
 }
 
@@ -1071,9 +1070,8 @@ button { cursor: pointer; border: none; outline: none; }
 .nav-logo-icon i { width: 15px; height: 15px; }
 
 .nav-logo-image {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
+  height: 28px;
+  width: auto;
   object-fit: contain;
 }
 
