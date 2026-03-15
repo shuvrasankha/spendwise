@@ -43,12 +43,17 @@ function escapeHtml(str) {
 const _LEGACY_KEY = "SpendWise_2024_K";
 function dec(encoded) {
   if (typeof encoded !== "string") return encoded;  // plain number
+  // Quick check: valid base64 strings match this pattern
+  if (!/^[A-Za-z0-9+/]+=*$/.test(encoded) || encoded.length < 4) return encoded;
   try {
     const s = atob(encoded);
     let r = "";
     for (let i = 0; i < s.length; i++)
       r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
-    return r;
+    // Verify decoded result is printable text (no control chars / high bytes)
+    if (/^[\x20-\x7E]*$/.test(r) && r.length > 0) return r;
+    // Decoded to garbage → input was plain text, not encoded
+    return encoded;
   } catch {
     return encoded; // not base64 → already plain text
   }
@@ -178,12 +183,14 @@ async function loadExpenses() {
     const snap = await getDocs(q);
     allExpenses = snap.docs.map(d => {
       const raw = d.data();
-      const amt = parseFloat(dec(raw.amount));
+      const isPlain = raw.encoding === "plain";
+      const rawAmt  = isPlain ? raw.amount : dec(raw.amount);
+      const amt     = parseFloat(rawAmt);
       return {
         id: d.id, ...raw,
         amount:      isNaN(amt) ? 0 : amt,
-        description: dec(raw.description),
-        notes:       dec(raw.notes || "")
+        description: isPlain ? (raw.description || "") : dec(raw.description),
+        notes:       isPlain ? (raw.notes || "")       : dec(raw.notes || "")
       };
     });
     // Sort client-side — no Firestore index required
@@ -218,7 +225,7 @@ window.addExpense = async () => {
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
     showLoader();
-    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount: amount.toString(), category, date, payment, description: description || "-", notes: notes, createdAt: serverTimestamp() });
+    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, description: description || "-", notes: notes, encoding: "plain", createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     updateCards();
@@ -330,12 +337,13 @@ window.saveEditExpense = async () => {
     showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
     await updateDoc(expenseRef, {
-      amount: amount.toString(),
+      amount,
       category,
       date,
       payment,
       description: description || "-",
-      notes: notes
+      notes: notes,
+      encoding: "plain"
     });
     
     // Update local array
