@@ -1,7 +1,7 @@
 // SpendWise app.js - Firebase Modular SDK
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
@@ -95,6 +95,11 @@ function showTableSkeleton(tbodyId, cols) {
 onAuthStateChanged(auth, user => {
   dismissPageLoader();
   if (user) {
+    if (!user.emailVerified) {
+      signOut(auth);
+      showAuthError("Please verify your email before logging in.");
+      return;
+    }
     currentUser = user;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
@@ -139,7 +144,14 @@ window.handleSignup = async () => {
   const pass = document.getElementById("signup-password").value;
   if (!name || !email || !pass) { showAuthError("Please fill in all fields."); return; }
   if (pass.length < 6) { showAuthError("Password must be at least 6 characters."); return; }
-  try { const cred = await createUserWithEmailAndPassword(auth, email, pass); await updateProfile(cred.user, { displayName: name }); }
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: name });
+    await sendEmailVerification(cred.user);
+    await signOut(auth);
+    switchTab('login');
+    showAuthError("Account created! Please check your email to verify.", true);
+  }
   catch (e) { showAuthError(friendlyErr(e.code)); }
 };
 
@@ -150,7 +162,13 @@ window.handleGoogleLogin = async () => {
 
 window.handleLogout = async () => { await signOut(auth); allExpenses = []; };
 
-function showAuthError(msg) { const el = document.getElementById("auth-error"); el.textContent = msg; el.classList.remove("hidden"); }
+function showAuthError(msg, isSuccess = false) { 
+  const el = document.getElementById("auth-error"); 
+  el.textContent = msg; 
+  el.classList.remove("hidden"); 
+  if (isSuccess) el.style.color = "#10b981";
+  else el.style.removeProperty('color');
+}
 
 function friendlyErr(code) {
   const m = { "auth/user-not-found": "No account with this email.", "auth/wrong-password": "Incorrect password.", "auth/email-already-in-use": "Email already registered.", "auth/invalid-email": "Invalid email.", "auth/weak-password": "Password too short.", "auth/popup-closed-by-user": "Sign-in cancelled.", "auth/invalid-credential": "Invalid email or password." };
