@@ -183,9 +183,12 @@ async function loadExpenses() {
     const snap = await getDocs(q);
     allExpenses = snap.docs.map(d => {
       const raw = d.data();
-      const isPlain = raw.encoding === "plain";
-      const rawAmt  = isPlain ? raw.amount : dec(raw.amount);
-      const amt     = parseFloat(rawAmt);
+      // Detect plain-text records: if amount is a number or a numeric string,
+      // the record was NEVER XOR-encoded (legacy amounts are base64 gibberish).
+      const isPlain = raw.encoding === "plain"
+                   || typeof raw.amount === "number"
+                   || !isNaN(parseFloat(raw.amount));
+      const amt = isPlain ? parseFloat(raw.amount) : parseFloat(dec(raw.amount));
       return {
         id: d.id, ...raw,
         amount:      isNaN(amt) ? 0 : amt,
