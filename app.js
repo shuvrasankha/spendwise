@@ -143,7 +143,11 @@ window.handleSignup = async () => {
   const email = document.getElementById("signup-email").value.trim();
   const pass = document.getElementById("signup-password").value;
   if (!name || !email || !pass) { showAuthError("Please fill in all fields."); return; }
-  if (pass.length < 6) { showAuthError("Password must be at least 6 characters."); return; }
+  if (pass.length < 8) { showAuthError("Password must be at least 8 characters."); return; }
+  if (!/[a-z]/.test(pass)) { showAuthError("Password must contain at least one lowercase letter."); return; }
+  if (!/[A-Z]/.test(pass)) { showAuthError("Password must contain at least one uppercase letter."); return; }
+  if (!/[0-9]/.test(pass)) { showAuthError("Password must contain at least one number."); return; }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(pass)) { showAuthError("Password must contain at least one special character."); return; }
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(cred.user, { displayName: name });
