@@ -1,0 +1,16 @@
+{
+  "name": "SpendWise - Daily Expense Tracker",
+  "short_name": "SpendWise",
+  "description": "Track every rupee, effortlessly.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "logo2.png",
+      "sizes": "192x192 512x512 any",
+      "type": "image/png"
+    }
+  ]
+}
