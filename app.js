@@ -192,6 +192,7 @@ async function loadExpenses() {
       return {
         id: d.id, ...raw,
         amount:      isNaN(amt) ? 0 : amt,
+        cardName:    raw.cardName || "",
         description: isPlain ? (raw.description || "") : dec(raw.description),
         notes:       isPlain ? (raw.notes || "")       : dec(raw.notes || "")
       };
@@ -228,8 +229,9 @@ window.addExpense = async () => {
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
     showLoader();
-    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, description: description || "-", notes: notes, encoding: "plain", createdAt: serverTimestamp() });
-    allExpenses.unshift({ id: ref.id, amount, category, date, payment, description: description || "-", notes });
+    const cardName = document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "";
+    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes: notes, encoding: "plain", createdAt: serverTimestamp() });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     updateCards();
     renderDashboardTable();
@@ -247,11 +249,27 @@ window.addExpense = async () => {
 };
 
 window.resetForm = () => {
-  ["exp-amount","exp-description","exp-notes"].forEach(id => document.getElementById(id).value = "");
+  ["exp-amount","exp-description","exp-notes","exp-card-name"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "";
+  });
   document.getElementById("exp-category").value = "";
   document.getElementById("exp-payment").value = "UPI";
+  const wrap = document.getElementById("exp-card-name-wrap");
+  if (wrap) wrap.style.display = "none";
   document.getElementById("exp-date").value = todayStr();
   document.getElementById("form-msg").classList.add("hidden");
+};
+
+// Show/hide the card name input based on payment method
+window.toggleCardName = (wrapId, paymentValue) => {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const show = paymentValue === 'Credit Card' || paymentValue === 'Debit Card';
+  wrap.style.display = show ? '' : 'none';
+  if (!show) {
+    const input = wrap.querySelector('input');
+    if (input) input.value = '';
+  }
 };
 
 window.deleteExpense = (id) => { deleteTarget = id; document.getElementById("modal").classList.remove("hidden"); };
@@ -290,6 +308,9 @@ window.openEditExpense = (id) => {
   document.getElementById("edit-payment").value = expense.payment;
   document.getElementById("edit-description").value = expense.description;
   document.getElementById("edit-notes").value = expense.notes || "";
+  const editCardName = document.getElementById("edit-card-name");
+  if (editCardName) editCardName.value = expense.cardName || "";
+  toggleCardName('edit-card-name-wrap', expense.payment);
   
   // Set category tile selection
   document.querySelectorAll("#edit-category-picker .cat-tile").forEach(tile => {
@@ -339,11 +360,14 @@ window.saveEditExpense = async () => {
   try {
     showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
+    const editCardName = document.getElementById("edit-card-name");
+    const cardName = editCardName ? editCardName.value.trim() : "";
     await updateDoc(expenseRef, {
       amount,
       category,
       date,
       payment,
+      cardName: cardName || "",
       description: description || "-",
       notes: notes,
       encoding: "plain"
@@ -358,6 +382,7 @@ window.saveEditExpense = async () => {
         category,
         date,
         payment,
+        cardName: document.getElementById("edit-card-name") ? document.getElementById("edit-card-name").value.trim() : "",
         description: description || "-",
         notes
       };
@@ -561,20 +586,71 @@ window.clearFilters = () => {
 function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
   const cols = del ? 8 : 5;
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan='${cols}' class='empty-row'>No expenses found.</td></tr>`; return; }
-  // data-label attributes power the mobile card layout (CSS ::before { content: attr(data-label) })
-  // escapeHtml() on every user-supplied field to prevent XSS.
-  tbody.innerHTML = rows.map(e =>
-    `<tr>
-      <td data-label="Date">${formatDate(e.date)}</td>
-      <td data-label="Category"><span class='category-badge'>${escapeHtml(e.category)}</span></td>
-      <td data-label="Description">${escapeHtml(e.description)}</td>
-      <td data-label="Payment">${escapeHtml(e.payment)}</td>
-      ${del ? `<td data-label="Notes">${escapeHtml(e.notes || '-')}</td>` : ''}
-      <td data-label="Amount" class='text-right'>${fmt(e.amount)}</td>
-      ${del ? `<td class='text-center'><div class='action-buttons'><button class='btn-action edit' onclick="openEditExpense('${e.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteExpense('${e.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div></td>` : ''}
-    </tr>`
-  ).join('');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan='${cols}' class='empty-row'>No expenses found.</td></tr>`;
+    return;
+  }
+
+  // Build rows using DOM APIs for user-supplied text fields so that:
+  //  - emojis render correctly (no escaping needed for textContent)
+  //  - XSS is impossible (textContent never interprets HTML)
+  tbody.innerHTML = '';
+  rows.forEach(e => {
+    const tr = document.createElement('tr');
+
+    // Date (safe — generated internally)
+    const tdDate = document.createElement('td');
+    tdDate.dataset.label = 'Date';
+    tdDate.textContent = formatDate(e.date);
+    tr.appendChild(tdDate);
+
+    // Category (safe — from predefined list, but use textContent anyway)
+    const tdCat = document.createElement('td');
+    tdCat.dataset.label = 'Category';
+    const badge = document.createElement('span');
+    badge.className = 'category-badge';
+    badge.textContent = e.category;
+    tdCat.appendChild(badge);
+    tr.appendChild(tdCat);
+
+    // Description (user-supplied — emoji-safe via textContent)
+    const tdDesc = document.createElement('td');
+    tdDesc.dataset.label = 'Description';
+    tdDesc.textContent = e.description || '-';
+    tr.appendChild(tdDesc);
+
+    // Payment (may include card name suffix — user-supplied)
+    const tdPay = document.createElement('td');
+    tdPay.dataset.label = 'Payment';
+    const payText = e.cardName ? `${e.payment} (${e.cardName})` : e.payment;
+    tdPay.textContent = payText;
+    tr.appendChild(tdPay);
+
+    // Notes — only in history view (del=true)
+    if (del) {
+      const tdNotes = document.createElement('td');
+      tdNotes.dataset.label = 'Notes';
+      tdNotes.textContent = e.notes || '-';
+      tr.appendChild(tdNotes);
+    }
+
+    // Amount (safe — formatted number)
+    const tdAmt = document.createElement('td');
+    tdAmt.dataset.label = 'Amount';
+    tdAmt.className = 'text-right';
+    tdAmt.textContent = fmt(e.amount);
+    tr.appendChild(tdAmt);
+
+    // Actions — only in history view (del=true)
+    if (del) {
+      const tdAct = document.createElement('td');
+      tdAct.className = 'text-center';
+      tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' onclick="openEditExpense('${e.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteExpense('${e.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
+      tr.appendChild(tdAct);
+    }
+
+    tbody.appendChild(tr);
+  });
   if (window.lucide) lucide.createIcons();
 }
 
@@ -614,8 +690,16 @@ window.downloadHistoryCSV = () => exportCSV(filteredExpenses||allExpenses, "Spen
 
 function exportCSV(rows, name) {
   if (!rows.length) { showToast("No data to export.", "error"); return; }
-  const hdr = ["Date","Category","Description","Payment Method","Notes","Amount (Rs)"];
-  const csv = [hdr.join(","), ...rows.map(e => [e.date, '"'+e.category+'"', '"'+e.description+'"', '"'+e.payment+'"', '"'+(e.notes||"").replace(/"/g,'""')+'"', e.amount.toFixed(2)].join(","))].join("\n");
+  const hdr = ["Date","Category","Description","Payment Method","Card Name","Notes","Amount (Rs)"];
+  const csv = [hdr.join(","), ...rows.map(e => [
+    e.date,
+    '"'+e.category+'"',
+    '"'+(e.description||"").replace(/"/g,'""')+'"',
+    '"'+e.payment+'"',
+    '"'+(e.cardName||"").replace(/"/g,'""')+'"',
+    '"'+(e.notes||"").replace(/"/g,'""')+'"',
+    e.amount.toFixed(2)
+  ].join(","))].join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
   a.download = name + "_" + todayStr() + ".csv";

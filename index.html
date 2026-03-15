@@ -340,6 +340,26 @@
                 <div class="cat-icon"><i data-lucide="shopping-cart"></i></div>
                 <span>Groceries</span>
               </button>
+              <button type="button" class="cat-tile" data-value="Subscription">
+                <div class="cat-icon"><i data-lucide="repeat"></i></div>
+                <span>Subscriptions</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Rent">
+                <div class="cat-icon"><i data-lucide="home"></i></div>
+                <span>Rent</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Fitness">
+                <div class="cat-icon"><i data-lucide="dumbbell"></i></div>
+                <span>Fitness</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Personal Care">
+                <div class="cat-icon"><i data-lucide="sparkles"></i></div>
+                <span>Personal</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Gifts">
+                <div class="cat-icon"><i data-lucide="gift"></i></div>
+                <span>Gifts</span>
+              </button>
               <button type="button" class="cat-tile" data-value="Other">
                 <div class="cat-icon"><i data-lucide="folder-open"></i></div>
                 <span>Other</span>
@@ -351,7 +371,7 @@
             <label>Payment Method</label>
             <div class="input-icon-wrap">
               <i data-lucide="credit-card"></i>
-              <select id="exp-payment">
+              <select id="exp-payment" onchange="toggleCardName('exp-card-name-wrap', this.value)">
                 <option value="UPI">UPI</option>
                 <option value="Cash">Cash</option>
                 <option value="Credit Card">Credit Card</option>
@@ -359,6 +379,13 @@
                 <option value="Net Banking">Net Banking</option>
                 <option value="Other">Other</option>
               </select>
+            </div>
+          </div>
+          <div class="form-group" id="exp-card-name-wrap" style="display:none">
+            <label>Card Name <span class="optional-tag">optional</span></label>
+            <div class="input-icon-wrap">
+              <i data-lucide="credit-card"></i>
+              <input type="text" id="exp-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK"/>
             </div>
           </div>
           <div class="form-group">
@@ -428,6 +455,11 @@
                 <option value="Education">Education</option>
                 <option value="Travel">Travel</option>
                 <option value="Groceries">Groceries</option>
+                <option value="Subscription">Subscription</option>
+                <option value="Rent">Rent</option>
+                <option value="Fitness">Fitness</option>
+                <option value="Personal Care">Personal Care</option>
+                <option value="Gifts">Gifts</option>
                 <option value="Other">Other</option>
               </select>
             </div>
@@ -552,6 +584,26 @@
               <div class="cat-icon"><i data-lucide="shopping-cart"></i></div>
               <span>Groceries</span>
             </button>
+            <button type="button" class="cat-tile" data-value="Subscription">
+              <div class="cat-icon"><i data-lucide="repeat"></i></div>
+              <span>Subscriptions</span>
+            </button>
+            <button type="button" class="cat-tile" data-value="Rent">
+              <div class="cat-icon"><i data-lucide="home"></i></div>
+              <span>Rent</span>
+            </button>
+            <button type="button" class="cat-tile" data-value="Fitness">
+              <div class="cat-icon"><i data-lucide="dumbbell"></i></div>
+              <span>Fitness</span>
+            </button>
+            <button type="button" class="cat-tile" data-value="Personal Care">
+              <div class="cat-icon"><i data-lucide="sparkles"></i></div>
+              <span>Personal</span>
+            </button>
+            <button type="button" class="cat-tile" data-value="Gifts">
+              <div class="cat-icon"><i data-lucide="gift"></i></div>
+              <span>Gifts</span>
+            </button>
             <button type="button" class="cat-tile" data-value="Other">
               <div class="cat-icon"><i data-lucide="folder-open"></i></div>
               <span>Other</span>
@@ -562,7 +614,7 @@
           <label>Payment Method</label>
           <div class="input-icon-wrap">
             <i data-lucide="credit-card"></i>
-            <select id="edit-payment">
+            <select id="edit-payment" onchange="toggleCardName('edit-card-name-wrap', this.value)">
               <option value="UPI">UPI</option>
               <option value="Cash">Cash</option>
               <option value="Credit Card">Credit Card</option>
@@ -570,6 +622,13 @@
               <option value="Net Banking">Net Banking</option>
               <option value="Other">Other</option>
             </select>
+          </div>
+        </div>
+        <div class="form-group" id="edit-card-name-wrap" style="display:none">
+          <label>Card Name <span class="optional-tag">optional</span></label>
+          <div class="input-icon-wrap">
+            <i data-lucide="credit-card"></i>
+            <input type="text" id="edit-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK"/>
           </div>
         </div>
         <div class="form-group">
