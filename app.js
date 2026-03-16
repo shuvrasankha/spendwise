@@ -86,7 +86,7 @@ function showTableSkeleton(tbodyId, cols) {
   if (!tbody) return;
   const rows = Array.from({ length: 4 }, () =>
     `<tr class="skeleton-row">${Array.from({ length: cols }, (_, i) =>
-      `<td><span class="skeleton-cell" style="width:${[70,90,110,80,60,50,40][i % 7]}px"></span></td>`
+      `<td><span class="skeleton-cell" style="width:${[70, 90, 110, 80, 60, 50, 40][i % 7]}px"></span></td>`
     ).join('')}</tr>`
   ).join('');
   tbody.innerHTML = rows;
@@ -105,7 +105,7 @@ onAuthStateChanged(auth, user => {
     document.getElementById("app").classList.remove("hidden");
     const avatarEl = document.getElementById("user-avatar");
     if (user.photoURL) {
-      avatarEl.innerHTML = `<img src="${user.photoURL}" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName||user.email||'U')[0].toUpperCase()}'"/>`;
+      avatarEl.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName || user.email || 'U')[0].toUpperCase()}'"/>`;
     } else {
       avatarEl.textContent = (user.displayName || user.email || "U")[0].toUpperCase();
     }
@@ -166,10 +166,25 @@ window.handleGoogleLogin = async () => {
 
 window.handleLogout = async () => { await signOut(auth); allExpenses = []; };
 
-function showAuthError(msg, isSuccess = false) { 
-  const el = document.getElementById("auth-error"); 
-  el.textContent = msg; 
-  el.classList.remove("hidden"); 
+window.toggleProfileMenu = () => {
+  const dropdown = document.getElementById('profile-dropdown');
+  if (dropdown) dropdown.classList.toggle('hidden');
+};
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('profile-menu');
+  if (menu && !menu.contains(e.target)) {
+    const dropdown = document.getElementById('profile-dropdown');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+      dropdown.classList.add('hidden');
+    }
+  }
+});
+
+function showAuthError(msg, isSuccess = false) {
+  const el = document.getElementById("auth-error");
+  el.textContent = msg;
+  el.classList.remove("hidden");
   if (isSuccess) el.style.color = "#10b981";
   else el.style.removeProperty('color');
 }
@@ -208,20 +223,20 @@ async function loadExpenses() {
       // Detect plain-text records: if amount is a number or a numeric string,
       // the record was NEVER XOR-encoded (legacy amounts are base64 gibberish).
       const isPlain = raw.encoding === "plain"
-                   || typeof raw.amount === "number"
-                   || !isNaN(parseFloat(raw.amount));
+        || typeof raw.amount === "number"
+        || !isNaN(parseFloat(raw.amount));
       const amt = isPlain ? parseFloat(raw.amount) : parseFloat(dec(raw.amount));
       return {
         id: d.id, ...raw,
-        amount:      isNaN(amt) ? 0 : amt,
-        cardName:    raw.cardName || "",
+        amount: isNaN(amt) ? 0 : amt,
+        cardName: raw.cardName || "",
         description: isPlain ? (raw.description || "") : dec(raw.description),
-        notes:       isPlain ? (raw.notes || "")       : dec(raw.notes || "")
+        notes: isPlain ? (raw.notes || "") : dec(raw.notes || "")
       };
     });
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    
+
     // Render lightweight content immediately
     updateCards();
     renderDashboardTable();
@@ -229,7 +244,7 @@ async function loadExpenses() {
     populateYearPicker();
     initPeriodPicker();
     updatePeriodSummary();
-    
+
     // Defer chart rendering to next frame to avoid blocking
     requestAnimationFrame(() => {
       renderPieChart();
@@ -271,7 +286,7 @@ window.addExpense = async () => {
 };
 
 window.resetForm = () => {
-  ["exp-amount","exp-description","exp-notes","exp-card-name"].forEach(id => {
+  ["exp-amount", "exp-description", "exp-notes", "exp-card-name"].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = "";
   });
   document.getElementById("exp-category").value = "";
@@ -322,7 +337,7 @@ window.confirmDelete = async () => {
 window.openEditExpense = (id) => {
   const expense = allExpenses.find(e => e.id === id);
   if (!expense) return;
-  
+
   editingExpenseId = id;
   document.getElementById("edit-amount").value = expense.amount;
   document.getElementById("edit-date").value = expense.date;
@@ -333,7 +348,7 @@ window.openEditExpense = (id) => {
   const editCardName = document.getElementById("edit-card-name");
   if (editCardName) editCardName.value = expense.cardName || "";
   toggleCardName('edit-card-name-wrap', expense.payment);
-  
+
   // Set category tile selection
   document.querySelectorAll("#edit-category-picker .cat-tile").forEach(tile => {
     tile.classList.remove("selected");
@@ -341,7 +356,7 @@ window.openEditExpense = (id) => {
       tile.classList.add("selected");
     }
   });
-  
+
   document.getElementById("edit-error").classList.add("hidden");
   document.getElementById("edit-modal").classList.remove("hidden");
 };
@@ -353,17 +368,17 @@ window.closeEditModal = () => {
 
 window.saveEditExpense = async () => {
   if (!editingExpenseId) return;
-  
+
   const amount = parseFloat(document.getElementById("edit-amount").value);
   const category = document.getElementById("edit-category").value;
   const date = document.getElementById("edit-date").value;
   const payment = document.getElementById("edit-payment").value;
   const description = document.getElementById("edit-description").value.trim();
   const notes = document.getElementById("edit-notes").value.trim();
-  
+
   const errEl = document.getElementById("edit-error");
-  
-  if (!amount || amount <= 0) { 
+
+  if (!amount || amount <= 0) {
     errEl.textContent = "Enter a valid amount.";
     errEl.classList.remove("hidden");
     return;
@@ -378,7 +393,7 @@ window.saveEditExpense = async () => {
     errEl.classList.remove("hidden");
     return;
   }
-  
+
   try {
     showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
@@ -394,7 +409,7 @@ window.saveEditExpense = async () => {
       notes: notes,
       encoding: "plain"
     });
-    
+
     // Update local array
     const idx = allExpenses.findIndex(e => e.id === editingExpenseId);
     if (idx >= 0) {
@@ -410,7 +425,7 @@ window.saveEditExpense = async () => {
       };
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
-    
+
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -440,18 +455,18 @@ window.deleteFromEdit = async () => {
 function updateCards() {
   const now = new Date(); const today = todayStr();
   const ws = getWeekStart();
-  const ms = now.getFullYear() + "-" + pad(now.getMonth()+1) + "-01";
+  const ms = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
   const ys = now.getFullYear() + "-01-01";
-  function calc(f, t) { const r = allExpenses.filter(e => e.date >= f && e.date <= t); return { total: r.reduce((s,e) => s+e.amount, 0), count: r.length }; }
-  const d=calc(today,today), w=calc(ws,today), m=calc(ms,today), y=calc(ys,today);
+  function calc(f, t) { const r = allExpenses.filter(e => e.date >= f && e.date <= t); return { total: r.reduce((s, e) => s + e.amount, 0), count: r.length }; }
+  const d = calc(today, today), w = calc(ws, today), m = calc(ms, today), y = calc(ys, today);
   document.getElementById("sum-daily").textContent = fmt(d.total);
   document.getElementById("sum-weekly").textContent = fmt(w.total);
   document.getElementById("sum-monthly").textContent = fmt(m.total);
   document.getElementById("sum-yearly").textContent = fmt(y.total);
-  document.getElementById("sum-daily-count").textContent = d.count + " transaction" + (d.count!==1?"s":"");
-  document.getElementById("sum-weekly-count").textContent = w.count + " transaction" + (w.count!==1?"s":"");
-  document.getElementById("sum-monthly-count").textContent = m.count + " transaction" + (m.count!==1?"s":"");
-  document.getElementById("sum-yearly-count").textContent = y.count + " transaction" + (y.count!==1?"s":"");
+  document.getElementById("sum-daily-count").textContent = d.count + " transaction" + (d.count !== 1 ? "s" : "");
+  document.getElementById("sum-weekly-count").textContent = w.count + " transaction" + (w.count !== 1 ? "s" : "");
+  document.getElementById("sum-monthly-count").textContent = m.count + " transaction" + (m.count !== 1 ? "s" : "");
+  document.getElementById("sum-yearly-count").textContent = y.count + " transaction" + (y.count !== 1 ? "s" : "");
 
 }
 
@@ -469,10 +484,10 @@ window.switchTableTab = (tab) => {
 
 function renderDashboardTable() {
   const now = new Date(); const today = todayStr(); let from;
-  if (activeTab==="daily") from=today;
-  else if (activeTab==="weekly") from=getWeekStart();
-  else if (activeTab==="monthly") from=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-01";
-  else from=now.getFullYear()+"-01-01";
+  if (activeTab === "daily") from = today;
+  else if (activeTab === "weekly") from = getWeekStart();
+  else if (activeTab === "monthly") from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
+  else from = now.getFullYear() + "-01-01";
   renderTable("table-body", allExpenses.filter(e => e.date >= from && e.date <= today), false);
 }
 
@@ -548,7 +563,7 @@ function renderPagination(totalItems, totalPages) {
 
   const MAX_VISIBLE = 7;
   let startP = Math.max(1, historyPage - Math.floor(MAX_VISIBLE / 2));
-  let endP   = Math.min(totalPages, startP + MAX_VISIBLE - 1);
+  let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
   if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
 
   let html = `<button class="page-btn" onclick="goToHistoryPage(${historyPage - 1})" ${historyPage === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
@@ -566,7 +581,7 @@ function renderPagination(totalItems, totalPages) {
   }
 
   const from = (historyPage - 1) * HISTORY_PER_PAGE + 1;
-  const to   = Math.min(historyPage * HISTORY_PER_PAGE, totalItems);
+  const to = Math.min(historyPage * HISTORY_PER_PAGE, totalItems);
   html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
   html += `<button class="page-btn" onclick="goToHistoryPage(${historyPage + 1})" ${historyPage === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>`;
 
@@ -576,28 +591,28 @@ function renderPagination(totalItems, totalPages) {
 
 window.applyFilters = () => {
   const from = document.getElementById("filter-from").value,
-        to   = document.getElementById("filter-to").value,
-        cat  = document.getElementById("filter-category").value,
-        q    = document.getElementById("filter-search") ? document.getElementById("filter-search").value.toLowerCase().trim() : "";
-        
+    to = document.getElementById("filter-to").value,
+    cat = document.getElementById("filter-category").value,
+    q = document.getElementById("filter-search") ? document.getElementById("filter-search").value.toLowerCase().trim() : "";
+
   let data = allExpenses.slice();
   if (from) data = data.filter(e => e.date >= from);
-  if (to)   data = data.filter(e => e.date <= to);
-  if (cat)  data = data.filter(e => e.category === cat);
+  if (to) data = data.filter(e => e.date <= to);
+  if (cat) data = data.filter(e => e.category === cat);
   if (q) {
-    data = data.filter(e => 
-      e.description.toLowerCase().includes(q) || 
-      e.category.toLowerCase().includes(q) || 
+    data = data.filter(e =>
+      e.description.toLowerCase().includes(q) ||
+      e.category.toLowerCase().includes(q) ||
       (e.notes && e.notes.toLowerCase().includes(q))
     );
   }
-  
+
   historyPage = 1;
   renderHistory(data);
 };
 
 window.clearFilters = () => {
-  ["filter-from","filter-to","filter-category","filter-search"].forEach(id => {
+  ["filter-from", "filter-to", "filter-category", "filter-search"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
@@ -681,16 +696,16 @@ window.downloadCSV = () => {
   const pm = document.getElementById('picker-month');
   const selectedMonth = pm ? pm.value : '';
   const selectedYear = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
-  
+
   // If period picker is active, use filtered data
   if (selectedMonth || selectedYear) {
     const periodData = getPeriodExpenses();
     let label = 'Export';
     if (selectedMonth && selectedYear) {
-      const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       label = months[parseInt(selectedMonth)] + '_' + selectedYear;
     } else if (selectedMonth) {
-      const months = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       label = months[parseInt(selectedMonth)];
     } else if (selectedYear) {
       label = 'Year_' + selectedYear;
@@ -698,32 +713,32 @@ window.downloadCSV = () => {
     exportCSV(periodData, "SpendWise_" + label);
     return;
   }
-  
+
   // Otherwise, use the current date logic
-  const now=new Date(); const today=todayStr(); let from, label;
-  if (activeTab==="daily"){from=today;label="Today";}
-  else if (activeTab==="weekly"){from=getWeekStart();label="This_Week";}
-  else if (activeTab==="monthly"){from=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-01";label="This_Month";}
-  else{from=now.getFullYear()+"-01-01";label="This_Year";}
-  exportCSV(allExpenses.filter(e=>e.date>=from&&e.date<=today), "SpendWise_"+label);
+  const now = new Date(); const today = todayStr(); let from, label;
+  if (activeTab === "daily") { from = today; label = "Today"; }
+  else if (activeTab === "weekly") { from = getWeekStart(); label = "This_Week"; }
+  else if (activeTab === "monthly") { from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01"; label = "This_Month"; }
+  else { from = now.getFullYear() + "-01-01"; label = "This_Year"; }
+  exportCSV(allExpenses.filter(e => e.date >= from && e.date <= today), "SpendWise_" + label);
 };
 
-window.downloadHistoryCSV = () => exportCSV(filteredExpenses||allExpenses, "SpendWise_History");
+window.downloadHistoryCSV = () => exportCSV(filteredExpenses || allExpenses, "SpendWise_History");
 
 function exportCSV(rows, name) {
   if (!rows.length) { showToast("No data to export.", "error"); return; }
-  const hdr = ["Date","Category","Description","Payment Method","Card Name","Notes","Amount (Rs)"];
+  const hdr = ["Date", "Category", "Description", "Payment Method", "Card Name", "Notes", "Amount (Rs)"];
   const csv = [hdr.join(","), ...rows.map(e => [
     e.date,
-    '"'+e.category+'"',
-    '"'+(e.description||"").replace(/"/g,'""')+'"',
-    '"'+e.payment+'"',
-    '"'+(e.cardName||"").replace(/"/g,'""')+'"',
-    '"'+(e.notes||"").replace(/"/g,'""')+'"',
+    '"' + e.category + '"',
+    '"' + (e.description || "").replace(/"/g, '""') + '"',
+    '"' + e.payment + '"',
+    '"' + (e.cardName || "").replace(/"/g, '""') + '"',
+    '"' + (e.notes || "").replace(/"/g, '""') + '"',
     e.amount.toFixed(2)
   ].join(","))].join("\n");
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
   a.download = name + "_" + todayStr() + ".csv";
   a.click(); showToast("CSV downloaded!", "success");
 }
@@ -745,18 +760,18 @@ document.documentElement.setAttribute("data-theme", saved);
 
 function showToast(msg, type) {
   const t = document.getElementById("toast");
-  t.textContent = msg; t.className = "toast " + (type||"success");
+  t.textContent = msg; t.className = "toast " + (type || "success");
   t.classList.remove("hidden");
   setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
-function fmt(n) { return "Rs " + Number(n).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function pad(n) { return String(n).padStart(2,"0"); }
-function todayStr() { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
-function getWeekStart() { const d=new Date(); const day=d.getDay(); const diff=d.getDate()-day+(day===0?-6:1); const m=new Date(d.setDate(diff)); return m.getFullYear()+"-"+pad(m.getMonth()+1)+"-"+pad(m.getDate()); }
-function formatDate(ds) { return new Date(ds+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}); }
-function setGreeting() { const h=new Date().getHours(); const g=h<12?"Good morning":h<17?"Good afternoon":"Good evening"; const n=(currentUser&&currentUser.displayName)?currentUser.displayName.split(" ")[0]:""; document.getElementById("dashboard-greeting").textContent=g+(n?", "+n:"")+"!"; }
-function showFormMsg(msg,type) { const el=document.getElementById("form-msg"); el.textContent=msg; el.className="form-msg "+type; el.classList.remove("hidden"); if(type==="success") setTimeout(()=>el.classList.add("hidden"),3000); }
+function fmt(n) { return "Rs " + Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function pad(n) { return String(n).padStart(2, "0"); }
+function todayStr() { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function getWeekStart() { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(d.setDate(diff)); return m.getFullYear() + "-" + pad(m.getMonth() + 1) + "-" + pad(m.getDate()); }
+function formatDate(ds) { return new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
+function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; document.getElementById("dashboard-greeting").textContent = g + (n ? ", " + n : "") + "!"; }
+function showFormMsg(msg, type) { const el = document.getElementById("form-msg"); el.textContent = msg; el.className = "form-msg " + type; el.classList.remove("hidden"); if (type === "success") setTimeout(() => el.classList.add("hidden"), 3000); }
 
 // ============================================================
 //  PIE CHART - SPENDING BY CATEGORY
@@ -764,20 +779,20 @@ function showFormMsg(msg,type) { const el=document.getElementById("form-msg"); e
 function getCategoryBreakdown() {
   // Get current displayed expenses based on both period picker AND active tab
   const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
-  const y = document.getElementById('picker-year')  ? document.getElementById('picker-year').value  : '';
-  
+  const y = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
+
   let periodExpenses = allExpenses.filter(e => {
     if (!e.date) return false;
-    if (y && e.date.substring(0,4) !== String(y)) return false;
-    if (m && e.date.substring(5,7) !== String(m)) return false;
+    if (y && e.date.substring(0, 4) !== String(y)) return false;
+    if (m && e.date.substring(5, 7) !== String(m)) return false;
     return true;
   });
-  
+
   // Now filter by active tab
   const now = new Date();
   const today = todayStr();
   let displayExpenses = [];
-  
+
   if (activeTab === 'daily') {
     displayExpenses = periodExpenses.filter(e => e.date === today);
   } else if (activeTab === 'weekly') {
@@ -785,7 +800,7 @@ function getCategoryBreakdown() {
     displayExpenses = periodExpenses.filter(e => e.date >= ws && e.date <= today);
   } else if (activeTab === 'monthly') {
     let displayYear = y || now.getFullYear();
-    let displayMonth = m || pad(now.getMonth()+1);
+    let displayMonth = m || pad(now.getMonth() + 1);
     const ms = displayYear + '-' + displayMonth + '-01';
     const lastDay = new Date(displayYear, parseInt(displayMonth), 0).getDate();
     const me = displayYear + '-' + displayMonth + '-' + pad(lastDay);
@@ -793,7 +808,7 @@ function getCategoryBreakdown() {
   } else {
     displayExpenses = periodExpenses;
   }
-  
+
   // Aggregate by category
   const categoryTotals = {};
   displayExpenses.forEach(e => {
@@ -802,7 +817,7 @@ function getCategoryBreakdown() {
     }
     categoryTotals[e.category] += e.amount;
   });
-  
+
   return categoryTotals;
 }
 
@@ -810,27 +825,27 @@ function renderPieChart() {
   const categoryData = getCategoryBreakdown();
   const labels = Object.keys(categoryData);
   const data = Object.values(categoryData);
-  
+
   // Colors for different categories
   const colors = [
     '#4a9eff', '#ec4899', '#10b981', '#f59e0b', '#ef4444',
     '#8b5cf6', '#06b6d4', '#f97316', '#06b6d4', '#14b8a6'
   ];
-  
+
   const chartCanvas = document.getElementById('categoryPieChart');
   if (!chartCanvas) return;
-  
+
   // Destroy existing chart if it exists
   if (chartInstance) {
     chartInstance.destroy();
   }
-  
+
   const ctx = chartCanvas.getContext('2d');
-  
+
   // Use lighter colors for dark mode, darker for light mode
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
   const adjustedColors = colors.slice(0, labels.length);
-  
+
   chartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -867,7 +882,7 @@ function renderPieChart() {
           titleFont: { size: 13, weight: '600' },
           bodyFont: { size: 12 },
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const value = context.parsed;
               const total = context.dataset.data.reduce((a, b) => a + b, 0);
               const percentage = ((value / total) * 100).toFixed(1);
@@ -888,21 +903,21 @@ let trendChartInstance = null;
 function getTrendData() {
   // Get current displayed expenses based on period picker
   const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
-  const y = document.getElementById('picker-year')  ? document.getElementById('picker-year').value  : '';
-  
+  const y = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
+
   let periodExpenses = allExpenses.filter(e => {
     if (!e.date) return false;
-    if (y && e.date.substring(0,4) !== String(y)) return false;
-    if (m && e.date.substring(5,7) !== String(m)) return false;
+    if (y && e.date.substring(0, 4) !== String(y)) return false;
+    if (m && e.date.substring(5, 7) !== String(m)) return false;
     return true;
   });
-  
+
   const now = new Date();
   const today = todayStr();
   let displayExpenses = [];
   let labels = [];
   let dateGroups = {};
-  
+
   if (activeTab === 'daily') {
     // For daily view, show last 7 days with hourly or by individual transactions
     const startDate = new Date();
@@ -910,7 +925,7 @@ function getTrendData() {
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      const dateStr = date.getFullYear() + '-' + pad(date.getMonth()+1) + '-' + pad(date.getDate());
+      const dateStr = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
       labels.push(formatDate(dateStr));
       const dayExpenses = periodExpenses.filter(e => e.date === dateStr);
       dateGroups[dateStr] = dayExpenses.reduce((s, e) => s + e.amount, 0);
@@ -925,10 +940,10 @@ function getTrendData() {
       weekStart.setDate(weekStart.getDate() - weekDate.getDay() + (weekDate.getDay() === 0 ? -6 : 1));
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      
+
       const weekLabel = 'Week of ' + formatDate(weekStart.toISOString().split('T')[0]);
       labels.push(weekLabel);
-      
+
       const weekExpenses = periodExpenses.filter(e => {
         return e.date >= weekStart.toISOString().split('T')[0] && e.date <= weekEnd.toISOString().split('T')[0];
       });
@@ -939,11 +954,11 @@ function getTrendData() {
     let displayYear = y || now.getFullYear();
     for (let month = 1; month <= 12; month++) {
       const monthStr = pad(month);
-      const monthLabel = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month-1];
+      const monthLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
       labels.push(monthLabel);
-      
+
       const monthExpenses = periodExpenses.filter(e => {
-        return e.date.substring(0,4) === String(displayYear) && e.date.substring(5,7) === monthStr;
+        return e.date.substring(0, 4) === String(displayYear) && e.date.substring(5, 7) === monthStr;
       });
       dateGroups[monthLabel] = monthExpenses.reduce((s, e) => s + e.amount, 0);
     }
@@ -951,35 +966,35 @@ function getTrendData() {
     // Yearly view - show all years
     const years = new Set();
     periodExpenses.forEach(e => {
-      if (e.date) years.add(e.date.substring(0,4));
+      if (e.date) years.add(e.date.substring(0, 4));
     });
     const sortedYears = Array.from(years).sort();
     sortedYears.forEach(year => {
       labels.push(year);
-      const yearExpenses = periodExpenses.filter(e => e.date.substring(0,4) === year);
+      const yearExpenses = periodExpenses.filter(e => e.date.substring(0, 4) === year);
       dateGroups[year] = yearExpenses.reduce((s, e) => s + e.amount, 0);
     });
   }
-  
+
   const data = labels.map(label => dateGroups[label] || 0);
-  
+
   return { labels, data };
 }
 
 function renderTrendChart() {
   const { labels, data } = getTrendData();
-  
+
   const chartCanvas = document.getElementById('trendLineChart');
   if (!chartCanvas) return;
-  
+
   // Destroy existing chart
   if (trendChartInstance) {
     trendChartInstance.destroy();
   }
-  
+
   const ctx = chartCanvas.getContext('2d');
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
-  
+
   trendChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
@@ -1027,7 +1042,7 @@ function renderTrendChart() {
           titleFont: { size: 13, weight: '600' },
           bodyFont: { size: 12 },
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               return 'Spent: ' + fmt(context.parsed.y);
             }
           }
@@ -1043,7 +1058,7 @@ function renderTrendChart() {
           ticks: {
             color: isDarkMode ? '#b0b0b0' : '#666666',
             font: { size: 11 },
-            callback: function(value) {
+            callback: function (value) {
               return fmt(value);
             }
           }
@@ -1088,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Determine which picker this tile belongs to
       const editPicker = tile.closest('#edit-category-picker');
       const addPicker = tile.closest('#category-picker');
-      
+
       if (editPicker) {
         // Edit modal
         document.querySelectorAll('#edit-category-picker .cat-tile').forEach(t => t.classList.remove('selected'));
@@ -1117,8 +1132,8 @@ function populateYearPicker() {
   const yearSelect = document.getElementById('picker-year');
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
-  allExpenses.forEach(e => { if (e.date) years.add(parseInt(e.date.substring(0,4))); });
-  const sorted = Array.from(years).sort((a,b) => b-a);
+  allExpenses.forEach(e => { if (e.date) years.add(parseInt(e.date.substring(0, 4))); });
+  const sorted = Array.from(years).sort((a, b) => b - a);
   yearSelect.innerHTML = '<option value="">All Years</option>';
   sorted.forEach(y => {
     const opt = document.createElement('option');
@@ -1129,13 +1144,13 @@ function populateYearPicker() {
 
 function initPeriodPicker() {
   const now = new Date();
-  document.getElementById('picker-month').value = String(now.getMonth()+1).padStart(2,'0');
-  document.getElementById('picker-year').value  = now.getFullYear();
+  document.getElementById('picker-month').value = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('picker-year').value = now.getFullYear();
   updatePeriodLabel();
   updatePeriodSummary();
 }
 
-window.onPeriodChange = function() {
+window.onPeriodChange = function () {
   updatePeriodLabel();
   renderDashboardTable();
   // Defer chart updates
@@ -1145,17 +1160,17 @@ window.onPeriodChange = function() {
   });
 }
 
-window.resetPeriodPicker = function() {
+window.resetPeriodPicker = function () {
   const now = new Date();
-  document.getElementById('picker-month').value = String(now.getMonth()+1).padStart(2,'0');
-  document.getElementById('picker-year').value  = now.getFullYear();
+  document.getElementById('picker-month').value = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('picker-year').value = now.getFullYear();
   updatePeriodLabel(); renderDashboardTable();
 }
 
 function updatePeriodLabel() {
   const m = document.getElementById('picker-month').value;
   const y = document.getElementById('picker-year').value;
-  const months = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+  const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   let label = 'Showing all time';
   if (m && y) label = 'Showing ' + months[parseInt(m)] + ' ' + y;
   else if (m) label = 'Showing ' + months[parseInt(m)] + ' (all years)';
@@ -1165,30 +1180,30 @@ function updatePeriodLabel() {
 
 function getPeriodExpenses() {
   const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
-  const y = document.getElementById('picker-year')  ? document.getElementById('picker-year').value  : '';
+  const y = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
   return allExpenses.filter(e => {
     if (!e.date) return false;
-    if (y && e.date.substring(0,4) !== String(y)) return false;
-    if (m && e.date.substring(5,7) !== String(m)) return false;
+    if (y && e.date.substring(0, 4) !== String(y)) return false;
+    if (m && e.date.substring(5, 7) !== String(m)) return false;
     return true;
   });
 }
 
 function updatePeriodSummary() {
   const rows = getPeriodExpenses();
-  const total = rows.reduce((s,e) => s+e.amount, 0);
-  const max   = rows.length ? Math.max(...rows.map(e => e.amount)) : 0;
+  const total = rows.reduce((s, e) => s + e.amount, 0);
+  const max = rows.length ? Math.max(...rows.map(e => e.amount)) : 0;
   const uniqueDays = new Set(rows.map(e => e.date)).size;
   const avg = uniqueDays > 0 ? total / uniqueDays : 0;
   document.getElementById('period-total').textContent = fmt(total);
   document.getElementById('period-count').textContent = rows.length;
-  document.getElementById('period-avg').textContent   = fmt(avg);
-  document.getElementById('period-max').textContent   = fmt(max);
+  document.getElementById('period-avg').textContent = fmt(avg);
+  document.getElementById('period-max').textContent = fmt(max);
 }
 
 // Override renderDashboardTable to respect period picker
 const _baseRenderDashboard = renderDashboardTable;
-renderDashboardTable = function() {
+renderDashboardTable = function () {
   const pm = document.getElementById('picker-month');
   if (!pm) { _baseRenderDashboard(); return; }
   const periodRows = getPeriodExpenses();
@@ -1204,7 +1219,7 @@ renderDashboardTable = function() {
   } else if (activeTab === 'monthly') {
     // Use selected month/year if available, otherwise use current
     let displayYear = selectedYear || now.getFullYear();
-    let displayMonth = selectedMonth || pad(now.getMonth()+1);
+    let displayMonth = selectedMonth || pad(now.getMonth() + 1);
     const ms = displayYear + '-' + displayMonth + '-01';
     // Calculate the last day of the selected month
     const lastDay = new Date(displayYear, parseInt(displayMonth), 0).getDate();
@@ -1228,7 +1243,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // FORGOT PASSWORD
-window.showForgotPassword = function() {
+window.showForgotPassword = function () {
   const loginEmail = document.getElementById('login-email').value.trim();
   if (loginEmail) document.getElementById('forgot-email').value = loginEmail;
   resetForgotModal();
@@ -1236,16 +1251,16 @@ window.showForgotPassword = function() {
   if (window.lucide) lucide.createIcons();
   setTimeout(() => document.getElementById('forgot-email').focus(), 100);
 };
-window.closeForgotModal = function() {
+window.closeForgotModal = function () {
   document.getElementById('forgot-modal').classList.add('hidden');
 };
-window.resetForgotModal = function() {
+window.resetForgotModal = function () {
   document.getElementById('forgot-step-1').classList.remove('hidden');
   document.getElementById('forgot-step-2').classList.add('hidden');
   const e = document.getElementById('forgot-error');
   e.classList.add('hidden'); e.textContent = '';
 };
-window.handleForgotPassword = async function() {
+window.handleForgotPassword = async function () {
   const email = document.getElementById('forgot-email').value.trim();
   const errEl = document.getElementById('forgot-error');
   if (!email) { errEl.textContent = 'Please enter your email address.'; errEl.classList.remove('hidden'); return; }
@@ -1261,7 +1276,7 @@ window.handleForgotPassword = async function() {
     document.getElementById('forgot-step-2').classList.remove('hidden');
     document.getElementById('forgot-success-msg').textContent = 'We sent a password reset link to ' + email + '. Check your inbox and follow the instructions.';
     if (window.lucide) lucide.createIcons();
-  } catch(e2) {
+  } catch (e2) {
     const msgs = { 'auth/user-not-found': 'No account found with this email.', 'auth/invalid-email': 'Invalid email address.', 'auth/too-many-requests': 'Too many attempts. Try again later.' };
     errEl.textContent = msgs[e2.code] || 'Something went wrong. Try again.';
     errEl.classList.remove('hidden');
@@ -1274,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeForgotModal(); });
   const inp = document.getElementById('forgot-email');
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotPassword(); });
-  
+
   // Edit modal cleanup
   const editOverlay = document.getElementById('edit-modal');
   if (editOverlay) editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
