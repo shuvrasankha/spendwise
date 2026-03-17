@@ -122,7 +122,7 @@
           <i id="theme-icon" data-lucide="sun"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
-          <div class="user-avatar" id="user-avatar" onclick="toggleProfileMenu()">U</div>
+          <div class="user-avatar" id="user-avatar">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
             <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
               <i data-lucide="log-out"></i><span>Logout</span>
@@ -754,7 +754,21 @@
         console.log('Service Worker Registered');
       });
     }
-    document.addEventListener('DOMContentLoaded', () => { lucide.createIcons(); });
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      // Attach profile menu toggle for initial state (before Firebase auth resolves)
+      const avatar = document.getElementById('user-avatar');
+      if (avatar) {
+        avatar.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (window.toggleProfileMenu) window.toggleProfileMenu();
+          else {
+            const dd = document.getElementById('profile-dropdown');
+            if (dd) dd.classList.toggle('hidden');
+          }
+        });
+      }
+    });
   </script>
 </body>
 

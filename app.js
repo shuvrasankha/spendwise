@@ -109,6 +109,11 @@ onAuthStateChanged(auth, user => {
     } else {
       avatarEl.textContent = (user.displayName || user.email || "U")[0].toUpperCase();
     }
+    // Re-attach click listener after innerHTML change
+    avatarEl.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleProfileMenu();
+    });
     setGreeting();
     // Show skeleton while data loads
     showTableSkeleton("table-body", 5);
@@ -166,16 +171,17 @@ window.handleGoogleLogin = async () => {
 
 window.handleLogout = async () => { await signOut(auth); allExpenses = []; };
 
-window.toggleProfileMenu = () => {
+window.toggleProfileMenu = (e) => {
+  if (e) e.stopPropagation();
   const dropdown = document.getElementById('profile-dropdown');
   if (dropdown) dropdown.classList.toggle('hidden');
 };
 
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('profile-menu');
-  if (menu && !menu.contains(e.target)) {
-    const dropdown = document.getElementById('profile-dropdown');
-    if (dropdown && !dropdown.classList.contains('hidden')) {
+  const dropdown = document.getElementById('profile-dropdown');
+  if (dropdown && !dropdown.classList.contains('hidden')) {
+    if (!menu || !menu.contains(e.target)) {
       dropdown.classList.add('hidden');
     }
   }
@@ -919,16 +925,20 @@ function getTrendData() {
   let dateGroups = {};
 
   if (activeTab === 'daily') {
-    // For daily view, show last 7 days with hourly or by individual transactions
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 6);
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dateStr = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
-      labels.push(formatDate(dateStr));
-      const dayExpenses = periodExpenses.filter(e => e.date === dateStr);
-      dateGroups[dateStr] = dayExpenses.reduce((s, e) => s + e.amount, 0);
+    // For daily view, show today's spending broken down by category
+    const todayExpenses = periodExpenses.filter(e => e.date === today);
+    if (todayExpenses.length > 0) {
+      const catTotals = {};
+      todayExpenses.forEach(e => {
+        catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+      });
+      Object.keys(catTotals).sort().forEach(cat => {
+        labels.push(cat);
+        dateGroups[cat] = catTotals[cat];
+      });
+    } else {
+      labels.push(formatDate(today));
+      dateGroups[formatDate(today)] = 0;
     }
   } else if (activeTab === 'weekly') {
     // Show last 4 weeks
