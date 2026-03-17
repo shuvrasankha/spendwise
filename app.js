@@ -109,11 +109,7 @@ onAuthStateChanged(auth, user => {
     } else {
       avatarEl.textContent = (user.displayName || user.email || "U")[0].toUpperCase();
     }
-    // Re-attach click listener after innerHTML change
-    avatarEl.addEventListener('click', function(e) {
-      e.stopPropagation();
-      toggleProfileMenu();
-    });
+
     setGreeting();
     // Show skeleton while data loads
     showTableSkeleton("table-body", 5);
@@ -925,20 +921,16 @@ function getTrendData() {
   let dateGroups = {};
 
   if (activeTab === 'daily') {
-    // For daily view, show today's spending broken down by category
-    const todayExpenses = periodExpenses.filter(e => e.date === today);
-    if (todayExpenses.length > 0) {
-      const catTotals = {};
-      todayExpenses.forEach(e => {
-        catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
-      });
-      Object.keys(catTotals).sort().forEach(cat => {
-        labels.push(cat);
-        dateGroups[cat] = catTotals[cat];
-      });
-    } else {
-      labels.push(formatDate(today));
-      dateGroups[formatDate(today)] = 0;
+    // For daily view, show last 7 days (use allExpenses to avoid period picker clipping)
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 6);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+      labels.push(formatDate(dateStr));
+      const dayExpenses = allExpenses.filter(e => e.date === dateStr);
+      dateGroups[formatDate(dateStr)] = dayExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'weekly') {
     // Show last 4 weeks
