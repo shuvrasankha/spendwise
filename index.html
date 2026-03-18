@@ -231,14 +231,7 @@
             <div class="summary-amount" id="sum-yearly">Rs 0.00</div>
             <div class="summary-sub" id="sum-yearly-count">0 transactions</div>
           </div>
-          <div class="summary-card net-savings-card" id="card-net-savings">
-            <div class="summary-card-top">
-              <span class="summary-label">Net Savings (Month)</span>
-              <div class="summary-icon"><i data-lucide="piggy-bank"></i></div>
-            </div>
-            <div class="summary-amount" id="sum-net-savings">Rs 0.00</div>
-            <div class="summary-sub" id="sum-net-savings-detail">Income: Rs 0 | Expense: Rs 0</div>
-          </div>
+
         </div>
         <!-- Month / Year Picker -->
         <div class="period-picker-card">
@@ -286,16 +279,7 @@
             <span class="period-summary-label">Total Spent</span>
             <span class="period-summary-value" id="period-total">Rs 0.00</span>
           </div>
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Total Income</span>
-            <span class="period-summary-value period-income-value" id="period-income">Rs 0.00</span>
-          </div>
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Net Savings</span>
-            <span class="period-summary-value" id="period-net">Rs 0.00</span>
-          </div>
+
           <div class="period-summary-divider"></div>
           <div class="period-summary-item">
             <span class="period-summary-label">Transactions</span>
@@ -371,22 +355,11 @@
       <div id="page-add" class="page hidden">
         <div class="page-header">
           <h2>Add Transaction</h2>
-          <p>Record a new income or expense entry</p>
+          <p>Record a new expense entry</p>
         </div>
         <div class="form-card">
           <div class="form-grid">
-            <div class="form-group full-width">
-              <label>Type *</label>
-              <div class="type-toggle" id="add-type-toggle">
-                <button type="button" class="type-toggle-btn active" data-type="expense" onclick="switchAddType('expense')">
-                  <i data-lucide="arrow-down-circle"></i> Expense
-                </button>
-                <button type="button" class="type-toggle-btn" data-type="income" onclick="switchAddType('income')">
-                  <i data-lucide="arrow-up-circle"></i> Income
-                </button>
-              </div>
-              <input type="hidden" id="exp-type" value="expense" />
-            </div>
+            <input type="hidden" id="exp-type" value="expense" />
             <div class="form-group">
               <label>Amount (Rs) *</label>
               <div class="input-icon-wrap">
@@ -469,43 +442,7 @@
               </div>
             </div>
 
-            <div class="form-group full-width hidden" id="add-income-categories">
-              <label>Source *</label>
-              <div class="category-picker" id="income-category-picker">
-                <button type="button" class="cat-tile income-tile" data-value="Salary">
-                  <div class="cat-icon"><i data-lucide="briefcase"></i></div>
-                  <span>Salary</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Freelance">
-                  <div class="cat-icon"><i data-lucide="laptop"></i></div>
-                  <span>Freelance</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Business">
-                  <div class="cat-icon"><i data-lucide="building-2"></i></div>
-                  <span>Business</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Investments">
-                  <div class="cat-icon"><i data-lucide="trending-up"></i></div>
-                  <span>Investments</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Rental">
-                  <div class="cat-icon"><i data-lucide="home"></i></div>
-                  <span>Rental</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Refund">
-                  <div class="cat-icon"><i data-lucide="undo-2"></i></div>
-                  <span>Refund</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Interest">
-                  <div class="cat-icon"><i data-lucide="percent"></i></div>
-                  <span>Interest</span>
-                </button>
-                <button type="button" class="cat-tile income-tile" data-value="Other Income">
-                  <div class="cat-icon"><i data-lucide="wallet"></i></div>
-                  <span>Other</span>
-                </button>
-              </div>
-            </div>
+
 
             <div class="form-group" id="add-payment-group">
               <label>Payment Method</label>
@@ -555,7 +492,7 @@
       <div id="page-history" class="page hidden">
         <div class="page-header">
           <h2>Transaction History</h2>
-          <p>All your recorded income and expenses</p>
+          <p>All your recorded expenses</p>
         </div>
         <div class="filter-card">
           <div class="filter-row">
@@ -580,17 +517,7 @@
                 <input type="text" id="filter-search" placeholder="Type to search..." onkeyup="applyFilters()" />
               </div>
             </div>
-            <div class="form-group">
-              <label>Type</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="arrow-left-right"></i>
-                <select id="filter-type">
-                  <option value="">All Types</option>
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                </select>
-              </div>
-            </div>
+
             <div class="form-group">
               <label>Category</label>
               <div class="input-icon-wrap">
@@ -612,14 +539,7 @@
                   <option value="Personal Care">Personal Care</option>
                   <option value="Gifts">Gifts</option>
                   <option value="Other">Other</option>
-                  <option value="Salary">Salary</option>
-                  <option value="Freelance">Freelance</option>
-                  <option value="Business">Business</option>
-                  <option value="Investments">Investments</option>
-                  <option value="Rental">Rental</option>
-                  <option value="Refund">Refund</option>
-                  <option value="Interest">Interest</option>
-                  <option value="Other Income">Other Income</option>
+
                 </select>
               </div>
             </div>
@@ -696,18 +616,7 @@
       </div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="form-group full-width">
-            <label>Type *</label>
-            <div class="type-toggle" id="edit-type-toggle">
-              <button type="button" class="type-toggle-btn active" data-type="expense" onclick="switchEditType('expense')">
-                <i data-lucide="arrow-down-circle"></i> Expense
-              </button>
-              <button type="button" class="type-toggle-btn" data-type="income" onclick="switchEditType('income')">
-                <i data-lucide="arrow-up-circle"></i> Income
-              </button>
-            </div>
-            <input type="hidden" id="edit-type" value="expense" />
-          </div>
+          <input type="hidden" id="edit-type" value="expense" />
           <div class="form-group">
             <label>Amount (Rs) *</label>
             <div class="input-icon-wrap">
@@ -788,43 +697,7 @@
               </button>
             </div>
           </div>
-          <div class="form-group full-width hidden" id="edit-income-categories">
-            <label>Source *</label>
-            <div class="category-picker" id="edit-income-category-picker">
-              <button type="button" class="cat-tile income-tile" data-value="Salary">
-                <div class="cat-icon"><i data-lucide="briefcase"></i></div>
-                <span>Salary</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Freelance">
-                <div class="cat-icon"><i data-lucide="laptop"></i></div>
-                <span>Freelance</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Business">
-                <div class="cat-icon"><i data-lucide="building-2"></i></div>
-                <span>Business</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Investments">
-                <div class="cat-icon"><i data-lucide="trending-up"></i></div>
-                <span>Investments</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Rental">
-                <div class="cat-icon"><i data-lucide="home"></i></div>
-                <span>Rental</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Refund">
-                <div class="cat-icon"><i data-lucide="undo-2"></i></div>
-                <span>Refund</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Interest">
-                <div class="cat-icon"><i data-lucide="percent"></i></div>
-                <span>Interest</span>
-              </button>
-              <button type="button" class="cat-tile income-tile" data-value="Other Income">
-                <div class="cat-icon"><i data-lucide="wallet"></i></div>
-                <span>Other</span>
-              </button>
-            </div>
-          </div>
+
           <div class="form-group" id="edit-payment-group">
             <label>Payment Method</label>
             <div class="input-icon-wrap">

@@ -2364,3 +2364,50 @@ button {
     display: none;
   }
 }
+
+/* TYPE TOGGLE (Income / Expense) */
+.type-toggle {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.type-toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text3);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.type-toggle-btn i {
+  width: 18px;
+  height: 18px;
+}
+
+.type-toggle-btn:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.type-toggle-btn[data-type="expense"].active {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.type-toggle-btn[data-type="income"].active {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: var(--success);
+  color: var(--success);
+}
