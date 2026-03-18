@@ -59,6 +59,35 @@ function dec(encoded) {
   }
 }
 
+// ── localStorage cache helpers ──────────────────────────────────────────────
+const CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
+function getCacheKey(uid) { return 'spendwise_expenses_' + uid; }
+
+function saveToCache(uid, expenses) {
+  try {
+    const payload = JSON.stringify({ ts: Date.now(), data: expenses });
+    localStorage.setItem(getCacheKey(uid), payload);
+  } catch (e) { /* quota exceeded or private mode — silently skip */ }
+}
+
+function loadFromCache(uid) {
+  try {
+    const raw = localStorage.getItem(getCacheKey(uid));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.ts > CACHE_MAX_AGE_MS) {
+      localStorage.removeItem(getCacheKey(uid));
+      return null;
+    }
+    return parsed.data;
+  } catch { return null; }
+}
+
+function clearCache(uid) {
+  try { localStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
+}
+
 let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
 // ── Page loader ─────────────────────────────────────────────────────────────
@@ -111,11 +140,27 @@ onAuthStateChanged(auth, user => {
     }
 
     setGreeting();
-    // Show skeleton while data loads
-    showTableSkeleton("table-body", 5);
-    showTableSkeleton("history-body", 7);
-    // Load expenses asynchronously to avoid blocking UI
-    setTimeout(() => loadExpenses(), 0);
+
+    // ── Cache-first strategy ──
+    const cached = loadFromCache(user.uid);
+    if (cached && cached.length) {
+      // Render from cache instantly — no skeleton delay
+      allExpenses = cached;
+      updateCards();
+      renderDashboardTable();
+      renderHistory();
+      populateYearPicker();
+      initPeriodPicker();
+      updatePeriodSummary();
+      requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+      // Silently sync with Firestore in the background
+      setTimeout(() => loadExpenses(true), 0);
+    } else {
+      // No cache — show skeleton and fetch from Firestore
+      showTableSkeleton("table-body", 5);
+      showTableSkeleton("history-body", 7);
+      setTimeout(() => loadExpenses(), 0);
+    }
   } else {
     currentUser = null;
     document.getElementById("auth-screen").classList.remove("hidden");
@@ -165,7 +210,7 @@ window.handleGoogleLogin = async () => {
   catch (e) { showAuthError(friendlyErr(e.code)); }
 };
 
-window.handleLogout = async () => { await signOut(auth); allExpenses = []; };
+window.handleLogout = async () => { if (currentUser) clearCache(currentUser.uid); await signOut(auth); allExpenses = []; };
 
 window.toggleProfileMenu = (e) => {
   if (e) e.stopPropagation();
@@ -214,9 +259,9 @@ window.showPage = (page) => {
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
 
-async function loadExpenses() {
+async function loadExpenses(isSilentSync = false) {
   if (!currentUser) return;
-  showLoader();
+  if (!isSilentSync) showLoader();
   try {
     const q = query(collection(db, "expenses"), where("uid", "==", currentUser.uid));
     const snap = await getDocs(q);
@@ -239,6 +284,9 @@ async function loadExpenses() {
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
 
+    // Save to localStorage cache
+    saveToCache(currentUser.uid, allExpenses);
+
     // Render lightweight content immediately
     updateCards();
     renderDashboardTable();
@@ -253,7 +301,7 @@ async function loadExpenses() {
       renderTrendChart();
       hideLoader();
     });
-  } catch (e) { console.error(e); showToast("Error loading data.", "error"); hideLoader(); }
+  } catch (e) { console.error(e); if (!isSilentSync) showToast("Error loading data.", "error"); hideLoader(); }
 }
 
 window.addExpense = async () => {
@@ -281,6 +329,8 @@ window.addExpense = async () => {
       renderTrendChart();
       hideLoader();
     });
+    // Update localStorage cache
+    saveToCache(currentUser.uid, allExpenses);
     resetForm();
     showFormMsg("Expense added successfully!", "success");
     showToast("Expense added!", "success");
@@ -328,6 +378,8 @@ window.confirmDelete = async () => {
       renderTrendChart();
       hideLoader();
     });
+    // Update localStorage cache
+    saveToCache(currentUser.uid, allExpenses);
     showToast("Deleted.", "success");
   } catch (e) { showToast("Delete failed.", "error"); hideLoader(); }
   closeModal();
@@ -437,6 +489,8 @@ window.saveEditExpense = async () => {
       renderTrendChart();
       hideLoader();
     });
+    // Update localStorage cache
+    saveToCache(currentUser.uid, allExpenses);
     closeEditModal();
     showToast("Expense updated!", "success");
   } catch (e) {
