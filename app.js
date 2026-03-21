@@ -163,6 +163,12 @@ onAuthStateChanged(auth, user => {
     }
     // Load income data for dashboard cards (always fresh)
     setTimeout(() => loadIncome(), 0);
+
+    // Handle hash-based routing (e.g. index.html#history)
+    const pageHash = window.location.hash.replace('#', '');
+    if (pageHash && ['dashboard', 'add', 'history'].includes(pageHash)) {
+      showPage(pageHash);
+    }
   } else {
     currentUser = null;
     document.getElementById("auth-screen").classList.remove("hidden");
@@ -257,7 +263,10 @@ window.showPage = (page) => {
       renderTrendChart();
     });
   }
-  if (page === "history") renderHistory();
+  if (page === "history") {
+    renderHistory();
+    renderIncomeHistory();
+  }
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
 
@@ -1402,4 +1411,352 @@ document.addEventListener('DOMContentLoaded', () => {
   // Edit modal cleanup
   const editOverlay = document.getElementById('edit-modal');
   if (editOverlay) editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
+
+  // Income modal cleanup
+  const incEditOverlay = document.getElementById('inc-edit-modal');
+  if (incEditOverlay) incEditOverlay.addEventListener('click', e => { if (e.target === incEditOverlay) closeIncEditModal(); });
+  const incDelOverlay = document.getElementById('inc-delete-modal');
+  if (incDelOverlay) incDelOverlay.addEventListener('click', e => { if (e.target === incDelOverlay) closeIncDeleteModal(); });
 });
+
+// ============================================================
+//  INCOME HISTORY (in History page)
+// ============================================================
+let incHistoryPage = 1;
+let incSortCol = 'date';
+let incSortAsc = false;
+let filteredIncome = null;
+let incDeleteTarget = null;
+let editingIncId = null;
+const INC_HISTORY_PER_PAGE = 10;
+
+// ── Tab Switcher ─────────────────────────────────────────────
+window.switchHistoryTab = (tab) => {
+  document.querySelectorAll('.history-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('htab-' + tab).classList.add('active');
+
+  const expSection = document.getElementById('expense-history-section');
+  const incSection = document.getElementById('income-history-section');
+
+  if (tab === 'expenses') {
+    expSection.classList.remove('hidden');
+    incSection.classList.add('hidden');
+    renderHistory();
+  } else {
+    expSection.classList.add('hidden');
+    incSection.classList.remove('hidden');
+    renderIncomeHistory();
+  }
+};
+
+// ── Render Income History ────────────────────────────────────
+function renderIncomeHistory(data) {
+  const source = data !== undefined ? data : allIncome;
+  filteredIncome = source.slice();
+
+  // Apply sorting
+  filteredIncome.sort((a, b) => {
+    let valA = a[incSortCol];
+    let valB = b[incSortCol];
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (valA < valB) return incSortAsc ? -1 : 1;
+    if (valA > valB) return incSortAsc ? 1 : -1;
+    return 0;
+  });
+
+  // Update header sort icons (only income-specific ones)
+  document.querySelectorAll('.inc-sortable').forEach(th => {
+    th.classList.remove('active', 'asc', 'desc');
+    if (th.dataset.col === incSortCol) {
+      th.classList.add('active', incSortAsc ? 'asc' : 'desc');
+    }
+  });
+
+  const total = filteredIncome.reduce((s, i) => s + i.amount, 0);
+  const countEl = document.getElementById('inc-history-count');
+  if (countEl) countEl.textContent = filteredIncome.length + ' entr' + (filteredIncome.length !== 1 ? 'ies' : 'y');
+  const totalEl = document.getElementById('inc-history-total');
+  if (totalEl) totalEl.textContent = filteredIncome.length ? 'Total: ' + fmt(total) : '';
+
+  const totalPages = Math.max(1, Math.ceil(filteredIncome.length / INC_HISTORY_PER_PAGE));
+  if (incHistoryPage > totalPages) incHistoryPage = totalPages;
+
+  const start = (incHistoryPage - 1) * INC_HISTORY_PER_PAGE;
+  renderIncomeTableRows(filteredIncome.slice(start, start + INC_HISTORY_PER_PAGE));
+  renderIncPagination(filteredIncome.length, totalPages);
+}
+
+function renderIncomeTableRows(rows) {
+  const tbody = document.getElementById('inc-history-body');
+  if (!tbody) return;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan='7' class='empty-row'>No income entries found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  rows.forEach(entry => {
+    const tr = document.createElement('tr');
+
+    const tdDate = document.createElement('td');
+    tdDate.dataset.label = 'Date';
+    tdDate.textContent = formatDate(entry.date);
+    tr.appendChild(tdDate);
+
+    const tdSrc = document.createElement('td');
+    tdSrc.dataset.label = 'Source';
+    const badge = document.createElement('span');
+    badge.className = 'category-badge income-source-badge';
+    badge.textContent = entry.source || '-';
+    tdSrc.appendChild(badge);
+    tr.appendChild(tdSrc);
+
+    const tdPay = document.createElement('td');
+    tdPay.dataset.label = 'Payment';
+    tdPay.textContent = entry.paymentType || '-';
+    tr.appendChild(tdPay);
+
+    const tdBank = document.createElement('td');
+    tdBank.dataset.label = 'Bank';
+    tdBank.textContent = entry.bank || '-';
+    tr.appendChild(tdBank);
+
+    const tdNotes = document.createElement('td');
+    tdNotes.dataset.label = 'Notes';
+    tdNotes.textContent = entry.notes || '-';
+    tr.appendChild(tdNotes);
+
+    const tdAmt = document.createElement('td');
+    tdAmt.dataset.label = 'Amount';
+    tdAmt.className = 'text-right income-amount-cell';
+    tdAmt.textContent = fmt(entry.amount);
+    tr.appendChild(tdAmt);
+
+    const tdAct = document.createElement('td');
+    tdAct.className = 'text-center';
+    tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' onclick="openIncEdit('${entry.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteIncEntry('${entry.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
+    tr.appendChild(tdAct);
+
+    tbody.appendChild(tr);
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+// ── Sorting ──────────────────────────────────────────────────
+window.sortIncomeHistory = (col) => {
+  if (incSortCol === col) {
+    incSortAsc = !incSortAsc;
+  } else {
+    incSortCol = col;
+    incSortAsc = col === 'amount' ? false : true;
+  }
+  incHistoryPage = 1;
+  renderIncomeHistory(filteredIncome);
+};
+
+// ── Pagination ───────────────────────────────────────────────
+window.goToIncHistoryPage = (p) => {
+  incHistoryPage = p;
+  renderIncomeHistory(filteredIncome || allIncome);
+  const card = document.querySelector('#income-history-section .table-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function renderIncPagination(totalItems, totalPages) {
+  const el = document.getElementById('inc-history-pagination');
+  if (!el) return;
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+  const MAX_VISIBLE = 7;
+  let startP = Math.max(1, incHistoryPage - Math.floor(MAX_VISIBLE / 2));
+  let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
+  if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
+
+  let html = `<button class="page-btn" onclick="goToIncHistoryPage(${incHistoryPage - 1})" ${incHistoryPage === 1 ? 'disabled' : ''}><i data-lucide="chevron-left"></i></button>`;
+  if (startP > 1) {
+    html += `<button class="page-btn" onclick="goToIncHistoryPage(1)">1</button>`;
+    if (startP > 2) html += `<span class="pagination-dots">…</span>`;
+  }
+  for (let i = startP; i <= endP; i++) {
+    html += `<button class="page-btn${i === incHistoryPage ? ' active' : ''}" onclick="goToIncHistoryPage(${i})">${i}</button>`;
+  }
+  if (endP < totalPages) {
+    if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
+    html += `<button class="page-btn" onclick="goToIncHistoryPage(${totalPages})">${totalPages}</button>`;
+  }
+  const from = (incHistoryPage - 1) * INC_HISTORY_PER_PAGE + 1;
+  const to = Math.min(incHistoryPage * INC_HISTORY_PER_PAGE, totalItems);
+  html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
+  html += `<button class="page-btn" onclick="goToIncHistoryPage(${incHistoryPage + 1})" ${incHistoryPage === totalPages ? 'disabled' : ''}><i data-lucide="chevron-right"></i></button>`;
+
+  el.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+
+// ── Filters ──────────────────────────────────────────────────
+window.applyIncomeFilters = () => {
+  const from = document.getElementById('inc-filter-from').value;
+  const to = document.getElementById('inc-filter-to').value;
+  const pay = document.getElementById('inc-filter-payment').value;
+  const q = document.getElementById('inc-filter-search') ? document.getElementById('inc-filter-search').value.toLowerCase().trim() : '';
+
+  let data = allIncome.slice();
+  if (from) data = data.filter(i => i.date >= from);
+  if (to) data = data.filter(i => i.date <= to);
+  if (pay) data = data.filter(i => i.paymentType === pay);
+  if (q) {
+    data = data.filter(i =>
+      (i.source || '').toLowerCase().includes(q) ||
+      (i.bank || '').toLowerCase().includes(q) ||
+      (i.notes || '').toLowerCase().includes(q)
+    );
+  }
+
+  incHistoryPage = 1;
+  renderIncomeHistory(data);
+};
+
+window.clearIncomeFilters = () => {
+  ['inc-filter-from', 'inc-filter-to', 'inc-filter-payment', 'inc-filter-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  incHistoryPage = 1;
+  renderIncomeHistory(allIncome);
+};
+
+// ── Edit Income (from history page) ──────────────────────────
+window.openIncEdit = (id) => {
+  const entry = allIncome.find(i => i.id === id);
+  if (!entry) return;
+  editingIncId = id;
+
+  document.getElementById('inc-edit-amount').value = entry.amount;
+  document.getElementById('inc-edit-date').value = entry.date;
+  document.getElementById('inc-edit-source').value = entry.source || '';
+  document.getElementById('inc-edit-payment').value = entry.paymentType || 'Online';
+  document.getElementById('inc-edit-bank').value = entry.bank || '';
+  document.getElementById('inc-edit-notes').value = entry.notes || '';
+  toggleIncEditBank(entry.paymentType || 'Online');
+
+  document.getElementById('inc-edit-error').classList.add('hidden');
+  document.getElementById('inc-edit-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+};
+
+window.closeIncEditModal = () => {
+  document.getElementById('inc-edit-modal').classList.add('hidden');
+  editingIncId = null;
+};
+
+window.toggleIncEditBank = (val) => {
+  const wrap = document.getElementById('inc-edit-bank-wrap');
+  if (!wrap) return;
+  wrap.style.display = val === 'Online' ? '' : 'none';
+  if (val === 'Cash') {
+    const inp = document.getElementById('inc-edit-bank');
+    if (inp) inp.value = '';
+  }
+};
+
+window.saveIncEdit = async () => {
+  if (!editingIncId) return;
+
+  const amount = parseFloat(document.getElementById('inc-edit-amount').value);
+  const date = document.getElementById('inc-edit-date').value;
+  const source = document.getElementById('inc-edit-source').value.trim();
+  const paymentType = document.getElementById('inc-edit-payment').value;
+  const bank = paymentType === 'Online' ? document.getElementById('inc-edit-bank').value.trim() : '';
+  const notes = document.getElementById('inc-edit-notes').value.trim();
+
+  const errEl = document.getElementById('inc-edit-error');
+
+  if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount.'; errEl.classList.remove('hidden'); return; }
+  if (!date) { errEl.textContent = 'Select a date.'; errEl.classList.remove('hidden'); return; }
+  if (!source) { errEl.textContent = 'Enter income source.'; errEl.classList.remove('hidden'); return; }
+  if (paymentType === 'Online' && !bank) { errEl.textContent = 'Enter bank/wallet name.'; errEl.classList.remove('hidden'); return; }
+
+  try {
+    showLoader();
+    await updateDoc(doc(db, 'income', editingIncId), {
+      amount, date, source, paymentType, bank: bank || '', notes: notes || '', encoding: 'plain'
+    });
+
+    const idx = allIncome.findIndex(i => i.id === editingIncId);
+    if (idx >= 0) {
+      allIncome[idx] = { ...allIncome[idx], amount, date, source, paymentType, bank: bank || '', notes: notes || '' };
+      allIncome.sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    renderIncomeHistory();
+    updateIncomeCards();
+    closeIncEditModal();
+    hideLoader();
+    showToast('Income updated!', 'success');
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = 'Failed to update. Try again.';
+    errEl.classList.remove('hidden');
+    hideLoader();
+  }
+};
+
+// ── Delete Income (from history page) ────────────────────────
+window.deleteIncEntry = (id) => {
+  incDeleteTarget = id;
+  document.getElementById('inc-delete-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+};
+
+window.closeIncDeleteModal = () => {
+  document.getElementById('inc-delete-modal').classList.add('hidden');
+  incDeleteTarget = null;
+};
+
+window.confirmIncDelete = async () => {
+  if (!incDeleteTarget) return;
+  try {
+    showLoader();
+    await deleteDoc(doc(db, 'income', incDeleteTarget));
+    allIncome = allIncome.filter(i => i.id !== incDeleteTarget);
+    renderIncomeHistory();
+    updateIncomeCards();
+    hideLoader();
+    showToast('Income entry deleted.', 'success');
+  } catch (e) {
+    showToast('Delete failed.', 'error');
+    hideLoader();
+  }
+  closeIncDeleteModal();
+};
+
+window.deleteFromIncEdit = () => {
+  if (!editingIncId) return;
+  incDeleteTarget = editingIncId;
+  closeIncEditModal();
+  document.getElementById('inc-delete-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+};
+
+// ── CSV Download ─────────────────────────────────────────────
+window.downloadIncomeHistoryCSV = () => {
+  const rows = filteredIncome || allIncome;
+  if (!rows.length) { showToast('No data to export.', 'error'); return; }
+  const hdr = ['Date', 'Source', 'Payment Type', 'Bank/Wallet', 'Notes', 'Amount (Rs)'];
+  const csv = [hdr.join(','), ...rows.map(i => [
+    i.date,
+    '"' + (i.source || '').replace(/"/g, '""') + '"',
+    '"' + (i.paymentType || '') + '"',
+    '"' + (i.bank || '').replace(/"/g, '""') + '"',
+    '"' + (i.notes || '').replace(/"/g, '""') + '"',
+    i.amount.toFixed(2)
+  ].join(','))].join('\n');
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'SpendWise_Income_History_' + todayStr() + '.csv';
+  a.click();
+  showToast('CSV downloaded!', 'success');
+};

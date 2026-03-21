@@ -23,10 +23,7 @@ let currentUser = null;
 let allIncome = [];
 let editingIncomeId = null;
 let deleteIncomeTarget = null;
-let incomeSortCol = 'date';
-let incomeSortAsc = false;
-let incomeHistoryPage = 1;
-const INCOME_PER_PAGE = 10;
+
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n) {
@@ -162,7 +159,6 @@ async function loadIncome() {
     });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
     updateIncomeSummaryCards();
-    renderIncomeTable();
   } catch (e) {
     console.error(e);
     showToast('Error loading income data.', 'error');
@@ -226,7 +222,6 @@ window.addIncome = async () => {
     allIncome.unshift({ id: ref.id, amount, date, source, paymentType, bank: bank || '', notes: notes || '' });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
     updateIncomeSummaryCards();
-    renderIncomeTable();
     resetIncomeForm();
     showFormMsg('Income added successfully!', 'success');
     showToast('Income added!', 'success');
@@ -267,142 +262,7 @@ window.toggleEditBankField = (val) => {
   if (val === 'Cash') document.getElementById('edit-inc-bank').value = '';
 };
 
-// ── Render Table ──────────────────────────────────────────────────────────────
-window.sortIncomeTable = (col) => {
-  if (incomeSortCol === col) {
-    incomeSortAsc = !incomeSortAsc;
-  } else {
-    incomeSortCol = col;
-    incomeSortAsc = col === 'amount' ? false : true;
-  }
-  incomeHistoryPage = 1;
-  renderIncomeTable();
-};
 
-function renderIncomeTable() {
-  const sorted = allIncome.slice().sort((a, b) => {
-    let valA = a[incomeSortCol];
-    let valB = b[incomeSortCol];
-    if (typeof valA === 'string') valA = valA.toLowerCase();
-    if (typeof valB === 'string') valB = valB.toLowerCase();
-    if (valA < valB) return incomeSortAsc ? -1 : 1;
-    if (valA > valB) return incomeSortAsc ? 1 : -1;
-    return 0;
-  });
-
-  // Update sort header icons
-  document.querySelectorAll('#income-table-body').forEach(() => {});
-  document.querySelectorAll('th.sortable[data-col]').forEach(th => {
-    th.classList.remove('active', 'asc', 'desc');
-    if (th.dataset.col === incomeSortCol) {
-      th.classList.add('active', incomeSortAsc ? 'asc' : 'desc');
-    }
-  });
-
-  const total = sorted.reduce((s, i) => s + i.amount, 0);
-  document.getElementById('income-count').textContent = sorted.length + ' entr' + (sorted.length !== 1 ? 'ies' : 'y');
-  const totalEl = document.getElementById('income-total');
-  if (totalEl) totalEl.textContent = sorted.length ? 'Total: ' + fmt(total) : '';
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / INCOME_PER_PAGE));
-  if (incomeHistoryPage > totalPages) incomeHistoryPage = totalPages;
-
-  const start = (incomeHistoryPage - 1) * INCOME_PER_PAGE;
-  const pageRows = sorted.slice(start, start + INCOME_PER_PAGE);
-
-  const tbody = document.getElementById('income-table-body');
-
-  if (!pageRows.length) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-row">No income entries yet. Add your first one above!</td></tr>`;
-    document.getElementById('income-pagination').innerHTML = '';
-    return;
-  }
-
-  tbody.innerHTML = '';
-  pageRows.forEach(entry => {
-    const tr = document.createElement('tr');
-
-    const tdDate = document.createElement('td');
-    tdDate.dataset.label = 'Date';
-    tdDate.textContent = formatDate(entry.date);
-    tr.appendChild(tdDate);
-
-    const tdSrc = document.createElement('td');
-    tdSrc.dataset.label = 'Source';
-    const badge = document.createElement('span');
-    badge.className = 'category-badge income-source-badge';
-    badge.textContent = entry.source || '-';
-    tdSrc.appendChild(badge);
-    tr.appendChild(tdSrc);
-
-    const tdPay = document.createElement('td');
-    tdPay.dataset.label = 'Payment';
-    tdPay.textContent = entry.paymentType || '-';
-    tr.appendChild(tdPay);
-
-    const tdBank = document.createElement('td');
-    tdBank.dataset.label = 'Bank';
-    tdBank.textContent = entry.bank || '-';
-    tr.appendChild(tdBank);
-
-    const tdNotes = document.createElement('td');
-    tdNotes.dataset.label = 'Notes';
-    tdNotes.textContent = entry.notes || '-';
-    tr.appendChild(tdNotes);
-
-    const tdAmt = document.createElement('td');
-    tdAmt.dataset.label = 'Amount';
-    tdAmt.className = 'text-right income-amount-cell';
-    tdAmt.textContent = fmt(entry.amount);
-    tr.appendChild(tdAmt);
-
-    const tdAct = document.createElement('td');
-    tdAct.className = 'text-center';
-    tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' onclick="openIncomeEdit('${entry.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteIncomeEntry('${entry.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
-    tr.appendChild(tdAct);
-
-    tbody.appendChild(tr);
-  });
-
-  if (window.lucide) lucide.createIcons();
-  renderIncomePagination(sorted.length, totalPages);
-}
-
-function renderIncomePagination(totalItems, totalPages) {
-  const el = document.getElementById('income-pagination');
-  if (!el) return;
-  if (totalPages <= 1) { el.innerHTML = ''; return; }
-
-  const MAX_VISIBLE = 7;
-  let startP = Math.max(1, incomeHistoryPage - Math.floor(MAX_VISIBLE / 2));
-  let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
-  if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
-
-  let html = `<button class="page-btn" onclick="goToIncomePage(${incomeHistoryPage - 1})" ${incomeHistoryPage === 1 ? 'disabled' : ''}><i data-lucide="chevron-left"></i></button>`;
-  if (startP > 1) {
-    html += `<button class="page-btn" onclick="goToIncomePage(1)">1</button>`;
-    if (startP > 2) html += `<span class="pagination-dots">…</span>`;
-  }
-  for (let i = startP; i <= endP; i++) {
-    html += `<button class="page-btn${i === incomeHistoryPage ? ' active' : ''}" onclick="goToIncomePage(${i})">${i}</button>`;
-  }
-  if (endP < totalPages) {
-    if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
-    html += `<button class="page-btn" onclick="goToIncomePage(${totalPages})">${totalPages}</button>`;
-  }
-  const from = (incomeHistoryPage - 1) * INCOME_PER_PAGE + 1;
-  const to = Math.min(incomeHistoryPage * INCOME_PER_PAGE, totalItems);
-  html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
-  html += `<button class="page-btn" onclick="goToIncomePage(${incomeHistoryPage + 1})" ${incomeHistoryPage === totalPages ? 'disabled' : ''}><i data-lucide="chevron-right"></i></button>`;
-
-  el.innerHTML = html;
-  if (window.lucide) lucide.createIcons();
-}
-
-window.goToIncomePage = (p) => {
-  incomeHistoryPage = p;
-  renderIncomeTable();
-};
 
 // ── Edit Income ───────────────────────────────────────────────────────────────
 window.openIncomeEdit = (id) => {
@@ -456,7 +316,6 @@ window.saveEditIncome = async () => {
     }
 
     updateIncomeSummaryCards();
-    renderIncomeTable();
     closeIncomeEditModal();
     showToast('Income updated!', 'success');
   } catch (e) {
@@ -483,7 +342,6 @@ window.confirmIncomeDelete = async () => {
     await deleteDoc(doc(db, 'income', deleteIncomeTarget));
     allIncome = allIncome.filter(i => i.id !== deleteIncomeTarget);
     updateIncomeSummaryCards();
-    renderIncomeTable();
     showToast('Deleted.', 'success');
   } catch (e) {
     showToast('Delete failed.', 'error');
@@ -498,22 +356,4 @@ window.deleteFromIncomeEdit = async () => {
   document.getElementById('income-delete-modal').classList.remove('hidden');
 };
 
-// ── Download CSV ──────────────────────────────────────────────────────────────
-window.downloadIncomeCSV = () => {
-  if (!allIncome.length) { showToast('No data to export.', 'error'); return; }
-  const hdr = ['Date', 'Source', 'Payment Type', 'Bank/Wallet', 'Notes', 'Amount (Rs)'];
-  const csv = [hdr.join(','), ...allIncome.map(i => [
-    i.date,
-    '"' + (i.source || '').replace(/"/g, '""') + '"',
-    '"' + (i.paymentType || '') + '"',
-    '"' + (i.bank || '').replace(/"/g, '""') + '"',
-    '"' + (i.notes || '').replace(/"/g, '""') + '"',
-    i.amount.toFixed(2)
-  ].join(','))].join('\n');
 
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = 'SpendWise_Income_' + todayStr() + '.csv';
-  a.click();
-  showToast('CSV downloaded!', 'success');
-};

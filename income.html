@@ -102,13 +102,13 @@
         <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-dashboard">
           <i data-lucide="layout-dashboard"></i> Dashboard
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-add">
+        <button class="sidebar-btn" onclick="window.location.href='index.html#add'" id="snav-add">
           <i data-lucide="wallet"></i> Expense
         </button>
         <button class="sidebar-btn active" id="snav-income">
           <i data-lucide="trending-up"></i> Income
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-history">
+        <button class="sidebar-btn" onclick="window.location.href='index.html#history'" id="snav-history">
           <i data-lucide="history"></i> History
         </button>
       </nav>
@@ -230,37 +230,6 @@
         <div id="income-form-msg" class="form-msg hidden"></div>
       </div>
 
-      <!-- Income History Table -->
-      <div class="table-card">
-        <div class="table-header">
-          <span id="income-count" class="result-count">All entries</span>
-          <button class="btn-download" onclick="downloadIncomeCSV()">
-            <i data-lucide="download"></i> Download CSV
-          </button>
-        </div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="sortable" data-col="date" onclick="sortIncomeTable('date')">Date <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                <th class="sortable" data-col="source" onclick="sortIncomeTable('source')">Source <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                <th data-col="payment">Payment</th>
-                <th data-col="bank">Bank</th>
-                <th data-col="notes">Notes</th>
-                <th class="text-right sortable" data-col="amount" onclick="sortIncomeTable('amount')">Amount <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                <th class="text-center" data-col="actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="income-table-body">
-              <tr>
-                <td colspan="7" class="empty-row">No income entries yet. Add your first one above!</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="table-footer" id="income-total"></div>
-        <div id="income-pagination" class="pagination-row"></div>
-      </div>
     </main>
   </div>
 

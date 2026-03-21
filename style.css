@@ -1070,6 +1070,75 @@ button {
 }
 
 /* =====================
+   HISTORY TAB SWITCHER
+===================== */
+.history-tab-switcher {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 5px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  max-width: 320px;
+}
+
+.history-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  white-space: nowrap;
+}
+
+.history-tab svg,
+.history-tab i {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.history-tab.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(74, 158, 255, 0.3);
+  font-weight: 600;
+}
+
+.history-tab:hover:not(.active) {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+/* Income tab active — green accent */
+#htab-income.active {
+  background: #10b981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+#htab-income:hover:not(.active) {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+@media (max-width: 480px) {
+  .history-tab-switcher {
+    max-width: none;
+  }
+}
+
+/* =====================
    FILTER CARD
 ===================== */
 .filter-card {
