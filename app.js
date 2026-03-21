@@ -88,7 +88,7 @@ function clearCache(uid) {
   try { localStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
 }
 
-let currentUser = null, allExpenses = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
+let currentUser = null, allExpenses = [], allIncome = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
 // ── Page loader ─────────────────────────────────────────────────────────────
 function dismissPageLoader() {
@@ -161,6 +161,8 @@ onAuthStateChanged(auth, user => {
       showTableSkeleton("history-body", 7);
       setTimeout(() => loadExpenses(), 0);
     }
+    // Load income data for dashboard cards (always fresh)
+    setTimeout(() => loadIncome(), 0);
   } else {
     currentUser = null;
     document.getElementById("auth-screen").classList.remove("hidden");
@@ -302,6 +304,57 @@ async function loadExpenses(isSilentSync = false) {
       hideLoader();
     });
   } catch (e) { console.error(e); if (!isSilentSync) showToast("Error loading data.", "error"); hideLoader(); }
+}
+
+// ── Load Income (for dashboard cards) ────────────────────────────────────────
+async function loadIncome() {
+  if (!currentUser) return;
+  try {
+    const q = query(collection(db, "income"), where("uid", "==", currentUser.uid));
+    const snap = await getDocs(q);
+    allIncome = snap.docs.map(d => {
+      const raw = d.data();
+      const amt = parseFloat(raw.amount);
+      return { id: d.id, ...raw, amount: isNaN(amt) ? 0 : amt };
+    });
+    updateIncomeCards();
+  } catch (e) { console.error("Income load error:", e); }
+}
+
+function updateIncomeCards() {
+  const incomeEl = document.getElementById("sum-income");
+  const savingsEl = document.getElementById("sum-savings");
+  const savingsCard = document.getElementById("card-savings");
+  if (!incomeEl || !savingsEl) return;
+
+  const now = new Date();
+  const ms = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
+  const today = todayStr();
+
+  const monthlyIncome = allIncome
+    .filter(i => i.date >= ms && i.date <= today)
+    .reduce((s, i) => s + i.amount, 0);
+
+  const monthlyExpenses = allExpenses
+    .filter(e => e.date >= ms && e.date <= today)
+    .reduce((s, e) => s + e.amount, 0);
+
+  const netSavings = monthlyIncome - monthlyExpenses;
+
+  incomeEl.textContent = fmt(monthlyIncome);
+
+  savingsEl.textContent = fmt(Math.abs(netSavings));
+  // Color the savings card based on positive/negative
+  if (savingsCard) {
+    savingsCard.classList.remove("savings-negative");
+    if (netSavings < 0) savingsCard.classList.add("savings-negative");
+  }
+  const savingsSubEl = document.getElementById("sum-savings-sub");
+  if (savingsSubEl) {
+    savingsSubEl.textContent = netSavings < 0
+      ? "Overspent this month"
+      : "Income − Expenses (this month)";
+  }
 }
 
 window.addExpense = async () => {
