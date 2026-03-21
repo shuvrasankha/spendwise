@@ -172,6 +172,9 @@
       <button class="bottom-nav-btn" onclick="showPage('add')" id="bnav-add">
         <i data-lucide="circle-plus"></i><span>Add</span>
       </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='income.html'" id="bnav-income">
+        <i data-lucide="trending-up"></i><span>Income</span>
+      </button>
       <button class="bottom-nav-btn" onclick="showPage('history')" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
@@ -183,7 +186,10 @@
           <i data-lucide="layout-dashboard"></i> Dashboard
         </button>
         <button class="sidebar-btn" onclick="showPage('add')" id="snav-add">
-          <i data-lucide="circle-plus"></i> Add
+          <i data-lucide="wallet"></i> Expense
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='income.html'" id="snav-income">
+          <i data-lucide="trending-up"></i> Income
         </button>
         <button class="sidebar-btn" onclick="showPage('history')" id="snav-history">
           <i data-lucide="history"></i> History
@@ -231,7 +237,26 @@
             <div class="summary-amount" id="sum-yearly">Rs 0.00</div>
             <div class="summary-sub" id="sum-yearly-count">0 transactions</div>
           </div>
+        </div>
 
+        <!-- Income & Savings cards -->
+        <div class="summary-cards income-dash-cards">
+          <div class="summary-card" id="card-income">
+            <div class="summary-card-top">
+              <span class="summary-label">Total Income</span>
+              <div class="summary-icon"><i data-lucide="circle-arrow-down"></i></div>
+            </div>
+            <div class="summary-amount" id="sum-income">Rs 0.00</div>
+            <div class="summary-sub" id="sum-income-sub">This month · <a class="income-link" href="income.html">Manage →</a></div>
+          </div>
+          <div class="summary-card" id="card-savings">
+            <div class="summary-card-top">
+              <span class="summary-label">Net Savings</span>
+              <div class="summary-icon"><i data-lucide="piggy-bank"></i></div>
+            </div>
+            <div class="summary-amount" id="sum-savings">Rs 0.00</div>
+            <div class="summary-sub" id="sum-savings-sub">Income − Expenses (this month)</div>
+          </div>
         </div>
         <!-- Month / Year Picker -->
         <div class="period-picker-card">

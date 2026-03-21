@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com; frame-ancestors 'none';">
+  <title>SpendWise – Income Tracker</title>
+  <link rel="icon" type="image/png" href="logo2.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121212">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="logo2.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Full-page loader -->
+  <div id="page-loader" class="page-loader">
+    <div class="coin-scene">
+      <div class="coin">
+        <div class="coin-face coin-front">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="coinGrad" cx="40%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#FFE066"/>
+                <stop offset="50%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#B8860B"/>
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#coinGrad)" stroke="#B8860B" stroke-width="2"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#DAA520" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="60" y="72" text-anchor="middle" font-size="42" font-weight="700" fill="#8B6914" font-family="Inter, sans-serif">₹</text>
+          </svg>
+        </div>
+        <div class="coin-face coin-back">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="coinGradBack" cx="60%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#FFE066"/>
+                <stop offset="50%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#B8860B"/>
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#coinGradBack)" stroke="#B8860B" stroke-width="2"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#DAA520" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="60" cy="60" r="22" fill="none" stroke="#8B6914" stroke-width="2"/>
+            <text x="60" y="66" text-anchor="middle" font-size="20" font-weight="700" fill="#8B6914" font-family="Inter, sans-serif">SW</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <span class="page-loader-text">Loading SpendWise…</span>
+  </div>
+
+  <!-- Auth guard — if not signed in, redirect to index.html -->
+  <div id="app" class="app hidden">
+    <nav class="navbar">
+      <div class="nav-left">
+        <img src="logo.png" alt="SpendWise Logo" class="nav-logo-image">
+      </div>
+      <div class="nav-right">
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
+          <i id="theme-icon" data-lucide="sun"></i>
+        </button>
+        <div class="profile-menu" id="profile-menu">
+          <div class="user-avatar" id="user-avatar" onclick="toggleProfileMenu(event)">U</div>
+          <div class="profile-dropdown hidden" id="profile-dropdown">
+            <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
+              <i data-lucide="log-out"></i><span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Bottom nav (mobile) -->
+    <div class="bottom-nav">
+      <button class="bottom-nav-btn" onclick="window.location.href='index.html'" id="bnav-dashboard">
+        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='index.html#add'" id="bnav-add">
+        <i data-lucide="circle-plus"></i><span>Add</span>
+      </button>
+      <button class="bottom-nav-btn active" id="bnav-income">
+        <i data-lucide="trending-up"></i><span>Income</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='index.html#history'" id="bnav-history">
+        <i data-lucide="history"></i><span>History</span>
+      </button>
+    </div>
+
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-dashboard">
+          <i data-lucide="layout-dashboard"></i> Dashboard
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-add">
+          <i data-lucide="wallet"></i> Expense
+        </button>
+        <button class="sidebar-btn active" id="snav-income">
+          <i data-lucide="trending-up"></i> Income
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-history">
+          <i data-lucide="history"></i> History
+        </button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h2>Income Tracker</h2>
+        <p id="income-greeting">Record and manage your income sources</p>
+      </div>
+
+      <!-- Income Summary Cards -->
+      <div class="summary-cards income-summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">This Month</span>
+            <div class="summary-icon"><i data-lucide="trending-up"></i></div>
+          </div>
+          <div class="summary-amount" id="inc-monthly">Rs 0.00</div>
+          <div class="summary-sub" id="inc-monthly-count">0 entries</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">This Year</span>
+            <div class="summary-icon"><i data-lucide="calendar"></i></div>
+          </div>
+          <div class="summary-amount" id="inc-yearly">Rs 0.00</div>
+          <div class="summary-sub" id="inc-yearly-count">0 entries</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Cash Income</span>
+            <div class="summary-icon"><i data-lucide="banknote"></i></div>
+          </div>
+          <div class="summary-amount" id="inc-cash">Rs 0.00</div>
+          <div class="summary-sub" id="inc-cash-label">All time</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Online Income</span>
+            <div class="summary-icon"><i data-lucide="building-2"></i></div>
+          </div>
+          <div class="summary-amount" id="inc-online">Rs 0.00</div>
+          <div class="summary-sub" id="inc-online-label">All time</div>
+        </div>
+      </div>
+
+      <!-- Add Income Card -->
+      <div class="form-card" id="add-income-section">
+        <div class="income-form-header">
+          <div class="income-form-title-wrap">
+            <div class="income-form-icon"><i data-lucide="plus-circle"></i></div>
+            <div>
+              <h3 id="income-form-heading">Add Income</h3>
+              <p>Record a new income entry</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Amount (Rs) *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="indian-rupee"></i>
+              <input type="number" id="inc-amount" placeholder="0.00" min="0" step="0.01" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Date *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="calendar"></i>
+              <input type="date" id="inc-date" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Source / From *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="briefcase"></i>
+              <input type="text" id="inc-source" placeholder="e.g. Salary, Freelance, Business" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Payment Type *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="credit-card"></i>
+              <select id="inc-payment" onchange="toggleBankField(this.value)">
+                <option value="Online">Online</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" id="inc-bank-wrap">
+            <label>Bank / Wallet *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="building-2"></i>
+              <input type="text" id="inc-bank" placeholder="e.g. HDFC, SBI, Paytm" />
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notes <span class="optional-tag">optional</span></label>
+            <textarea id="inc-notes" rows="2" placeholder="Any additional notes..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-secondary" onclick="resetIncomeForm()">
+            <i data-lucide="rotate-ccw"></i> Clear
+          </button>
+          <button class="btn-income-primary" id="btn-add-income" onclick="addIncome()">
+            <i data-lucide="plus-circle"></i> <span id="income-btn-label">Add Income</span>
+          </button>
+        </div>
+        <div id="income-form-msg" class="form-msg hidden"></div>
+      </div>
+
+      <!-- Income History Table -->
+      <div class="table-card">
+        <div class="table-header">
+          <span id="income-count" class="result-count">All entries</span>
+          <button class="btn-download" onclick="downloadIncomeCSV()">
+            <i data-lucide="download"></i> Download CSV
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="date" onclick="sortIncomeTable('date')">Date <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
+                <th class="sortable" data-col="source" onclick="sortIncomeTable('source')">Source <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
+                <th data-col="payment">Payment</th>
+                <th data-col="bank">Bank</th>
+                <th data-col="notes">Notes</th>
+                <th class="text-right sortable" data-col="amount" onclick="sortIncomeTable('amount')">Amount <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
+                <th class="text-center" data-col="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="income-table-body">
+              <tr>
+                <td colspan="7" class="empty-row">No income entries yet. Add your first one above!</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer" id="income-total"></div>
+        <div id="income-pagination" class="pagination-row"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="income-delete-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-icon"><i data-lucide="trash-2"></i></div>
+      <h3>Delete Income Entry?</h3>
+      <p>This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeIncomeDeleteModal()">Cancel</button>
+        <button class="btn-danger" onclick="confirmIncomeDelete()">
+          <i data-lucide="trash-2"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Income Modal -->
+  <div id="income-edit-modal" class="modal-overlay hidden">
+    <div class="modal-box edit-modal-box">
+      <div class="modal-header">
+        <h3>Edit Income</h3>
+        <button class="modal-close-btn" onclick="closeIncomeEditModal()" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Amount (Rs) *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="indian-rupee"></i>
+              <input type="number" id="edit-inc-amount" placeholder="0.00" min="0" step="0.01" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Date *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="calendar"></i>
+              <input type="date" id="edit-inc-date" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Source / From *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="briefcase"></i>
+              <input type="text" id="edit-inc-source" placeholder="e.g. Salary, Freelance" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Payment Type *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="credit-card"></i>
+              <select id="edit-inc-payment" onchange="toggleEditBankField(this.value)">
+                <option value="Online">Online</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" id="edit-inc-bank-wrap">
+            <label>Bank / Wallet</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="building-2"></i>
+              <input type="text" id="edit-inc-bank" placeholder="e.g. HDFC, SBI, Paytm" />
+            </div>
+          </div>
+          <div class="form-group full-width">
+            <label>Notes <span class="optional-tag">optional</span></label>
+            <textarea id="edit-inc-notes" rows="2" placeholder="Any additional notes..."></textarea>
+          </div>
+        </div>
+        <div id="edit-inc-error" class="form-msg error hidden"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeIncomeEditModal()">Cancel</button>
+        <button class="btn-danger" onclick="deleteFromIncomeEdit()" style="margin-left:auto">
+          <i data-lucide="trash-2"></i> Delete
+        </button>
+        <button class="btn-income-primary" onclick="saveEditIncome()">
+          <i data-lucide="check-circle"></i> Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="income.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+
+</html>

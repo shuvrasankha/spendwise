@@ -1050,6 +1050,13 @@ button {
   text-align: center;
 }
 
+.form-msg.hidden {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
 .form-msg.success {
   background: rgba(0, 184, 148, 0.1);
   border: 1px solid rgba(0, 184, 148, 0.3);
@@ -1694,7 +1701,7 @@ button {
 }
 
 .period-select-wrap select {
-  padding: 9px 32px 9px 34px;
+  padding: 9px 32px 9px 38px;
   background: var(--surface2);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
@@ -2410,4 +2417,186 @@ button {
   background: rgba(16, 185, 129, 0.08);
   border-color: var(--success);
   color: var(--success);
+}
+
+/* =====================
+   INCOME — CARDS
+===================== */
+
+/* Two-column row for Income & Net Savings on dashboard */
+.income-dash-cards {
+  grid-template-columns: repeat(2, 1fr) !important;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 480px) {
+  .income-dash-cards {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Green income card */
+.summary-card.income-card-green {
+  border-top: 3px solid var(--success);
+}
+
+.summary-card.income-card-green .summary-amount {
+  color: var(--success);
+}
+
+.summary-icon.income-icon-green {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+}
+
+/* Cyan/teal savings card */
+.summary-card.income-card-savings {
+  border-top: 3px solid var(--cyan);
+}
+
+.summary-card.income-card-savings .summary-amount {
+  color: var(--cyan);
+}
+
+.summary-icon.income-icon-savings {
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--cyan);
+}
+
+/* Savings card — negative state (overspending) */
+.summary-card.income-card-savings.savings-negative {
+  border-top-color: var(--danger);
+}
+
+.summary-card.income-card-savings.savings-negative .summary-amount {
+  color: var(--danger);
+}
+
+.summary-card.income-card-savings.savings-negative .summary-icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+/* Cyan stat cards on income.html */
+.summary-card.income-card-cyan {
+  border-top: 3px solid var(--cyan);
+}
+
+.summary-card.income-card-cyan .summary-amount {
+  color: var(--cyan);
+}
+
+.summary-icon.income-icon-cyan {
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--cyan);
+}
+
+/* Summary cards on income page — 4 cols like dashboard */
+.income-summary-cards {
+  margin-bottom: 20px;
+}
+
+/* Space between form card and table card on income page */
+#add-income-section {
+  margin-bottom: 24px;
+}
+
+/* Income link in card sub text */
+.income-link {
+  color: var(--success);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.income-link:hover {
+  text-decoration: underline;
+}
+
+/* =====================
+   INCOME — FORM
+===================== */
+
+.income-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.income-form-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.income-form-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.income-form-icon i {
+  width: 22px;
+  height: 22px;
+}
+
+.income-form-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.income-form-header p {
+  font-size: 0.84rem;
+  color: var(--text2);
+}
+
+/* Primary button — income green */
+.btn-income-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--success);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-income-primary:hover {
+  background: #0ea472;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+.btn-income-primary:active {
+  transform: scale(0.98);
+}
+
+/* =====================
+   INCOME — TABLE
+===================== */
+
+.income-amount-cell {
+  color: var(--success) !important;
+  font-weight: 600;
+}
+
+.income-source-badge {
+  background: rgba(16, 185, 129, 0.1) !important;
+  color: var(--success) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
 }
