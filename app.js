@@ -1033,24 +1033,36 @@ function getTrendData() {
 
   const now = new Date();
   const today = todayStr();
-  let displayExpenses = [];
   let labels = [];
   let dateGroups = {};
 
+  // Helper: short date like "26 Mar"
+  function shortDate(ds) {
+    const d = new Date(ds + 'T00:00:00');
+    return d.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  }
+
+  // Helper: short day name like "Mon"
+  function shortDay(ds) {
+    const d = new Date(ds + 'T00:00:00');
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  }
+
   if (activeTab === 'daily') {
-    // For daily view, show last 7 days (use allExpenses to avoid period picker clipping)
+    // For daily view, show last 7 days — label: "Mon 26"
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 6);
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
       const dateStr = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
-      labels.push(formatDate(dateStr));
+      const label = shortDay(dateStr) + ' ' + date.getDate();
+      labels.push(label);
       const dayExpenses = allExpenses.filter(e => e.date === dateStr);
-      dateGroups[formatDate(dateStr)] = dayExpenses.reduce((s, e) => s + e.amount, 0);
+      dateGroups[label] = dayExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'weekly') {
-    // Show last 4 weeks (use allExpenses to avoid period picker clipping across month boundaries)
+    // Show last 4 weeks — label: "9–15 Mar"
     labels = [];
     for (let i = 3; i >= 0; i--) {
       const weekDate = new Date();
@@ -1060,13 +1072,20 @@ function getTrendData() {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
 
-      const weekLabel = 'Week of ' + formatDate(weekStart.toISOString().split('T')[0]);
-      labels.push(weekLabel);
+      const wStartStr = weekStart.toISOString().split('T')[0];
+      const wEndStr   = weekEnd.toISOString().split('T')[0];
+      // Compact label e.g. "9–15 Mar" or "28 Mar–3 Apr" for cross-month
+      const startMonth = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][weekStart.getMonth()];
+      const endMonth   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][weekEnd.getMonth()];
+      const label = weekStart.getMonth() === weekEnd.getMonth()
+        ? weekStart.getDate() + '–' + weekEnd.getDate() + ' ' + startMonth
+        : weekStart.getDate() + ' ' + startMonth + '–' + weekEnd.getDate() + ' ' + endMonth;
+      labels.push(label);
 
       const weekExpenses = allExpenses.filter(e => {
-        return e.date >= weekStart.toISOString().split('T')[0] && e.date <= weekEnd.toISOString().split('T')[0];
+        return e.date >= wStartStr && e.date <= wEndStr;
       });
-      dateGroups[weekLabel] = weekExpenses.reduce((s, e) => s + e.amount, 0);
+      dateGroups[label] = weekExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'monthly') {
     // Show all months in the year (use allExpenses filtered by year only, not month)
@@ -1095,6 +1114,10 @@ function getTrendData() {
     });
   }
 
+  // Update data-tab attribute for CSS min-width rules
+  const trendInner = document.getElementById('trend-chart-inner');
+  if (trendInner) trendInner.setAttribute('data-tab', activeTab);
+
   const data = labels.map(label => dateGroups[label] || 0);
 
   return { labels, data };
@@ -1113,6 +1136,15 @@ function renderTrendChart() {
 
   const ctx = chartCanvas.getContext('2d');
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+  const isMobile = window.innerWidth < 600;
+
+  // Abbreviated Y-axis: "Rs 5k", "Rs 1.2L" etc.
+  function fmtTick(value) {
+    if (value === 0) return 'Rs 0';
+    if (value >= 100000) return 'Rs ' + (value / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
+    if (value >= 1000)   return 'Rs ' + (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return 'Rs ' + value;
+  }
 
   trendChartInstance = new Chart(ctx, {
     type: 'line',
@@ -1122,15 +1154,15 @@ function renderTrendChart() {
         label: 'Spending',
         data: data,
         borderColor: '#4a9eff',
-        backgroundColor: 'rgba(74, 158, 255, 0.1)',
-        borderWidth: 3,
+        backgroundColor: 'rgba(74, 158, 255, 0.08)',
+        borderWidth: isMobile ? 2.5 : 3,
         fill: true,
         tension: 0.4,
-        pointRadius: 5,
+        pointRadius: isMobile ? 4 : 5,
+        pointHoverRadius: isMobile ? 6 : 7,
         pointBackgroundColor: '#4a9eff',
         pointBorderColor: isDarkMode ? '#262626' : '#ffffff',
         pointBorderWidth: 2,
-        pointHoverRadius: 7,
         pointHoverBackgroundColor: '#0066cc'
       }]
     },
@@ -1143,7 +1175,8 @@ function renderTrendChart() {
       },
       plugins: {
         legend: {
-          display: true,
+          // Hide legend on mobile to save space; show on desktop
+          display: !isMobile,
           labels: {
             color: isDarkMode ? '#b0b0b0' : '#666666',
             font: { size: 12, weight: '500' },
@@ -1152,14 +1185,14 @@ function renderTrendChart() {
           }
         },
         tooltip: {
-          backgroundColor: isDarkMode ? 'rgba(38, 38, 38, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          backgroundColor: isDarkMode ? 'rgba(38, 38, 38, 0.97)' : 'rgba(255, 255, 255, 0.97)',
           titleColor: isDarkMode ? '#e8e8e8' : '#1a1a1a',
           bodyColor: isDarkMode ? '#b0b0b0' : '#666666',
           borderColor: isDarkMode ? '#3a3a3a' : '#e5e5e5',
           borderWidth: 1,
-          padding: 12,
-          titleFont: { size: 13, weight: '600' },
-          bodyFont: { size: 12 },
+          padding: isMobile ? 10 : 12,
+          titleFont: { size: isMobile ? 12 : 13, weight: '600' },
+          bodyFont: { size: isMobile ? 11 : 12 },
           callbacks: {
             label: function (context) {
               return 'Spent: ' + fmt(context.parsed.y);
@@ -1170,26 +1203,29 @@ function renderTrendChart() {
       scales: {
         y: {
           beginAtZero: true,
+          ticks: {
+            maxTicksLimit: isMobile ? 5 : 7,
+            color: isDarkMode ? '#b0b0b0' : '#888888',
+            font: { size: isMobile ? 10 : 11 },
+            // Compact format: Rs 5k instead of Rs 5,000.00
+            callback: fmtTick
+          },
           grid: {
             color: isDarkMode ? 'rgba(58, 58, 58, 0.5)' : 'rgba(229, 229, 229, 0.5)',
             drawBorder: false
-          },
-          ticks: {
-            color: isDarkMode ? '#b0b0b0' : '#666666',
-            font: { size: 11 },
-            callback: function (value) {
-              return fmt(value);
-            }
           }
         },
         x: {
+          ticks: {
+            color: isDarkMode ? '#b0b0b0' : '#888888',
+            font: { size: isMobile ? 10 : 11 },
+            maxRotation: isMobile ? 30 : 0,
+            minRotation: 0,
+            autoSkip: false
+          },
           grid: {
             display: false,
             drawBorder: false
-          },
-          ticks: {
-            color: isDarkMode ? '#b0b0b0' : '#666666',
-            font: { size: 11 }
           }
         }
       }

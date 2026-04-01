@@ -762,21 +762,31 @@ button {
 }
 
 .chart-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chart-header-text {
+  flex: 1;
 }
 
 .chart-header h3 {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .chart-header p {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text2);
 }
 
+/* Pie/doughnut chart container */
 .chart-container {
   position: relative;
   height: 280px;
@@ -785,17 +795,82 @@ button {
   justify-content: center;
 }
 
+/* Trend line chart: scrollable wrapper on mobile */
+.line-chart-scroll-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  border-radius: 8px;
+  /* subtle gradient fade on right edge to hint scrollability */
+  -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+  mask-image: linear-gradient(to right, black 90%, transparent 100%);
+}
+
+.line-chart-scroll-wrap::-webkit-scrollbar {
+  height: 4px;
+}
+
+.line-chart-scroll-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.line-chart-scroll-wrap::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* When content fits, no mask needed */
+.line-chart-scroll-wrap.no-scroll {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
 .line-chart-container {
-  height: 340px;
+  position: relative;
+  height: 300px;
+  /* min-width ensures labels are never squeezed on narrow devices */
+  min-width: 100%;
+}
+
+/* Force minimum widths per tab to prevent label clutter */
+.line-chart-container[data-tab="weekly"] {
+  min-width: 480px;
+}
+
+.line-chart-container[data-tab="daily"] {
+  min-width: 420px;
+}
+
+.line-chart-container[data-tab="monthly"] {
+  min-width: 500px;
 }
 
 @media (max-width: 480px) {
+  .chart-card {
+    padding: 16px 14px;
+  }
+
   .chart-container {
-    height: 220px;
+    height: 200px;
   }
 
   .line-chart-container {
-    height: 240px;
+    height: 220px;
+  }
+
+  /* On very small screens, give more room for weekly labels */
+  .line-chart-container[data-tab="weekly"] {
+    min-width: 520px;
+  }
+
+  .line-chart-container[data-tab="daily"] {
+    min-width: 400px;
+  }
+
+  .line-chart-container[data-tab="monthly"] {
+    min-width: 440px;
   }
 }
 
