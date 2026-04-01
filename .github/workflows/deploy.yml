@@ -27,8 +27,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Inject HF Token
+        env:
+          HF_TOKEN_VALUE: ${{ secrets.HF_TOKEN }}
         run: |
-          sed -i "s|__HF_TOKEN_PLACEHOLDER__|${{ secrets.HF_TOKEN }}|g" voice-command.js
+          if [ -z "$HF_TOKEN_VALUE" ]; then
+            echo "::warning::HF_TOKEN secret is not set!"
+          else
+            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" voice-command.js
+            echo "Token injected successfully (length: ${#HF_TOKEN_VALUE})"
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
