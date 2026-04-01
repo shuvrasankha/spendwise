@@ -82,7 +82,6 @@ spendwise/
 - Multi-currency support
 - Advanced filtering and search
 - Mobile app (PWA)
-- Data import from bank statements
 
 ## Contributing
 
