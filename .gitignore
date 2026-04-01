@@ -1,6 +1,9 @@
 # Firebase config — contains API keys, never commit this file
 firebase-config.js
 
+# Hugging Face API token — contains secrets, never commit this file
+voice-config.js
+
 # OS / editor artifacts
 .DS_Store
 Thumbs.db

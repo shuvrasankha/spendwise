@@ -14,9 +14,10 @@ const db = getFirestore(app);
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  🔑  HUGGING FACE API TOKEN
-//  Paste your token below. Get one free at: https://huggingface.co/settings/tokens
+//  Token is loaded from voice-config.js (gitignored).
+//  Get one free at: https://huggingface.co/settings/tokens
 // ══════════════════════════════════════════════════════════════════════════════
-const HF_TOKEN = 'YOUR_HF_TOKEN_HERE'; // Get one free at: https://huggingface.co/settings/tokens
+import { HF_TOKEN } from './voice-config.js';
 const HF_MODEL = 'Qwen/Qwen2.5-Coder-32B-Instruct:fastest';
 const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 
