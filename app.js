@@ -914,8 +914,9 @@ function getCategoryBreakdown() {
   if (activeTab === 'daily') {
     displayExpenses = periodExpenses.filter(e => e.date === today);
   } else if (activeTab === 'weekly') {
+    // Use allExpenses for weekly to avoid period picker clipping across month boundaries
     const ws = getWeekStart();
-    displayExpenses = periodExpenses.filter(e => e.date >= ws && e.date <= today);
+    displayExpenses = allExpenses.filter(e => e.date >= ws && e.date <= today);
   } else if (activeTab === 'monthly') {
     let displayYear = y || now.getFullYear();
     let displayMonth = m || pad(now.getMonth() + 1);
@@ -1049,7 +1050,7 @@ function getTrendData() {
       dateGroups[formatDate(dateStr)] = dayExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'weekly') {
-    // Show last 4 weeks
+    // Show last 4 weeks (use allExpenses to avoid period picker clipping across month boundaries)
     labels = [];
     for (let i = 3; i >= 0; i--) {
       const weekDate = new Date();
@@ -1062,21 +1063,21 @@ function getTrendData() {
       const weekLabel = 'Week of ' + formatDate(weekStart.toISOString().split('T')[0]);
       labels.push(weekLabel);
 
-      const weekExpenses = periodExpenses.filter(e => {
+      const weekExpenses = allExpenses.filter(e => {
         return e.date >= weekStart.toISOString().split('T')[0] && e.date <= weekEnd.toISOString().split('T')[0];
       });
       dateGroups[weekLabel] = weekExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'monthly') {
-    // Show all months in the year with data
+    // Show all months in the year (use allExpenses filtered by year only, not month)
     let displayYear = y || now.getFullYear();
     for (let month = 1; month <= 12; month++) {
       const monthStr = pad(month);
       const monthLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
       labels.push(monthLabel);
 
-      const monthExpenses = periodExpenses.filter(e => {
-        return e.date.substring(0, 4) === String(displayYear) && e.date.substring(5, 7) === monthStr;
+      const monthExpenses = allExpenses.filter(e => {
+        return e.date && e.date.substring(0, 4) === String(displayYear) && e.date.substring(5, 7) === monthStr;
       });
       dateGroups[monthLabel] = monthExpenses.reduce((s, e) => s + e.amount, 0);
     }
