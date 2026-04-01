@@ -34,6 +34,7 @@ jobs:
             echo "::warning::HF_TOKEN secret is not set!"
           else
             sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" voice-command.js
+            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" ai-insights.js
             echo "Token injected successfully (length: ${#HF_TOKEN_VALUE})"
           fi
 

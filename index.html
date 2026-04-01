@@ -178,6 +178,9 @@
       <button class="bottom-nav-btn" onclick="showPage('history')" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
+      <button class="bottom-nav-btn" onclick="showPage('insights')" id="bnav-insights">
+        <i data-lucide="sparkles"></i><span>AI</span>
+      </button>
     </div>
 
     <aside class="sidebar">
@@ -193,6 +196,9 @@
         </button>
         <button class="sidebar-btn" onclick="showPage('history')" id="snav-history">
           <i data-lucide="history"></i> History
+        </button>
+        <button class="sidebar-btn" onclick="showPage('insights')" id="snav-insights">
+          <i data-lucide="sparkles"></i> AI Insights
         </button>
       </nav>
     </aside>
@@ -705,6 +711,72 @@
         </div>
       </div>
 
+      <!-- ═══ AI INSIGHTS PAGE ═══ -->
+      <div id="page-insights" class="page hidden">
+        <div class="insights-hero">
+          <div class="insights-hero-glow"></div>
+          <div class="insights-hero-content">
+            <div class="insights-hero-icon">
+              <i data-lucide="brain"></i>
+            </div>
+            <div>
+              <h2>AI Insights</h2>
+              <p>Smart analysis of your spending patterns</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="insights-controls">
+          <div class="insights-period-selects">
+            <div class="insights-select-wrap">
+              <i data-lucide="calendar"></i>
+              <select id="insights-month"></select>
+            </div>
+            <div class="insights-select-wrap">
+              <i data-lucide="calendar-range"></i>
+              <select id="insights-year"></select>
+            </div>
+          </div>
+          <div class="insights-action-btns">
+            <button class="insights-analyze-btn" id="insights-analyze-btn">
+              <i data-lucide="sparkles"></i>
+              <span>Analyze My Spending</span>
+            </button>
+            <button class="insights-refresh-btn" id="insights-refresh-btn" title="Refresh (bypass cache)">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+          </div>
+          <span id="insights-cached-badge" class="insights-cached-badge hidden">
+            <i data-lucide="database"></i> Cached result
+          </span>
+        </div>
+
+        <!-- Error state -->
+        <div id="insights-error" class="insights-error-card hidden">
+          <div class="insights-error-icon"><i data-lucide="alert-circle"></i></div>
+          <p class="insights-error-text">An error occurred.</p>
+          <button class="btn-secondary" onclick="document.getElementById('insights-error').classList.add('hidden')">Dismiss</button>
+        </div>
+
+        <!-- Empty state -->
+        <div id="insights-empty" class="insights-empty-state">
+          <div class="insights-empty-illustration">
+            <div class="empty-orb">
+              <i data-lucide="brain"></i>
+            </div>
+            <div class="empty-sparkles">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <h3>Ready to Analyze</h3>
+          <p>Select a month and tap <strong>"Analyze My Spending"</strong> to get AI-powered insights about your financial habits.</p>
+        </div>
+
+        <!-- Results container (populated by ai-insights.js) -->
+        <div id="insights-results" class="insights-results hidden"></div>
+      </div>
+
     </main>
   </div>
 
@@ -1069,6 +1141,7 @@
   </div>
   <script type="module" src="app.js"></script>
   <script type="module" src="voice-command.js"></script>
+  <script type="module" src="ai-insights.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {

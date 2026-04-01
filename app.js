@@ -166,7 +166,7 @@ onAuthStateChanged(auth, user => {
 
     // Handle hash-based routing (e.g. index.html#history)
     const pageHash = window.location.hash.replace('#', '');
-    if (pageHash && ['dashboard', 'add', 'history'].includes(pageHash)) {
+    if (pageHash && ['dashboard', 'add', 'history', 'insights'].includes(pageHash)) {
       showPage(pageHash);
     }
   } else {
