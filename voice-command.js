@@ -600,7 +600,7 @@ function handleTextSubmit() {
 // ══════════════════════════════════════════════════════════════════════════════
 //  INIT — Wire up events
 // ══════════════════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+function initVoiceUI() {
   // FAB click
   const fab = document.getElementById('voice-fab');
   if (fab) fab.addEventListener('click', openVoiceModal);
@@ -675,4 +675,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Hide FAB initially (shown when auth resolves)
   if (fab) fab.style.display = 'none';
-});
+}
+
+// ── DOM-ready dispatcher ─────────────────────────────────────────────────────
+// Module scripts with top-level await can miss DOMContentLoaded. Handle both cases.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initVoiceUI);
+} else {
+  // DOM already parsed — run immediately
+  initVoiceUI();
+}
