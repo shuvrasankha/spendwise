@@ -17,7 +17,11 @@ const db = getFirestore(app);
 //  Token is loaded from voice-config.js (gitignored).
 //  Get one free at: https://huggingface.co/settings/tokens
 // ══════════════════════════════════════════════════════════════════════════════
-import { HF_TOKEN } from './voice-config.js';
+let HF_TOKEN = 'YOUR_HF_TOKEN_HERE';
+try {
+  const config = await import('./voice-config.js');
+  if (config.HF_TOKEN) HF_TOKEN = config.HF_TOKEN;
+} catch (_) { /* voice-config.js not deployed — AI parsing won't work but FAB + speech still will */ }
 const HF_MODEL = 'Qwen/Qwen2.5-Coder-32B-Instruct:fastest';
 const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 
