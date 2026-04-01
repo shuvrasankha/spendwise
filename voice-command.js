@@ -219,7 +219,7 @@ For INCOME, return:
 }
 
 async function callHuggingFaceAPI(text) {
-  if (!HF_TOKEN || HF_TOKEN === '__HF_TOKEN_PLACEHOLDER__' || HF_TOKEN.startsWith('__')) {
+  if (!HF_TOKEN || HF_TOKEN.length < 10 || HF_TOKEN.includes('PLACEHOLDER')) {
     throw new Error('HF_TOKEN_NOT_SET');
   }
 
