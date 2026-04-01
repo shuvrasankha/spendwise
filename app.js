@@ -255,6 +255,11 @@ window.showPage = (page) => {
   document.getElementById("page-" + page).classList.remove("hidden");
   const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
   const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
+
+  // Voice FAB: only visible on the "add expense" page
+  const voiceFab = document.getElementById('voice-fab');
+  if (voiceFab) voiceFab.style.display = (page === 'add') ? '' : 'none';
+
   if (page === "dashboard") {
     renderDashboardTable();
     // Defer chart rendering to avoid blocking UI interactions

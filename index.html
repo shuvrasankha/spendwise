@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Content-Security-Policy: defense-in-depth fallback (primary enforcement via Netlify headers in netlify.toml) -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com; frame-ancestors 'none';">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com; frame-ancestors 'none';">
   <title>SpendWise - Daily Expense Tracker</title>
   <link rel="icon" type="image/png" href="logo2.png">
   <link rel="manifest" href="manifest.json">
@@ -708,6 +708,82 @@
     </main>
   </div>
 
+  <!-- Voice Command FAB -->
+  <button id="voice-fab" class="voice-fab" title="Voice Command" aria-label="Voice Command">
+    <i data-lucide="mic"></i>
+  </button>
+
+  <!-- Voice Command Modal -->
+  <div id="voice-modal" class="voice-modal-overlay hidden">
+    <div class="voice-modal-sheet">
+      <div class="voice-modal-handle"></div>
+      <div class="voice-modal-header">
+        <div class="voice-modal-title">
+          <i data-lucide="audio-waveform"></i>
+          <span>Voice Command</span>
+        </div>
+        <button id="voice-close-btn" class="voice-close-btn" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="voice-modal-body">
+        <!-- Mic Button -->
+        <div class="voice-mic-area">
+          <div class="voice-mic-wrap">
+            <button id="voice-mic-btn" class="voice-mic-btn" title="Tap to speak">
+              <i id="voice-mic-icon" data-lucide="mic"></i>
+            </button>
+            <div id="voice-pulse-rings" class="voice-pulse-rings">
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <div class="ring"></div>
+            </div>
+          </div>
+          <span class="voice-mic-label">Tap to speak</span>
+        </div>
+
+        <!-- Language selector -->
+        <div class="voice-lang-picker">
+          <i data-lucide="globe"></i>
+          <select id="voice-lang-select" title="Speech language"></select>
+        </div>
+
+        <!-- Transcript -->
+        <div id="voice-transcript" class="voice-transcript">Tap the mic or type your command</div>
+
+        <!-- Text input fallback -->
+        <div class="voice-text-input-wrap">
+          <input type="text" id="voice-text-input" placeholder="Or type: &quot;Spent 200 on groceries today&quot;" />
+          <button id="voice-send-btn" class="voice-send-btn" title="Parse command">
+            <i data-lucide="send-horizontal"></i>
+          </button>
+        </div>
+
+        <!-- Status -->
+        <div id="voice-status" class="voice-status hidden"></div>
+
+        <!-- Parsing spinner -->
+        <div id="voice-parsing-spinner" class="voice-parsing-spinner hidden">
+          <div class="voice-parsing-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="voice-parsing-text">AI is analyzing…</span>
+        </div>
+
+        <!-- Parsed result preview -->
+        <div id="voice-preview" class="voice-preview hidden"></div>
+
+        <!-- Action buttons -->
+        <div id="voice-actions" class="voice-actions hidden">
+          <button id="voice-cancel-btn" class="voice-cancel-btn">Cancel</button>
+          <button id="voice-confirm-btn" class="voice-confirm-btn">
+            <i data-lucide="check-circle"></i> Confirm & Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <div id="modal" class="modal-overlay hidden">
@@ -992,6 +1068,7 @@
     </div>
   </div>
   <script type="module" src="app.js"></script>
+  <script type="module" src="voice-command.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(() => {
