@@ -35,6 +35,7 @@ jobs:
           else
             sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" voice-command.js
             sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" ai-insights.js
+            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" csv-upload.js
             echo "Token injected successfully (length: ${#HF_TOKEN_VALUE})"
           fi
 
