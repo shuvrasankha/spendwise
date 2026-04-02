@@ -100,7 +100,12 @@ function initSpeechRecognition() {
   const rec = new SR();
   rec.lang = selectedLang;
   rec.interimResults = true;
-  rec.continuous = true;   // Keep listening until user stops or silence timeout
+  
+  // Fix: continuous=true causes severe duplication bugs on Android Chrome 
+  // and is poorly supported on iOS Safari. Use false on mobile devices.
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  rec.continuous = !isMobile;
+  
   rec.maxAlternatives = 1;
 
   rec.onstart = () => {
