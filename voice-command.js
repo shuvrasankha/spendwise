@@ -31,7 +31,7 @@ const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 const EXPENSE_CATEGORIES = [
   'Food & Dining', 'Transport', 'Shopping', 'Entertainment', 'Health',
   'Bills & Utilities', 'Education', 'Travel', 'Groceries', 'Subscription',
-  'Rent', 'Fitness', 'Personal Care', 'Gifts', 'Other'
+  'Rent', 'Investment', 'Personal Care', 'Gifts', 'Other'
 ];
 
 const PAYMENT_METHODS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
@@ -65,8 +65,10 @@ function fmt(n) {
 let currentUser = null;
 let recognition = null;
 let isListening = false;
-let parsedData = null;
+let parsedData = null;   // null or Array of validated entries
 let selectedLang = localStorage.getItem('voiceLang') || 'en-IN';
+let silenceTimer = null;
+const SILENCE_TIMEOUT = 5000; // 5 seconds of silence → auto-stop
 
 // ── Auth listener ────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, user => {
@@ -98,7 +100,7 @@ function initSpeechRecognition() {
   const rec = new SR();
   rec.lang = selectedLang;
   rec.interimResults = true;
-  rec.continuous = false;
+  rec.continuous = true;   // Keep listening until user stops or silence timeout
   rec.maxAlternatives = 1;
 
   rec.onstart = () => {
@@ -107,25 +109,35 @@ function initSpeechRecognition() {
   };
 
   rec.onresult = (e) => {
-    let interim = '';
-    let final = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    // Reset silence timer on every speech result
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      if (isListening) stopListening();
+    }, SILENCE_TIMEOUT);
+
+    // Accumulate ALL final results (continuous mode keeps them in e.results)
+    let finalTranscript = '';
+    let interimTranscript = '';
+    for (let i = 0; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) final += t;
-      else interim += t;
+      if (e.results[i].isFinal) finalTranscript += t + ' ';
+      else interimTranscript += t;
     }
+
     const transcriptEl = document.getElementById('voice-transcript');
     if (transcriptEl) {
-      transcriptEl.textContent = final || interim;
-      transcriptEl.classList.toggle('interim', !final && !!interim);
+      const display = (finalTranscript + interimTranscript).trim();
+      transcriptEl.textContent = display || 'Listening…';
+      transcriptEl.classList.toggle('interim', !finalTranscript.trim() && !!interimTranscript);
     }
-    if (final) {
-      document.getElementById('voice-text-input').value = final;
+    if (finalTranscript.trim()) {
+      document.getElementById('voice-text-input').value = finalTranscript.trim();
     }
   };
 
   rec.onerror = (e) => {
     console.error('Speech error:', e.error);
+    clearTimeout(silenceTimer);
     isListening = false;
     updateRecordingUI(false);
     if (e.error === 'not-allowed') {
@@ -139,9 +151,9 @@ function initSpeechRecognition() {
 
   rec.onend = () => {
     isListening = false;
+    clearTimeout(silenceTimer);
     updateRecordingUI(false);
     // Auto-parse if we have transcript text
-    const transcriptEl = document.getElementById('voice-transcript');
     const textInput = document.getElementById('voice-text-input');
     if (textInput && textInput.value.trim()) {
       parseVoiceCommand(textInput.value.trim());
@@ -158,13 +170,18 @@ function startListening() {
     return;
   }
   // Reset UI
-  document.getElementById('voice-transcript').textContent = 'Listening…';
+  document.getElementById('voice-transcript').textContent = 'Listening… (speak naturally, will auto-stop after pause)';
   document.getElementById('voice-transcript').classList.remove('interim');
   document.getElementById('voice-text-input').value = '';
   hidePreview();
   hideVoiceStatus();
   try {
     recognition.start();
+    // Start initial silence timer — if no speech at all, stop after timeout
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      if (isListening) stopListening();
+    }, SILENCE_TIMEOUT + 2000); // Give a bit extra for initial silence
   } catch (e) {
     // Already started — stop and restart
     recognition.stop();
@@ -173,6 +190,7 @@ function startListening() {
 }
 
 function stopListening() {
+  clearTimeout(silenceTimer);
   if (recognition && isListening) {
     recognition.stop();
   }
@@ -195,25 +213,30 @@ function buildPrompt(text) {
 Today is ${dayOfWeek}, ${today} (${monthName} ${now.getDate()}, ${now.getFullYear()}).
 
 IMPORTANT: The user may speak in ANY language including ${langInfo.label} (${langInfo.code}). You MUST understand the input regardless of language and always return JSON with field values in English.
-Common multilingual amount keywords: "Rs", "₹", "रुपये", "টাকা", "ரூபாய்", "రూపాయలు", etc.
+Common multilingual amount keywords: "Rs", "₹", "रुपये", "টাকা", "ரூபாய்", "రூபாயలు", etc.
 Common date words: "आज/today", "कल/yesterday", "আজ", "இன்று", "నేడు", etc.
 
 RULES:
-1. Determine if the user is describing an EXPENSE or INCOME.
-2. Extract the amount, date, and other relevant fields.
-3. If no date is mentioned, use today's date: ${today}
-4. If the user says "yesterday" (or its equivalent in any language), compute the correct date.
-5. For expenses, pick the best matching category from: ${EXPENSE_CATEGORIES.join(', ')}
-6. For expenses, pick payment method from: ${PAYMENT_METHODS.join(', ')}. Default to "UPI" if not mentioned.
-7. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), and bank if mentioned.
-8. Return ONLY valid JSON, no markdown, no explanation.
-9. All JSON field values MUST be in English, regardless of input language.
+1. The user may describe ONE or MULTIPLE transactions in a single sentence. You MUST extract ALL of them.
+2. For each transaction, determine if it is an EXPENSE or INCOME.
+3. Extract the amount, date, and other relevant fields for EACH transaction separately.
+4. If no date is mentioned, use today's date: ${today}
+5. If the user says "yesterday" (or its equivalent in any language), compute the correct date.
+6. For expenses, pick the best matching category from: ${EXPENSE_CATEGORIES.join(', ')}
+7. For expenses, pick payment method from: ${PAYMENT_METHODS.join(', ')}. Default to "UPI" if not mentioned.
+8. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), and bank if mentioned.
+9. Return ONLY valid JSON, no markdown, no explanation.
+10. All JSON field values MUST be in English, regardless of input language.
+11. ALWAYS return a JSON ARRAY (even for a single transaction).
 
-For EXPENSE, return:
+For EXPENSE entries, each element:
 {"type":"expense","amount":<number>,"category":"<category>","date":"YYYY-MM-DD","description":"<short description in English>","payment":"<payment method>","cardName":"","notes":""}
 
-For INCOME, return:
-{"type":"income","amount":<number>,"source":"<source in English>","date":"YYYY-MM-DD","paymentType":"<Online|Cash>","bank":"<bank name or empty>","notes":""}`,
+For INCOME entries, each element:
+{"type":"income","amount":<number>,"source":"<source in English>","date":"YYYY-MM-DD","paymentType":"<Online|Cash>","bank":"<bank name or empty>","notes":""}
+
+Example input: "today I spent 30 rs on breakfast and 100 on lunch. I also bought a fan from Amazon using credit card for 2000 rs"
+Example output: [{"type":"expense","amount":30,"category":"Food & Dining","date":"${today}","description":"Breakfast","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":100,"category":"Food & Dining","date":"${today}","description":"Lunch","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":2000,"category":"Shopping","date":"${today}","description":"Fan from Amazon","payment":"Credit Card","cardName":"","notes":""}]`,
     user: text
   };
 }
@@ -236,7 +259,7 @@ async function callHuggingFaceAPI(text) {
         { role: 'system', content: prompt.system },
         { role: 'user', content: prompt.user }
       ],
-      max_tokens: 300,
+      max_tokens: 1500,
       temperature: 0.1,
       top_p: 0.95
     })
@@ -262,14 +285,21 @@ async function callHuggingFaceAPI(text) {
   let jsonStr = content.trim();
   const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (jsonMatch) jsonStr = jsonMatch[1].trim();
-  // Also try to find a JSON object directly
-  const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (objMatch) jsonStr = objMatch[0];
+  // Try to find a JSON array first, then fall back to object
+  const arrMatch = jsonStr.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    jsonStr = arrMatch[0];
+  } else {
+    const objMatch = jsonStr.match(/\{[\s\S]*\}/);
+    if (objMatch) jsonStr = objMatch[0];
+  }
 
-  return JSON.parse(jsonStr);
+  const parsed = JSON.parse(jsonStr);
+  // Normalize: always return an array
+  return Array.isArray(parsed) ? parsed : [parsed];
 }
 
-function validateParsedData(data) {
+function validateSingleEntry(data) {
   if (!data || typeof data !== 'object') return null;
   if (!data.type || !['expense', 'income'].includes(data.type)) return null;
   if (!data.amount || isNaN(parseFloat(data.amount)) || parseFloat(data.amount) <= 0) return null;
@@ -308,6 +338,11 @@ function validateParsedData(data) {
   return data;
 }
 
+function validateEntries(dataArray) {
+  if (!Array.isArray(dataArray)) dataArray = [dataArray];
+  return dataArray.map(d => validateSingleEntry(d)).filter(Boolean);
+}
+
 async function parseVoiceCommand(text) {
   if (!text.trim()) return;
 
@@ -315,18 +350,24 @@ async function parseVoiceCommand(text) {
   showParsingSpinner(true);
 
   try {
-    const raw = await callHuggingFaceAPI(text);
-    const validated = validateParsedData(raw);
+    const rawEntries = await callHuggingFaceAPI(text);
+    const validEntries = validateEntries(rawEntries);
 
-    if (!validated) {
+    if (!validEntries.length) {
       showVoiceStatus('Could not understand the command. Please try rephrasing.', 'error');
       showParsingSpinner(false);
       return;
     }
 
-    parsedData = validated;
-    showPreview(validated);
-    showVoiceStatus('✅ Parsed successfully! Review and confirm below.', 'success');
+    parsedData = validEntries;
+    showPreview(validEntries);
+    const count = validEntries.length;
+    showVoiceStatus(
+      count === 1
+        ? '✅ Parsed successfully! Review and confirm below.'
+        : `✅ ${count} entries parsed! Review and confirm below.`,
+      'success'
+    );
     showParsingSpinner(false);
   } catch (err) {
     showParsingSpinner(false);
@@ -347,7 +388,7 @@ async function parseVoiceCommand(text) {
 //  SAVE TO FIRESTORE
 // ══════════════════════════════════════════════════════════════════════════════
 async function saveEntry() {
-  if (!parsedData || !currentUser) return;
+  if (!parsedData || !parsedData.length || !currentUser) return;
 
   const btn = document.getElementById('voice-confirm-btn');
   btn.disabled = true;
@@ -355,47 +396,53 @@ async function saveEntry() {
   if (window.lucide) lucide.createIcons();
 
   try {
-    if (parsedData.type === 'expense') {
-      await addDoc(collection(db, 'expenses'), {
-        uid: currentUser.uid,
-        amount: parsedData.amount,
-        category: parsedData.category,
-        date: parsedData.date,
-        payment: parsedData.payment,
-        cardName: parsedData.cardName || '',
-        description: parsedData.description || '-',
-        notes: parsedData.notes || '',
-        encoding: 'plain',
-        createdAt: serverTimestamp()
-      });
-    } else {
-      await addDoc(collection(db, 'income'), {
-        uid: currentUser.uid,
-        amount: parsedData.amount,
-        date: parsedData.date,
-        source: parsedData.source,
-        paymentType: parsedData.paymentType,
-        bank: parsedData.bank || '',
-        notes: parsedData.notes || '',
-        encoding: 'plain',
-        createdAt: serverTimestamp()
-      });
+    let savedCount = 0;
+    for (const entry of parsedData) {
+      if (entry.type === 'expense') {
+        await addDoc(collection(db, 'expenses'), {
+          uid: currentUser.uid,
+          amount: entry.amount,
+          category: entry.category,
+          date: entry.date,
+          payment: entry.payment,
+          cardName: entry.cardName || '',
+          description: entry.description || '-',
+          notes: entry.notes || '',
+          encoding: 'plain',
+          createdAt: serverTimestamp()
+        });
+      } else {
+        await addDoc(collection(db, 'income'), {
+          uid: currentUser.uid,
+          amount: entry.amount,
+          date: entry.date,
+          source: entry.source,
+          paymentType: entry.paymentType,
+          bank: entry.bank || '',
+          notes: entry.notes || '',
+          encoding: 'plain',
+          createdAt: serverTimestamp()
+        });
+      }
+      savedCount++;
     }
 
-    showVoiceStatus(`🎉 ${parsedData.type === 'expense' ? 'Expense' : 'Income'} of ${fmt(parsedData.amount)} saved!`, 'success');
+    const totalAmount = parsedData.reduce((sum, e) => sum + e.amount, 0);
+    const label = savedCount === 1
+      ? `🎉 ${parsedData[0].type === 'expense' ? 'Expense' : 'Income'} of ${fmt(totalAmount)} saved!`
+      : `🎉 ${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
+    showVoiceStatus(label, 'success');
 
     // Show toast on the page
-    showPageToast(`${parsedData.type === 'expense' ? 'Expense' : 'Income'} added via voice!`, 'success');
+    showPageToast(
+      savedCount === 1 ? 'Entry added via voice!' : `${savedCount} entries added via voice!`,
+      'success'
+    );
 
     // Reset after short delay
     setTimeout(() => {
       closeVoiceModal();
-      // Reload data if we're on a page that shows expenses/income
-      if (window.location.pathname.includes('income')) {
-        window.location.reload();
-      } else {
-        window.location.reload();
-      }
+      window.location.reload();
     }, 1200);
 
   } catch (err) {
@@ -473,72 +520,96 @@ function showParsingSpinner(show) {
   if (el) el.classList.toggle('hidden', !show);
 }
 
-function showPreview(data) {
+function showPreview(entries) {
   const preview = document.getElementById('voice-preview');
   if (!preview) return;
 
   let html = '';
-  if (data.type === 'expense') {
-    html = `
-      <div class="voice-preview-header expense">
-        <i data-lucide="trending-down"></i>
-        <span>Expense</span>
-      </div>
-      <div class="voice-preview-grid">
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Amount</span>
-          <span class="voice-preview-value amount">${fmt(data.amount)}</span>
-        </div>
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Date</span>
-          <span class="voice-preview-value">${formatDateShort(data.date)}</span>
-        </div>
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Category</span>
-          <span class="voice-preview-value">${escapeHtml(data.category)}</span>
-        </div>
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Payment</span>
-          <span class="voice-preview-value">${escapeHtml(data.payment)}</span>
-        </div>
-        <div class="voice-preview-field full">
-          <span class="voice-preview-label">Description</span>
-          <span class="voice-preview-value">${escapeHtml(data.description)}</span>
-        </div>
-      </div>`;
-  } else {
-    html = `
-      <div class="voice-preview-header income">
-        <i data-lucide="trending-up"></i>
-        <span>Income</span>
-      </div>
-      <div class="voice-preview-grid">
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Amount</span>
-          <span class="voice-preview-value amount income-green">${fmt(data.amount)}</span>
-        </div>
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Date</span>
-          <span class="voice-preview-value">${formatDateShort(data.date)}</span>
-        </div>
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Source</span>
-          <span class="voice-preview-value">${escapeHtml(data.source)}</span>
-        </div>
-        <div class="voice-preview-field">
-          <span class="voice-preview-label">Payment</span>
-          <span class="voice-preview-value">${escapeHtml(data.paymentType)}</span>
-        </div>
-        ${data.bank ? `<div class="voice-preview-field">
-          <span class="voice-preview-label">Bank</span>
-          <span class="voice-preview-value">${escapeHtml(data.bank)}</span>
-        </div>` : ''}
-      </div>`;
+
+  // Show entry count badge for multiple entries
+  if (entries.length > 1) {
+    const totalAmt = entries.reduce((s, e) => s + e.amount, 0);
+    html += `<div class="voice-preview-count">
+      <i data-lucide="layers"></i>
+      <span>${entries.length} entries detected</span>
+      <span class="voice-preview-total">Total: ${fmt(totalAmt)}</span>
+    </div>`;
   }
+
+  entries.forEach((data, idx) => {
+    if (data.type === 'expense') {
+      html += `
+        <div class="voice-preview-card">
+          <div class="voice-preview-header expense">
+            <i data-lucide="trending-down"></i>
+            <span>Expense${entries.length > 1 ? ' #' + (idx + 1) : ''}</span>
+          </div>
+          <div class="voice-preview-grid">
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Amount</span>
+              <span class="voice-preview-value amount">${fmt(data.amount)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Date</span>
+              <span class="voice-preview-value">${formatDateShort(data.date)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Category</span>
+              <span class="voice-preview-value">${escapeHtml(data.category)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Payment</span>
+              <span class="voice-preview-value">${escapeHtml(data.payment)}</span>
+            </div>
+            <div class="voice-preview-field full">
+              <span class="voice-preview-label">Description</span>
+              <span class="voice-preview-value">${escapeHtml(data.description)}</span>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      html += `
+        <div class="voice-preview-card">
+          <div class="voice-preview-header income">
+            <i data-lucide="trending-up"></i>
+            <span>Income${entries.length > 1 ? ' #' + (idx + 1) : ''}</span>
+          </div>
+          <div class="voice-preview-grid">
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Amount</span>
+              <span class="voice-preview-value amount income-green">${fmt(data.amount)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Date</span>
+              <span class="voice-preview-value">${formatDateShort(data.date)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Source</span>
+              <span class="voice-preview-value">${escapeHtml(data.source)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Payment</span>
+              <span class="voice-preview-value">${escapeHtml(data.paymentType)}</span>
+            </div>
+            ${data.bank ? `<div class="voice-preview-field">
+              <span class="voice-preview-label">Bank</span>
+              <span class="voice-preview-value">${escapeHtml(data.bank)}</span>
+            </div>` : ''}
+          </div>
+        </div>`;
+    }
+  });
 
   preview.innerHTML = html;
   preview.classList.remove('hidden');
   document.getElementById('voice-actions').classList.remove('hidden');
+
+  // Update button text for multiple entries
+  const btn = document.getElementById('voice-confirm-btn');
+  if (btn && entries.length > 1) {
+    btn.innerHTML = `<i data-lucide="check-circle"></i> Confirm & Save All (${entries.length})`;
+  }
+
   if (window.lucide) lucide.createIcons();
 }
 

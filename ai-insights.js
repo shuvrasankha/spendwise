@@ -29,7 +29,7 @@ const CACHE_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour
 const EXPENSE_CATEGORIES = [
   'Food & Dining', 'Transport', 'Shopping', 'Entertainment', 'Health',
   'Bills & Utilities', 'Education', 'Travel', 'Groceries', 'Subscription',
-  'Rent', 'Fitness', 'Personal Care', 'Gifts', 'Other'
+  'Rent', 'Investment', 'Personal Care', 'Gifts', 'Other'
 ];
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',

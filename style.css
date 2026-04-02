@@ -2244,6 +2244,7 @@ button {
   0% {
     transform: rotateY(0deg);
   }
+
   100% {
     transform: rotateY(360deg);
   }
@@ -2755,14 +2756,14 @@ button {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #0066cc, #4a9eff);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow:
-    0 4px 16px rgba(99, 102, 241, 0.4),
-    0 0 0 0 rgba(99, 102, 241, 0.3);
+    0 4px 16px rgba(0, 102, 204, 0.4),
+    0 0 0 0 rgba(0, 102, 204, 0.3);
   cursor: pointer;
   border: none;
   z-index: 90;
@@ -2773,8 +2774,8 @@ button {
 .voice-fab:hover {
   transform: scale(1.1);
   box-shadow:
-    0 6px 24px rgba(99, 102, 241, 0.5),
-    0 0 0 8px rgba(99, 102, 241, 0.1);
+    0 6px 24px rgba(0, 102, 204, 0.5),
+    0 0 0 8px rgba(0, 102, 204, 0.1);
 }
 
 .voice-fab:active {
@@ -2788,15 +2789,18 @@ button {
 }
 
 @keyframes voiceFabPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow:
-      0 4px 16px rgba(99, 102, 241, 0.4),
-      0 0 0 0 rgba(99, 102, 241, 0.3);
+      0 4px 16px rgba(0, 102, 204, 0.4),
+      0 0 0 0 rgba(0, 102, 204, 0.3);
   }
+
   50% {
     box-shadow:
-      0 4px 16px rgba(99, 102, 241, 0.4),
-      0 0 0 6px rgba(99, 102, 241, 0);
+      0 4px 16px rgba(0, 102, 204, 0.4),
+      0 0 0 6px rgba(0, 102, 204, 0);
   }
 }
 
@@ -2883,7 +2887,7 @@ button {
 }
 
 .voice-modal-title i {
-  color: #8b5cf6;
+  color: var(--accent);
 }
 
 .voice-close-btn {
@@ -2908,6 +2912,8 @@ button {
 /* Body */
 .voice-modal-body {
   padding: 20px 24px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 
 /* Mic Button Area */
@@ -2932,7 +2938,7 @@ button {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #0066cc, #4a9eff);
   color: #fff;
   display: flex;
   align-items: center;
@@ -2942,7 +2948,7 @@ button {
   z-index: 2;
   position: relative;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 102, 204, 0.35);
 }
 
 .voice-mic-btn:hover {
@@ -2966,9 +2972,12 @@ button {
 }
 
 @keyframes micGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
   }
+
   50% {
     box-shadow: 0 4px 30px rgba(239, 68, 68, 0.6);
   }
@@ -2985,7 +2994,7 @@ button {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid rgba(99, 102, 241, 0.3);
+  border: 2px solid rgba(0, 102, 204, 0.3);
   opacity: 0;
   transform: scale(1);
 }
@@ -3011,6 +3020,7 @@ button {
     opacity: 0.6;
     transform: scale(1);
   }
+
   100% {
     opacity: 0;
     transform: scale(1.8);
@@ -3058,12 +3068,12 @@ button {
 }
 
 .voice-lang-picker select:hover {
-  border-color: #8b5cf6;
+  border-color: var(--accent);
 }
 
 .voice-lang-picker select:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 /* Transcript area */
@@ -3073,6 +3083,8 @@ button {
   border-radius: var(--radius);
   padding: 16px;
   min-height: 56px;
+  max-height: 120px;
+  overflow-y: auto;
   font-size: 1rem;
   color: var(--text);
   line-height: 1.5;
@@ -3106,8 +3118,8 @@ button {
 }
 
 .voice-text-input-wrap input:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-bg);
 }
 
 .voice-text-input-wrap input::placeholder {
@@ -3118,7 +3130,7 @@ button {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #0066cc, #4a9eff);
   color: #fff;
   display: flex;
   align-items: center;
@@ -3154,9 +3166,9 @@ button {
 }
 
 .voice-status-loading {
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  color: #8b5cf6;
+  background: var(--accent-bg);
+  border: 1px solid rgba(0, 102, 204, 0.2);
+  color: var(--accent);
 }
 
 .voice-status-success {
@@ -3207,10 +3219,14 @@ button {
 }
 
 @keyframes parsingBounce {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     transform: scale(0.6);
     opacity: 0.4;
   }
+
   40% {
     transform: scale(1);
     opacity: 1;
@@ -3231,12 +3247,47 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  overflow-y: auto;
+  max-height: 340px;
   margin-bottom: 16px;
   animation: slideUp 0.3s ease;
 }
 
 .voice-preview.hidden {
   display: none;
+}
+
+/* Multi-entry count badge */
+.voice-preview-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #8b5cf6;
+}
+
+.voice-preview-count i {
+  width: 16px;
+  height: 16px;
+}
+
+.voice-preview-total {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Individual entry card within preview */
+.voice-preview-card {
+  border-bottom: 2px solid var(--border);
+}
+
+.voice-preview-card:last-child {
+  border-bottom: none;
 }
 
 .voice-preview-header {
@@ -3383,8 +3434,13 @@ button {
 }
 
 @keyframes voiceSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Desktop: centered modal instead of bottom sheet */
@@ -3449,8 +3505,17 @@ button {
 }
 
 @keyframes insightsGlowPulse {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.3); opacity: 1; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
 }
 
 .insights-hero-content {
@@ -3655,8 +3720,15 @@ button {
 }
 
 @keyframes orbFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .empty-sparkles {
@@ -3677,13 +3749,36 @@ button {
   animation: sparkleFloat 2.5s ease-in-out infinite;
 }
 
-.empty-sparkles span:nth-child(1) { top: 5px; right: -5px; animation-delay: 0s; }
-.empty-sparkles span:nth-child(2) { top: -8px; left: 30px; animation-delay: 0.8s; }
-.empty-sparkles span:nth-child(3) { bottom: 0; right: 10px; animation-delay: 1.6s; }
+.empty-sparkles span:nth-child(1) {
+  top: 5px;
+  right: -5px;
+  animation-delay: 0s;
+}
+
+.empty-sparkles span:nth-child(2) {
+  top: -8px;
+  left: 30px;
+  animation-delay: 0.8s;
+}
+
+.empty-sparkles span:nth-child(3) {
+  bottom: 0;
+  right: 10px;
+  animation-delay: 1.6s;
+}
 
 @keyframes sparkleFloat {
-  0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
-  50% { opacity: 0.8; transform: translateY(-12px) scale(1); }
+
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: translateY(-12px) scale(1);
+  }
 }
 
 .insights-empty-state h3 {
@@ -3789,8 +3884,15 @@ button {
 }
 
 @keyframes orbRingPulse {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(1.4); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }
 
 .insights-analyzing-steps {
@@ -3839,8 +3941,15 @@ button {
 }
 
 @keyframes stepPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.3); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.3);
+  }
 }
 
 /* ── Results Container ── */
@@ -3862,8 +3971,15 @@ button {
 }
 
 @keyframes insightSlideIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .insight-summary-card {
@@ -4106,9 +4222,17 @@ button {
   height: 14px;
 }
 
-.cat-row-trend.trend-up { color: #ef4444; }
-.cat-row-trend.trend-down { color: #10b981; }
-.cat-row-trend.trend-stable { color: var(--text3); }
+.cat-row-trend.trend-up {
+  color: #ef4444;
+}
+
+.cat-row-trend.trend-down {
+  color: #10b981;
+}
+
+.cat-row-trend.trend-stable {
+  color: var(--text3);
+}
 
 .cat-row-bar-bg {
   height: 6px;
