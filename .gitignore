@@ -4,6 +4,9 @@ firebase-config.js
 # Hugging Face API token — contains secrets, never commit this file
 voice-config.js
 
+# NVIDIA NIM API key — contains secrets, never commit this file
+nvidia-config.js
+
 # OS / editor artifacts
 .DS_Store
 Thumbs.db
