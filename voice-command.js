@@ -120,23 +120,42 @@ function initSpeechRecognition() {
       if (isListening) stopListening();
     }, SILENCE_TIMEOUT);
 
-    // Accumulate ALL final results (continuous mode keeps them in e.results)
-    let finalTranscript = '';
-    let interimTranscript = '';
+    // Merge logic that flawlessly handles BOTH Desktop (additive pieces) 
+    // and Android (accumulative full strings in each result element)
+    let display = '';
     for (let i = 0; i < e.results.length; i++) {
-      const t = e.results[i][0].transcript;
-      if (e.results[i].isFinal) finalTranscript += t + ' ';
-      else interimTranscript += t;
+      const t = e.results[i][0].transcript.trim();
+      if (!t) continue;
+
+      const currentLower = display.toLowerCase().trim();
+      const tLower = t.toLowerCase();
+
+      // If 't' contains everything we have so far (Android bug), replace it
+      if (tLower.startsWith(currentLower)) {
+        display = t;
+      } 
+      // If what we have already contains 't' (duplicate/older result), ignore it
+      else if (currentLower.startsWith(tLower)) {
+        // do nothing
+      } 
+      // Standard Desktop additive mode
+      else {
+        display += (display ? ' ' : '') + t;
+      }
     }
+
+    // Check if the last result is still interim to style the text
+    const isInterim = e.results.length > 0 && !e.results[e.results.length - 1].isFinal;
 
     const transcriptEl = document.getElementById('voice-transcript');
     if (transcriptEl) {
-      const display = (finalTranscript + interimTranscript).trim();
       transcriptEl.textContent = display || 'Listening…';
-      transcriptEl.classList.toggle('interim', !finalTranscript.trim() && !!interimTranscript);
+      transcriptEl.classList.toggle('interim', isInterim);
     }
-    if (finalTranscript.trim()) {
-      document.getElementById('voice-text-input').value = finalTranscript.trim();
+    
+    // Only set standard input value if we have a display generated to avoid overwriting with empty
+    if (display) {
+      document.getElementById('voice-text-input').value = display;
     }
   };
 
