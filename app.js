@@ -4,6 +4,15 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+// Currency helpers from global scope (currency.js loads before this module)
+const fmt = window.fmt;
+const fmtCompact = window.fmtCompact;
+const getCurrency = window.getCurrency;
+const getCurrencyInfo = window.getCurrencyInfo;
+const buildCurrencyOptions = window.buildCurrencyOptions;
+const updateCurrencyDisplay = window.updateCurrencyDisplay;
+const setCurrency = window.setCurrency;
+
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
 // and Firestore Security Rules (uid-scoped data access).
@@ -140,6 +149,7 @@ onAuthStateChanged(auth, user => {
     }
 
     setGreeting();
+    initCurrencySelector();
 
     // ── Cache-first strategy ──
     const cached = loadFromCache(user.uid);
@@ -461,6 +471,7 @@ window.openEditExpense = (id) => {
 
   editingExpenseId = id;
   document.getElementById("edit-amount").value = expense.amount;
+  updateCurrencyDisplay();
   document.getElementById("edit-date").value = expense.date;
   document.getElementById("edit-category").value = expense.category;
   document.getElementById("edit-payment").value = expense.payment;
@@ -888,12 +899,37 @@ function showToast(msg, type) {
   setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
-function fmt(n) { return "Rs " + Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+// fmt() is now provided by currency.js — removed local override
 function pad(n) { return String(n).padStart(2, "0"); }
 function todayStr() { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
 function getWeekStart() { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(d.setDate(diff)); return m.getFullYear() + "-" + pad(m.getMonth() + 1) + "-" + pad(m.getDate()); }
 function formatDate(ds) { return new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; document.getElementById("dashboard-greeting").textContent = g + (n ? ", " + n : "") + "!"; }
+
+// ── Currency ────────────────────────────────────────────────────────────────
+function initCurrencySelector() {
+  const sel = document.getElementById('currency-select');
+  if (!sel) return;
+  sel.innerHTML = buildCurrencyOptions(getCurrency());
+  // Wait for lucide to render icons, then update currency symbols
+  requestAnimationFrame(() => {
+    updateCurrencyDisplay();
+  });
+}
+
+window.handleCurrencyChange = (code) => {
+  setCurrency(code);
+  updateCurrencyDisplay();
+  // Re-render all currency-dependent UI
+  if (currentUser) {
+    updateCards();
+    renderDashboardTable();
+    renderHistory();
+    updatePeriodSummary();
+    updateIncomeCards();
+    requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+  }
+};
 function showFormMsg(msg, type) { const el = document.getElementById("form-msg"); el.textContent = msg; el.className = "form-msg " + type; el.classList.remove("hidden"); if (type === "success") setTimeout(() => el.classList.add("hidden"), 3000); }
 
 // ============================================================
@@ -1143,12 +1179,9 @@ function renderTrendChart() {
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
   const isMobile = window.innerWidth < 600;
 
-  // Abbreviated Y-axis: "Rs 5k", "Rs 1.2L" etc.
+  // Abbreviated Y-axis: uses fmtCompact from currency.js
   function fmtTick(value) {
-    if (value === 0) return 'Rs 0';
-    if (value >= 100000) return 'Rs ' + (value / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
-    if (value >= 1000)   return 'Rs ' + (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-    return 'Rs ' + value;
+    return fmtCompact(value);
   }
 
   trendChartInstance = new Chart(ctx, {

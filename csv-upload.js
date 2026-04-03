@@ -6,6 +6,9 @@ import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+// Currency helpers from global scope (currency.js loads before this module)
+const fmt = window.fmt;
+
 // ── Firebase (reuse the app already initialized by app.js) ───────────────────
 const app = getApp();
 const auth = getAuth(app);
@@ -51,9 +54,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-function fmt(n) {
-  return 'Rs ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// fmt() is now provided by currency.js
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');

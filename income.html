@@ -72,6 +72,10 @@
         <div class="profile-menu" id="profile-menu">
           <div class="user-avatar" id="user-avatar" onclick="toggleProfileMenu(event)">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
+            <div class="profile-currency-wrap">
+              <label for="currency-select">Currency</label>
+              <select id="currency-select" onchange="handleCurrencyChange(this.value)"></select>
+            </div>
             <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
               <i data-lucide="log-out"></i><span>Logout</span>
             </button>
@@ -177,9 +181,9 @@
 
         <div class="form-grid">
           <div class="form-group">
-            <label>Amount (Rs) *</label>
+            <label>Amount (<span class="currency-symbol">₹</span>) *</label>
             <div class="input-icon-wrap">
-              <i data-lucide="indian-rupee"></i>
+              <i data-lucide="banknote"></i>
               <input type="number" id="inc-amount" placeholder="0.00" min="0" step="0.01" />
             </div>
           </div>
@@ -332,9 +336,9 @@
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group">
-            <label>Amount (Rs) *</label>
+            <label>Amount (<span class="currency-symbol">₹</span>) *</label>
             <div class="input-icon-wrap">
-              <i data-lucide="indian-rupee"></i>
+              <i data-lucide="banknote"></i>
               <input type="number" id="edit-inc-amount" placeholder="0.00" min="0" step="0.01" />
             </div>
           </div>
@@ -388,6 +392,7 @@
     </div>
   </div>
 
+  <script src="currency.js"></script>
   <script type="module" src="income.js"></script>
   <script type="module" src="voice-command.js"></script>
   <script>

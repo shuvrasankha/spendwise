@@ -5,6 +5,9 @@ import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
+// Currency helpers from global scope (currency.js loads before this module)
+const fmt = window.fmt;
+
 // ── Firebase (reuse the app already initialized by app.js / income.js) ───────
 // getApp() returns the default Firebase app that was initialized by the main script.
 // This ensures we share the same auth state (so we can see the logged-in user).
@@ -57,9 +60,7 @@ function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
-function fmt(n) {
-  return 'Rs ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// fmt() is now provided by currency.js
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
