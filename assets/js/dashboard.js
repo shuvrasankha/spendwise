@@ -228,6 +228,28 @@ window.handleGoogleLogin = async () => {
 
 window.handleLogout = async () => { if (currentUser) clearCache(currentUser.uid); await signOut(auth); allExpenses = []; };
 
+// ── Mobile Menu ──────────────────────────────────────────────────────────────
+window.toggleMobileMenu = () => {
+  const overlay = document.getElementById('mobile-menu-overlay');
+  const panel = document.getElementById('mobile-menu-panel');
+  if (overlay && panel) {
+    overlay.classList.toggle('open');
+    panel.classList.toggle('open');
+  }
+};
+
+window.closeMobileMenu = () => {
+  const overlay = document.getElementById('mobile-menu-overlay');
+  const panel = document.getElementById('mobile-menu-panel');
+  if (overlay) overlay.classList.remove('open');
+  if (panel) panel.classList.remove('open');
+};
+
+window.navigateTo = (url) => {
+  closeMobileMenu();
+  window.location.href = url;
+};
+
 window.toggleProfileMenu = (e) => {
   if (e) e.stopPropagation();
   const dropdown = document.getElementById('profile-dropdown');
@@ -394,14 +416,15 @@ window.addExpense = async () => {
   const payment = document.getElementById("exp-payment").value;
   const description = document.getElementById("exp-description").value.trim();
   const notes = document.getElementById("exp-notes").value.trim();
+  const tags = getExpenseTags("exp");
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
     showLoader();
     const cardName = document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "";
-    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes: notes, encoding: "plain", createdAt: serverTimestamp() });
-    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes });
+    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes: notes, tags, encoding: "plain", createdAt: serverTimestamp() });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     updateCards();
     renderDashboardTable();
@@ -421,7 +444,7 @@ window.addExpense = async () => {
 };
 
 window.resetForm = () => {
-  ["exp-amount", "exp-description", "exp-notes", "exp-card-name"].forEach(id => {
+  ["exp-amount", "exp-description", "exp-notes", "exp-card-name", "exp-tags"].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = "";
   });
   document.getElementById("exp-category").value = "";
@@ -430,6 +453,7 @@ window.resetForm = () => {
   if (wrap) wrap.style.display = "none";
   document.getElementById("exp-date").value = todayStr();
   document.getElementById("form-msg").classList.add("hidden");
+  renderTagsDisplay("exp", []);
 };
 
 // Show/hide the card name input based on payment method
@@ -495,6 +519,9 @@ window.openEditExpense = (id) => {
     }
   });
 
+  // Load tags
+  setExpenseTags("edit", expense.tags || []);
+
   document.getElementById("edit-error").classList.add("hidden");
   document.getElementById("edit-modal").classList.remove("hidden");
 };
@@ -502,6 +529,7 @@ window.openEditExpense = (id) => {
 window.closeEditModal = () => {
   document.getElementById("edit-modal").classList.add("hidden");
   editingExpenseId = null;
+  setExpenseTags("edit", []);
 };
 
 window.saveEditExpense = async () => {
@@ -513,6 +541,7 @@ window.saveEditExpense = async () => {
   const payment = document.getElementById("edit-payment").value;
   const description = document.getElementById("edit-description").value.trim();
   const notes = document.getElementById("edit-notes").value.trim();
+  const tags = getExpenseTags("edit");
 
   const errEl = document.getElementById("edit-error");
 
@@ -545,6 +574,7 @@ window.saveEditExpense = async () => {
       cardName: cardName || "",
       description: description || "-",
       notes: notes,
+      tags,
       encoding: "plain"
     });
 
@@ -559,7 +589,8 @@ window.saveEditExpense = async () => {
         payment,
         cardName: document.getElementById("edit-card-name") ? document.getElementById("edit-card-name").value.trim() : "",
         description: description || "-",
-        notes
+        notes,
+        tags
       };
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
@@ -765,7 +796,7 @@ window.clearFilters = () => {
 
 function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
-  const cols = del ? 8 : 5;
+  const cols = del ? 9 : 5;
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan='${cols}' class='empty-row'>No expenses found.</td></tr>`;
     return;
@@ -812,6 +843,21 @@ function renderTable(tbodyId, rows, del) {
       tdNotes.dataset.label = 'Notes';
       tdNotes.textContent = e.notes || '-';
       tr.appendChild(tdNotes);
+
+      // Tags — only in history view
+      const tdTags = document.createElement('td');
+      tdTags.dataset.label = 'Tags';
+      if (e.tags && e.tags.length) {
+        e.tags.forEach(tag => {
+          const badge = document.createElement('span');
+          badge.className = 'tag-badge-inline';
+          badge.textContent = '#' + tag;
+          tdTags.appendChild(badge);
+        });
+      } else {
+        tdTags.textContent = '-';
+      }
+      tr.appendChild(tdTags);
     }
 
     // Amount (safe — formatted number)
@@ -1293,7 +1339,69 @@ function updateThemeIcon() {
 document.addEventListener("DOMContentLoaded", () => {
   updateThemeIcon();
   const d = document.getElementById("exp-date"); if (d) d.value = todayStr();
+  initTagInput("exp");
+  initTagInput("edit");
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  TAGS
+// ══════════════════════════════════════════════════════════════════════════════
+const _tagState = { exp: [], edit: [] };
+
+function initTagInput(prefix) {
+  const input = document.getElementById(`${prefix}-tags`);
+  if (!input) return;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(prefix);
+    }
+    if (e.key === 'Backspace' && !input.value && _tagState[prefix].length) {
+      _tagState[prefix].pop();
+      renderTagsDisplay(prefix, _tagState[prefix]);
+    }
+  });
+  input.addEventListener('blur', () => {
+    if (input.value.trim()) addTag(prefix);
+  });
+}
+
+function addTag(prefix) {
+  const input = document.getElementById(`${prefix}-tags`);
+  if (!input) return;
+  const raw = input.value.replace(/,/g, ' ').trim();
+  if (!raw) return;
+  const tags = raw.split(/\s+/).map(t => t.replace(/^#/, '').trim()).filter(Boolean);
+  tags.forEach(tag => {
+    if (!_tagState[prefix].includes(tag)) {
+      _tagState[prefix].push(tag);
+    }
+  });
+  input.value = '';
+  renderTagsDisplay(prefix, _tagState[prefix]);
+}
+
+function removeTag(prefix, tag) {
+  _tagState[prefix] = _tagState[prefix].filter(t => t !== tag);
+  renderTagsDisplay(prefix, _tagState[prefix]);
+}
+
+function renderTagsDisplay(prefix, tags) {
+  const container = document.getElementById(`${prefix}-tags-display`);
+  if (!container) return;
+  container.innerHTML = tags.map(tag =>
+    `<span class="tag-badge">#${escapeHtml(tag)}<span class="tag-remove" onclick="removeTag('${prefix}','${escapeHtml(tag)}')">&times;</span></span>`
+  ).join('');
+}
+
+function getExpenseTags(prefix) {
+  return _tagState[prefix] ? _tagState[prefix].slice() : [];
+}
+
+function setExpenseTags(prefix, tags) {
+  _tagState[prefix] = tags ? tags.slice() : [];
+  renderTagsDisplay(prefix, _tagState[prefix]);
+}
 
 // ============================================================
 //  CATEGORY TILE PICKER

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
+  <title>SpendWise - Debt Tracker</title>
+  <link rel="icon" type="image/png" href="assets/images/logo2.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121212">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/images/logo2.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+
+<body>
+
+  <!-- Full-page loader -->
+  <div id="page-loader" class="page-loader">
+    <div class="coin-scene">
+      <div class="coin">
+        <div class="coin-face coin-front">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="coinGrad" cx="40%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#FFE066"/>
+                <stop offset="50%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#B8860B"/>
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#coinGrad)" stroke="#B8860B" stroke-width="2"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#DAA520" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="60" y="72" text-anchor="middle" font-size="42" font-weight="700" fill="#8B6914" font-family="Inter, sans-serif">₹</text>
+          </svg>
+        </div>
+        <div class="coin-face coin-back">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="coinGradBack" cx="60%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#FFE066"/>
+                <stop offset="50%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#B8860B"/>
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#coinGradBack)" stroke="#B8860B" stroke-width="2"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#DAA520" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="60" cy="60" r="22" fill="none" stroke="#8B6914" stroke-width="2"/>
+            <text x="60" y="66" text-anchor="middle" font-size="20" font-weight="700" fill="#8B6914" font-family="Inter, sans-serif">SW</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <span class="page-loader-text">Loading SpendWise…</span>
+  </div>
+
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="assets/images/logo.png" alt="SpendWise Logo" class="auth-logo-image">
+        <p>Track every rupee, effortlessly.</p>
+      </div>
+      <div class="tab-switcher">
+        <button class="tab-btn active" onclick="switchTab('login')">Login</button>
+        <button class="tab-btn" onclick="switchTab('signup')">Sign Up</button>
+      </div>
+      <div id="login-form" class="auth-form">
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-icon-wrap"><i data-lucide="mail"></i>
+            <input type="email" id="login-email" placeholder="you@example.com" />
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="password-label-row">
+            <label>Password</label>
+            <button type="button" class="btn-forgot" onclick="showForgotPassword()">Forgot password?</button>
+          </div>
+          <div class="input-icon-wrap"><i data-lucide="lock"></i>
+            <input type="password" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="handleLogin()">Login</button>
+        <div class="divider"><span>or</span></div>
+        <button class="btn-google" onclick="handleGoogleLogin()">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+          </svg>
+          Continue with Google
+        </button>
+      </div>
+      <div id="signup-form" class="auth-form hidden">
+        <div class="form-group">
+          <label>Full Name</label>
+          <div class="input-icon-wrap"><i data-lucide="user"></i>
+            <input type="text" id="signup-name" placeholder="Your Name" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-icon-wrap"><i data-lucide="mail"></i>
+            <input type="email" id="signup-email" placeholder="you@example.com" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-icon-wrap"><i data-lucide="lock"></i>
+            <input type="password" id="signup-password" placeholder="Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character" />
+          </div>
+        </div>
+        <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+        <div class="divider"><span>or</span></div>
+        <button class="btn-google" onclick="handleGoogleLogin()">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+          </svg>
+          Continue with Google
+        </button>
+      </div>
+      <div id="auth-error" class="auth-error hidden"></div>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <nav class="navbar">
+      <div class="nav-left">
+        <img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image">
+      </div>
+      <div class="nav-right">
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
+          <i id="theme-icon" data-lucide="sun"></i>
+        </button>
+        <button class="menu-toggle" onclick="toggleMobileMenu()" title="Menu" id="menu-toggle-btn">
+          <i data-lucide="menu"></i>
+        </button>
+        <div class="profile-menu" id="profile-menu">
+          <div class="user-avatar" id="user-avatar">U</div>
+          <div class="profile-dropdown hidden" id="profile-dropdown">
+            <div class="profile-currency-wrap">
+              <label for="currency-select">Currency</label>
+              <select id="currency-select" onchange="handleCurrencyChange(this.value)"></select>
+            </div>
+            <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
+              <i data-lucide="log-out"></i><span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-menu-panel" id="mobile-menu-panel">
+      <div class="mobile-menu-header">
+        <span class="mobile-menu-title">Menu</span>
+        <button class="mobile-menu-close" onclick="closeMobileMenu()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <nav class="mobile-menu-nav">
+        <button class="mobile-menu-btn" onclick="navigateTo('index.html')" id="mmnu-dashboard">
+          <i data-lucide="layout-dashboard"></i> Dashboard
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('expense.html')" id="mmnu-add">
+          <i data-lucide="wallet"></i> Expense
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('income.html')" id="mmnu-income">
+          <i data-lucide="trending-up"></i> Income
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('history.html')" id="mmnu-history">
+          <i data-lucide="history"></i> History
+        </button>
+        <button class="mobile-menu-btn active" onclick="navigateTo('debt.html')" id="mmnu-debt">
+          <i data-lucide="hand-coins"></i> Debt Tracker
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('insights.html')" id="mmnu-insights">
+          <i data-lucide="sparkles"></i> AI Insights
+        </button>
+      </nav>
+      <div class="mobile-menu-footer">
+        <button class="btn-logout" onclick="handleLogout()">
+          <i data-lucide="log-out"></i> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom nav (mobile) -->
+    <div class="bottom-nav">
+      <button class="bottom-nav-btn" onclick="window.location.href='index.html'" id="bnav-dashboard">
+        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='expense.html'" id="bnav-add">
+        <i data-lucide="wallet"></i><span>Expense</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='income.html'" id="bnav-income">
+        <i data-lucide="trending-up"></i><span>Income</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='history.html'" id="bnav-history">
+        <i data-lucide="history"></i><span>History</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='debt.html'" id="bnav-debt">
+        <i data-lucide="hand-coins"></i><span>Debt</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='insights.html'" id="bnav-insights">
+        <i data-lucide="sparkles"></i><span>AI</span>
+      </button>
+    </div>
+
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-dashboard">
+          <i data-lucide="layout-dashboard"></i> Dashboard
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='expense.html'" id="snav-add">
+          <i data-lucide="wallet"></i> Expense
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='income.html'" id="snav-income">
+          <i data-lucide="trending-up"></i> Income
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='history.html'" id="snav-history">
+          <i data-lucide="history"></i> History
+        </button>
+        <button class="sidebar-btn active" id="snav-debt">
+          <i data-lucide="hand-coins"></i> Debt Tracker
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='insights.html'" id="snav-insights">
+          <i data-lucide="sparkles"></i> AI Insights
+        </button>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h2>Debt Tracker</h2>
+        <p>Track money you owe and money others owe you</p>
+      </div>
+
+      <!-- Debt Summary Cards -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Owed to You</span>
+            <div class="summary-icon"><i data-lucide="arrow-down-left"></i></div>
+          </div>
+          <div class="summary-amount" id="debt-owed-to-you"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="debt-owed-count">0 pending</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">You Owe</span>
+            <div class="summary-icon"><i data-lucide="arrow-up-right"></i></div>
+          </div>
+          <div class="summary-amount" id="debt-you-owe"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="debt-owe-count">0 pending</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Net Balance</span>
+            <div class="summary-icon"><i data-lucide="scale"></i></div>
+          </div>
+          <div class="summary-amount" id="debt-net-balance"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="debt-net-sub">Positive = you're ahead</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Settled</span>
+            <div class="summary-icon"><i data-lucide="check-circle"></i></div>
+          </div>
+          <div class="summary-amount" id="debt-settled-total"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="debt-settled-count">0 settled</div>
+        </div>
+      </div>
+
+      <!-- Add Debt Form -->
+      <div class="form-card" id="add-debt-section">
+        <div class="debt-form-header">
+          <div class="debt-form-icon"><i data-lucide="hand-coins"></i></div>
+          <div>
+            <h3 id="debt-form-heading">Add Debt</h3>
+            <p>Record a new debt entry</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Type *</label>
+            <div class="debt-type-toggle">
+              <button type="button" class="debt-type-btn active" data-type="they-owe" onclick="setDebtType('they-owe')">
+                <i data-lucide="arrow-down-left"></i> They Owe Me
+              </button>
+              <button type="button" class="debt-type-btn" data-type="i-owe" onclick="setDebtType('i-owe')">
+                <i data-lucide="arrow-up-right"></i> I Owe Them
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Amount (<span class="currency-symbol">₹</span>) *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="banknote"></i>
+              <input type="number" id="debt-amount" placeholder="0.00" min="0" step="0.01" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Person Name *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="user"></i>
+              <input type="text" id="debt-person" placeholder="e.g. John, Mom, Bank" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Date *</label>
+            <div class="input-icon-wrap">
+              <i data-lucide="calendar"></i>
+              <input type="date" id="debt-date" />
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notes <span class="optional-tag">optional</span></label>
+            <textarea id="debt-notes" rows="2" placeholder="e.g. Borrowed for dinner, loan for rent..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-secondary" onclick="resetDebtForm()">
+            <i data-lucide="rotate-ccw"></i> Clear
+          </button>
+          <button class="btn-debt-primary" id="btn-add-debt" onclick="addDebt()">
+            <i data-lucide="plus-circle"></i> <span id="debt-btn-label">Add Debt</span>
+          </button>
+        </div>
+        <div id="debt-form-msg" class="form-msg hidden"></div>
+      </div>
+
+      <!-- Active Debts Table -->
+      <div class="table-card" style="margin-top: 20px;">
+        <div class="table-header">
+          <span class="result-count">Active Debts</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th data-col="type">Type</th>
+                <th data-col="person">Person</th>
+                <th data-col="date">Date</th>
+                <th data-col="notes">Notes</th>
+                <th class="text-right" data-col="amount">Amount</th>
+                <th class="text-center" data-col="actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="debt-body">
+              <tr>
+                <td colspan="6" class="empty-row">No debts recorded yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Settled Debts History -->
+      <div class="table-card" style="margin-top: 20px;">
+        <div class="table-header">
+          <span class="result-count">Settlement History</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th data-col="type">Type</th>
+                <th data-col="person">Person</th>
+                <th data-col="date">Date</th>
+                <th data-col="settled-date">Settled On</th>
+                <th class="text-right" data-col="amount">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="debt-history-body">
+              <tr>
+                <td colspan="5" class="empty-row">No settled debts yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Delete Debt Modal -->
+  <div id="debt-delete-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-icon"><i data-lucide="trash-2"></i></div>
+      <h3>Delete Debt Entry?</h3>
+      <p>This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeDebtDeleteModal()">Cancel</button>
+        <button class="btn-danger" onclick="confirmDebtDelete()">
+          <i data-lucide="trash-2"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settle Debt Modal -->
+  <div id="debt-settle-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-icon" style="background: var(--success-bg); color: var(--success);"><i data-lucide="check-circle"></i></div>
+      <h3>Mark as Settled?</h3>
+      <p id="debt-settle-msg">This debt will be moved to settlement history.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeDebtSettleModal()">Cancel</button>
+        <button class="btn-debt-primary" onclick="confirmDebtSettle()">
+          <i data-lucide="check-circle"></i> Confirm Settlement
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Voice Command FAB -->
+  <button id="voice-fab" class="voice-fab" title="Voice Command" aria-label="Voice Command">
+    <i data-lucide="mic"></i>
+  </button>
+
+  <!-- Voice Command Modal -->
+  <div id="voice-modal" class="voice-modal-overlay hidden">
+    <div class="voice-modal-sheet">
+      <div class="voice-modal-handle"></div>
+      <div class="voice-modal-header">
+        <div class="voice-modal-title">
+          <i data-lucide="audio-waveform"></i>
+          <span>Voice Command</span>
+        </div>
+        <button id="voice-close-btn" class="voice-close-btn" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="voice-modal-body">
+        <div class="voice-mic-area">
+          <div class="voice-mic-wrap">
+            <button id="voice-mic-btn" class="voice-mic-btn" title="Tap to speak">
+              <i id="voice-mic-icon" data-lucide="mic"></i>
+            </button>
+            <div id="voice-pulse-rings" class="voice-pulse-rings">
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <div class="ring"></div>
+            </div>
+          </div>
+          <span class="voice-mic-label">Tap to speak</span>
+        </div>
+
+        <div class="voice-lang-picker">
+          <i data-lucide="globe"></i>
+          <select id="voice-lang-select" title="Speech language"></select>
+        </div>
+
+        <div id="voice-transcript" class="voice-transcript">Tap the mic or type your command</div>
+        <div class="voice-text-input-wrap">
+          <input type="text" id="voice-text-input" placeholder="Or type: &quot;I lent 5000 to John yesterday&quot;" />
+          <button id="voice-send-btn" class="voice-send-btn" title="Parse command">
+            <i data-lucide="send-horizontal"></i>
+          </button>
+        </div>
+        <div id="voice-status" class="voice-status hidden"></div>
+        <div id="voice-parsing-spinner" class="voice-parsing-spinner hidden">
+          <div class="voice-parsing-dots">
+            <span></span><span></span><span></span>
+          </div>
+          <span class="voice-parsing-text">AI is analyzing…</span>
+        </div>
+        <div id="voice-preview" class="voice-preview hidden"></div>
+        <div id="voice-actions" class="voice-actions hidden">
+          <button id="voice-cancel-btn" class="voice-cancel-btn">Cancel</button>
+          <button id="voice-confirm-btn" class="voice-confirm-btn">
+            <i data-lucide="check-circle"></i> Confirm & Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/utils/currency.js"></script>
+  <script type="module" src="assets/js/debt.js"></script>
+  <script type="module" src="assets/js/modules/voice-command.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+
+</html>

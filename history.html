@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com; frame-ancestors 'none';">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
   <title>SpendWise - Transaction History</title>
   <link rel="icon" type="image/png" href="assets/images/logo2.png">
   <link rel="manifest" href="manifest.json">
@@ -150,6 +150,9 @@
         <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
           <i id="theme-icon" data-lucide="sun"></i>
         </button>
+        <button class="menu-toggle" onclick="toggleMobileMenu()" title="Menu" id="menu-toggle-btn">
+          <i data-lucide="menu"></i>
+        </button>
         <div class="profile-menu" id="profile-menu">
           <div class="user-avatar" id="user-avatar">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
@@ -165,6 +168,42 @@
       </div>
     </nav>
 
+    <!-- Mobile Menu -->
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-menu-panel" id="mobile-menu-panel">
+      <div class="mobile-menu-header">
+        <span class="mobile-menu-title">Menu</span>
+        <button class="mobile-menu-close" onclick="closeMobileMenu()">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <nav class="mobile-menu-nav">
+        <button class="mobile-menu-btn" onclick="navigateTo('index.html')" id="mmnu-dashboard">
+          <i data-lucide="layout-dashboard"></i> Dashboard
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('expense.html')" id="mmnu-add">
+          <i data-lucide="wallet"></i> Expense
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('income.html')" id="mmnu-income">
+          <i data-lucide="trending-up"></i> Income
+        </button>
+        <button class="mobile-menu-btn active" onclick="navigateTo('history.html')" id="mmnu-history">
+          <i data-lucide="history"></i> History
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('debt.html')" id="mmnu-debt">
+          <i data-lucide="hand-coins"></i> Debt Tracker
+        </button>
+        <button class="mobile-menu-btn" onclick="navigateTo('insights.html')" id="mmnu-insights">
+          <i data-lucide="sparkles"></i> AI Insights
+        </button>
+      </nav>
+      <div class="mobile-menu-footer">
+        <button class="btn-logout" onclick="handleLogout()">
+          <i data-lucide="log-out"></i> Logout
+        </button>
+      </div>
+    </div>
+
     <!-- Bottom nav (mobile) -->
     <div class="bottom-nav">
       <button class="bottom-nav-btn" onclick="window.location.href='index.html'" id="bnav-dashboard">
@@ -178,6 +217,9 @@
       </button>
       <button class="bottom-nav-btn active" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
+      </button>
+      <button class="bottom-nav-btn" onclick="window.location.href='debt.html'" id="bnav-debt">
+        <i data-lucide="hand-coins"></i><span>Debt</span>
       </button>
       <button class="bottom-nav-btn" onclick="window.location.href='insights.html'" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>AI</span>
@@ -198,6 +240,9 @@
         </button>
         <button class="sidebar-btn active" id="snav-history">
           <i data-lucide="history"></i> History
+        </button>
+        <button class="sidebar-btn" onclick="window.location.href='debt.html'" id="snav-debt">
+          <i data-lucide="hand-coins"></i> Debt Tracker
         </button>
         <button class="sidebar-btn" onclick="window.location.href='insights.html'" id="snav-insights">
           <i data-lucide="sparkles"></i> AI Insights
@@ -297,6 +342,7 @@
                   <th data-col="description">Description</th>
                   <th data-col="payment">Payment</th>
                   <th data-col="notes">Notes</th>
+                  <th data-col="tags">Tags</th>
                   <th class="text-right sortable" data-col="amount" onclick="sortHistory('amount')">Amount <i
                       data-lucide="arrow-up-down" class="sort-icon"></i></th>
                   <th class="text-center" data-col="actions">Actions</th>
@@ -304,7 +350,7 @@
               </thead>
               <tbody id="history-body">
                 <tr>
-                  <td colspan="7" class="empty-row">No expenses recorded yet.</td>
+                  <td colspan="9" class="empty-row">No expenses recorded yet.</td>
                 </tr>
               </tbody>
             </table>
