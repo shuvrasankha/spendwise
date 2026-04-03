@@ -72,12 +72,13 @@ onAuthStateChanged(auth, user => {
   currentUser = user;
   const fab = document.getElementById('voice-fab');
   if (fab) {
-    // On income.html, always show FAB when logged in.
+    // On expense.html, income.html — always show FAB when logged in.
     // On index.html, FAB visibility is controlled by showPage() in app.js.
-    const isIncomePage = window.location.pathname.includes('income');
+    const path = window.location.pathname;
+    const isStandalonePage = path.includes('expense') || path.includes('income') || path.includes('history');
     if (!user) {
       fab.style.display = 'none';
-    } else if (isIncomePage) {
+    } else if (isStandalonePage) {
       fab.style.display = '';
     }
     // On index.html, FAB starts hidden; showPage('add') will reveal it.
