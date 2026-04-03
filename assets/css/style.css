@@ -749,6 +749,17 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 }
 .auth-logo-icon i { width: 24px; height: 24px; }
 .auth-logo-image { height: 56px; width: auto; object-fit: contain; margin: 0 auto 10px; display: block; }
+.nav-logo-link {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: opacity var(--transition);
+}
+
+.nav-logo-link:hover {
+  opacity: 0.8;
+}
+
 .nav-logo-image { height: 36px; width: auto; object-fit: contain; }
 
 /* =====================
@@ -2330,6 +2341,256 @@ img {
 
 .btn-action.settle:hover {
   background: var(--success); color: white; border-color: var(--success);
+}
+
+/* =====================
+   BACKUP & RESTORE
+===================== */
+.profile-currency-wrap {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-currency-wrap label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+
+.profile-currency-wrap select {
+  width: 100%;
+  padding: 7px 28px 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23aeaeb2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: all var(--transition);
+}
+
+.profile-currency-wrap select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.profile-currency-wrap select:hover {
+  border-color: var(--accent);
+}
+
+.btn-profile-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.btn-profile-action i {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.btn-profile-action:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.profile-dropdown .btn-logout {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.backup-modal-box {
+  max-width: 480px;
+}
+
+.backup-section {
+  padding: 16px;
+  background: var(--bg2);
+  border-radius: var(--radius-xs);
+  margin-bottom: 12px;
+}
+
+.backup-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.backup-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.backup-section h4 i {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.backup-section p {
+  font-size: 0.8125rem;
+  color: var(--text2);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.btn-backup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-xs);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-backup:hover {
+  background: var(--accent-hover);
+}
+
+.btn-backup:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-backup svg,
+.btn-backup i {
+  width: 16px;
+  height: 16px;
+}
+
+.backup-file-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-xs);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  background: var(--surface);
+  margin-bottom: 12px;
+}
+
+.backup-file-drop:hover,
+.backup-file-drop.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.backup-file-drop i {
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.backup-file-drop p {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.backup-file-sub {
+  font-size: 0.75rem !important;
+  color: var(--text3) !important;
+}
+
+.backup-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.backup-file-name {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--text3);
+  padding: 3px 10px;
+  background: var(--surface);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.backup-file-name.has-file {
+  color: var(--accent);
+  border-color: rgba(0, 113, 227, 0.2);
+  background: var(--accent-bg);
+  font-weight: 500;
+}
+
+.backup-status {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.backup-status.hidden {
+  display: none;
+}
+
+.backup-status-loading {
+  background: var(--accent-bg);
+  border: 1px solid rgba(0, 113, 227, 0.15);
+  color: var(--accent);
+}
+
+.backup-status-success {
+  background: var(--success-bg);
+  border: 1px solid rgba(52, 199, 89, 0.2);
+  color: var(--success);
+}
+
+.backup-status-error {
+  background: var(--danger-bg);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  color: var(--danger);
+}
+
+.backup-status-warning {
+  background: var(--warning-bg);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+  color: var(--warning);
 }
 
 /* =====================
