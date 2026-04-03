@@ -13,6 +13,9 @@ const buildCurrencyOptions = window.buildCurrencyOptions;
 const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
+// Sanitize helper from utils
+import { sanitize } from './utils/helpers.js';
+
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
 // and Firestore Security Rules (uid-scoped data access).
@@ -45,7 +48,10 @@ function dec(encoded) {
   return encoded;
 }
 
-// ── localStorage cache helpers ──────────────────────────────────────────────
+// ── sessionStorage cache helpers ──────────────────────────────────────────────
+// Using sessionStorage instead of localStorage for financial data security.
+// Session storage is cleared when the browser tab is closed, reducing the
+// window of exposure if an XSS vulnerability is exploited.
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
 function getCacheKey(uid) { return 'spendwise_expenses_' + uid; }
@@ -53,17 +59,17 @@ function getCacheKey(uid) { return 'spendwise_expenses_' + uid; }
 function saveToCache(uid, expenses) {
   try {
     const payload = JSON.stringify({ ts: Date.now(), data: expenses });
-    localStorage.setItem(getCacheKey(uid), payload);
+    sessionStorage.setItem(getCacheKey(uid), payload);
   } catch (e) { /* quota exceeded or private mode — silently skip */ }
 }
 
 function loadFromCache(uid) {
   try {
-    const raw = localStorage.getItem(getCacheKey(uid));
+    const raw = sessionStorage.getItem(getCacheKey(uid));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Date.now() - parsed.ts > CACHE_MAX_AGE_MS) {
-      localStorage.removeItem(getCacheKey(uid));
+      sessionStorage.removeItem(getCacheKey(uid));
       return null;
     }
     return parsed.data;
@@ -71,7 +77,7 @@ function loadFromCache(uid) {
 }
 
 function clearCache(uid) {
-  try { localStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
+  try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
 }
 
 let currentUser = null, allExpenses = [], allIncome = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
@@ -82,6 +88,26 @@ function dismissPageLoader() {
   if (!loader) return;
   loader.classList.add('fade-out');
   setTimeout(() => loader.remove(), 450);
+}
+
+// ── Avatar helper (XSS-safe) ────────────────────────────────────────────────
+function updateUserAvatar(user) {
+  const avatarEl = document.getElementById("user-avatar");
+  if (!avatarEl) return;
+  // Clear previous content
+  avatarEl.innerHTML = '';
+  if (user.photoURL) {
+    const img = document.createElement('img');
+    img.src = user.photoURL;
+    img.referrerPolicy = 'no-referrer';
+    img.alt = 'Profile';
+    img.addEventListener('error', () => {
+      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+    });
+    avatarEl.appendChild(img);
+  } else {
+    avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+  }
 }
 
 // ── Card shimmer ─────────────────────────────────────────────────────────────
@@ -118,12 +144,7 @@ onAuthStateChanged(auth, user => {
     currentUser = user;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
-    const avatarEl = document.getElementById("user-avatar");
-    if (user.photoURL) {
-      avatarEl.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName || user.email || 'U')[0].toUpperCase()}'"/>`;
-    } else {
-      avatarEl.textContent = (user.displayName || user.email || "U")[0].toUpperCase();
-    }
+    updateUserAvatar(user);
 
     setGreeting();
     initCurrencySelector();
@@ -409,16 +430,16 @@ window.addExpense = async () => {
   const category = document.getElementById("exp-category").value;
   const date = document.getElementById("exp-date").value;
   const payment = document.getElementById("exp-payment").value;
-  const description = document.getElementById("exp-description").value.trim();
-  const notes = document.getElementById("exp-notes").value.trim();
+  const description = sanitize(document.getElementById("exp-description").value.trim(), 300);
+  const notes = sanitize(document.getElementById("exp-notes").value.trim(), 500);
   const tags = getExpenseTags("exp");
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
     showLoader();
-    const cardName = document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "";
-    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes: notes, tags, encoding: "plain", createdAt: serverTimestamp() });
+    const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
+    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     updateCards();
@@ -534,8 +555,8 @@ window.saveEditExpense = async () => {
   const category = document.getElementById("edit-category").value;
   const date = document.getElementById("edit-date").value;
   const payment = document.getElementById("edit-payment").value;
-  const description = document.getElementById("edit-description").value.trim();
-  const notes = document.getElementById("edit-notes").value.trim();
+  const description = sanitize(document.getElementById("edit-description").value.trim(), 300);
+  const notes = sanitize(document.getElementById("edit-notes").value.trim(), 500);
   const tags = getExpenseTags("edit");
 
   const errEl = document.getElementById("edit-error");
@@ -560,7 +581,7 @@ window.saveEditExpense = async () => {
     showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
     const editCardName = document.getElementById("edit-card-name");
-    const cardName = editCardName ? editCardName.value.trim() : "";
+    const cardName = sanitize(editCardName ? editCardName.value.trim() : "", 100);
     await updateDoc(expenseRef, {
       amount,
       category,

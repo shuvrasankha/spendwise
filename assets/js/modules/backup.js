@@ -107,6 +107,33 @@ async function exportData() {
 }
 
 // ── Import Data ──────────────────────────────────────────────────────────────
+
+// Validate a single record before importing
+function validateRecord(record, type) {
+  if (!record || typeof record !== 'object') return false;
+  if (typeof record.amount !== 'number' || record.amount <= 0) return false;
+  if (record.date && !/^\d{4}-\d{2}-\d{2}$/.test(record.date)) return false;
+  if (record.notes && typeof record.notes !== 'string') return false;
+  // Enforce max string lengths to prevent abuse
+  const maxStr = 500;
+  if (record.description && (typeof record.description !== 'string' || record.description.length > maxStr)) return false;
+  if (record.category && (typeof record.category !== 'string' || record.category.length > 50)) return false;
+  if (record.person && (typeof record.person !== 'string' || record.person.length > 100)) return false;
+  if (record.source && (typeof record.source !== 'string' || record.source.length > 100)) return false;
+
+  if (type === 'expense') {
+    if (!record.category) return false;
+    if (record.payment && typeof record.payment !== 'string') return false;
+  } else if (type === 'income') {
+    if (!record.source) return false;
+    if (record.paymentType && !['Online', 'Cash'].includes(record.paymentType)) return false;
+  } else if (type === 'debt') {
+    if (!record.person) return false;
+    if (record.type && !['they-owe', 'i-owe'].includes(record.type)) return false;
+  }
+  return true;
+}
+
 async function importData(file) {
   if (!currentUser) {
     showToast('Please log in first.', 'error');
@@ -139,7 +166,8 @@ async function importData(file) {
 
     // Import expenses
     for (const exp of data.expenses) {
-      if (exp.uid !== uid) continue; // Skip items not belonging to user
+      if (exp.uid !== uid) continue;
+      if (!validateRecord(exp, 'expense')) continue;
       const ref = doc(collection(db, 'expenses'));
       const { id, ...rest } = exp;
       batch.set(ref, { ...rest, createdAt: serverTimestamp() });
@@ -149,6 +177,7 @@ async function importData(file) {
     // Import income
     for (const inc of data.income) {
       if (inc.uid !== uid) continue;
+      if (!validateRecord(inc, 'income')) continue;
       const ref = doc(collection(db, 'income'));
       const { id, ...rest } = inc;
       batch.set(ref, { ...rest, createdAt: serverTimestamp() });
@@ -158,6 +187,7 @@ async function importData(file) {
     // Import debts
     for (const debt of data.debts) {
       if (debt.uid !== uid) continue;
+      if (!validateRecord(debt, 'debt')) continue;
       const ref = doc(collection(db, 'debts'));
       const { id, ...rest } = debt;
       batch.set(ref, { ...rest, createdAt: serverTimestamp() });

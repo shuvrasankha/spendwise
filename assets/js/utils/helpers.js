@@ -42,6 +42,17 @@ export function fmtTick(value) {
   return window.fmtCompact ? window.fmtCompact(value) : value;
 }
 
+// Sanitize user input before storing in Firestore
+// Strips control characters, enforces max length
+export function sanitize(str, maxLen = 500) {
+  if (typeof str !== 'string') return '';
+  // Remove control characters except newlines and tabs
+  let clean = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Truncate to max length
+  if (clean.length > maxLen) clean = clean.substring(0, maxLen);
+  return clean.trim();
+}
+
 // Friendly error messages for Firebase auth codes
 export function friendlyErr(code) {
   const m = {

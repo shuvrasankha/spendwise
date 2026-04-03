@@ -12,6 +12,9 @@ const buildCurrencyOptions = window.buildCurrencyOptions;
 const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
+// Sanitize helper from utils
+import { sanitize } from './utils/helpers.js';
+
 
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -56,6 +59,25 @@ function dismissPageLoader() {
   setTimeout(() => loader.remove(), 450);
 }
 
+// ── Avatar helper (XSS-safe) ────────────────────────────────────────────────
+function updateUserAvatar(user) {
+  const avatarEl = document.getElementById('user-avatar');
+  if (!avatarEl) return;
+  avatarEl.innerHTML = '';
+  if (user.photoURL) {
+    const img = document.createElement('img');
+    img.src = user.photoURL;
+    img.referrerPolicy = 'no-referrer';
+    img.alt = 'Profile';
+    img.addEventListener('error', () => {
+      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+    });
+    avatarEl.appendChild(img);
+  } else {
+    avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+  }
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const savedTheme = localStorage.getItem('theme') ||
   (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -88,13 +110,7 @@ onAuthStateChanged(auth, user => {
     }
     currentUser = user;
     document.getElementById('app').classList.remove('hidden');
-
-    const avatarEl = document.getElementById('user-avatar');
-    if (user.photoURL) {
-      avatarEl.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName || user.email || 'U')[0].toUpperCase()}'"/>`;
-    } else {
-      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-    }
+    updateUserAvatar(user);
 
     // Set greeting
     const h = new Date().getHours();
@@ -235,10 +251,10 @@ function updateIncomeSummaryCards() {
 window.addIncome = async () => {
   const amount = parseFloat(document.getElementById('inc-amount').value);
   const date = document.getElementById('inc-date').value;
-  const source = document.getElementById('inc-source').value.trim();
+  const source = sanitize(document.getElementById('inc-source').value.trim(), 100);
   const paymentType = document.getElementById('inc-payment').value;
-  const bank = paymentType === 'Online' ? document.getElementById('inc-bank').value.trim() : '';
-  const notes = document.getElementById('inc-notes').value.trim();
+  const bank = sanitize(paymentType === 'Online' ? document.getElementById('inc-bank').value.trim() : '', 100);
+  const notes = sanitize(document.getElementById('inc-notes').value.trim(), 500);
 
   if (!amount || amount <= 0) { showFormMsg('Enter a valid amount.', 'error'); return; }
   if (!date) { showFormMsg('Select a date.', 'error'); return; }
@@ -332,10 +348,10 @@ window.saveEditIncome = async () => {
 
   const amount = parseFloat(document.getElementById('edit-inc-amount').value);
   const date = document.getElementById('edit-inc-date').value;
-  const source = document.getElementById('edit-inc-source').value.trim();
+  const source = sanitize(document.getElementById('edit-inc-source').value.trim(), 100);
   const paymentType = document.getElementById('edit-inc-payment').value;
-  const bank = paymentType === 'Online' ? document.getElementById('edit-inc-bank').value.trim() : '';
-  const notes = document.getElementById('edit-inc-notes').value.trim();
+  const bank = sanitize(paymentType === 'Online' ? document.getElementById('edit-inc-bank').value.trim() : '', 100);
+  const notes = sanitize(document.getElementById('edit-inc-notes').value.trim(), 500);
 
   const errEl = document.getElementById('edit-inc-error');
 
