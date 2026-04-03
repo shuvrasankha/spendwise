@@ -35,6 +35,8 @@ const EXPENSE_CATEGORIES = [
 
 const PAYMENT_METHODS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
 
+const DEBT_TYPES = ['they-owe', 'i-owe'];
+
 // ── Supported Languages ──────────────────────────────────────────────────────
 const VOICE_LANGUAGES = [
   { code: 'en-IN', label: 'English', flag: '🇬🇧' },
@@ -72,10 +74,10 @@ onAuthStateChanged(auth, user => {
   currentUser = user;
   const fab = document.getElementById('voice-fab');
   if (fab) {
-    // On expense.html, income.html — always show FAB when logged in.
+    // On expense.html, income.html, debt.html — always show FAB when logged in.
     // On index.html, FAB visibility is controlled by showPage() in app.js.
     const path = window.location.pathname;
-    const isStandalonePage = path.includes('expense') || path.includes('income') || path.includes('history');
+    const isStandalonePage = path.includes('expense') || path.includes('income') || path.includes('history') || path.includes('debt');
     if (!user) {
       fab.style.display = 'none';
     } else if (isStandalonePage) {
@@ -230,7 +232,7 @@ function buildPrompt(text) {
   const langInfo = VOICE_LANGUAGES.find(l => l.code === selectedLang) || VOICE_LANGUAGES[0];
 
   return {
-    system: `You are a financial assistant for SpendWise, an expense and income tracking app. Your job is to parse natural language into structured JSON.
+    system: `You are a financial assistant for SpendWise, an expense, income, and debt tracking app. Your job is to parse natural language into structured JSON.
 
 Today is ${dayOfWeek}, ${today} (${monthName} ${now.getDate()}, ${now.getFullYear()}).
 
@@ -240,16 +242,17 @@ Common date words: "आज/today", "कल/yesterday", "আজ", "இன்ற�
 
 RULES:
 1. The user may describe ONE or MULTIPLE transactions in a single sentence. You MUST extract ALL of them.
-2. For each transaction, determine if it is an EXPENSE or INCOME.
+2. For each transaction, determine if it is an EXPENSE, INCOME, or DEBT.
 3. Extract the amount, date, and other relevant fields for EACH transaction separately.
 4. If no date is mentioned, use today's date: ${today}
 5. If the user says "yesterday" (or its equivalent in any language), compute the correct date.
 6. For expenses, pick the best matching category from: ${EXPENSE_CATEGORIES.join(', ')}
 7. For expenses, pick payment method from: ${PAYMENT_METHODS.join(', ')}. Default to "UPI" if not mentioned.
 8. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), and bank if mentioned.
-9. Return ONLY valid JSON, no markdown, no explanation.
-10. All JSON field values MUST be in English, regardless of input language.
-11. ALWAYS return a JSON ARRAY (even for a single transaction).
+9. For debts, determine the type: "they-owe" (someone owes the user) or "i-owe" (user owes someone). Keywords like "gave", "lent", "owes me" → they-owe. Keywords like "borrowed", "took", "owe them" → i-owe.
+10. Return ONLY valid JSON, no markdown, no explanation.
+11. All JSON field values MUST be in English, regardless of input language.
+12. ALWAYS return a JSON ARRAY (even for a single transaction).
 
 For EXPENSE entries, each element:
 {"type":"expense","amount":<number>,"category":"<category>","date":"YYYY-MM-DD","description":"<short description in English>","payment":"<payment method>","cardName":"","notes":""}
@@ -257,8 +260,14 @@ For EXPENSE entries, each element:
 For INCOME entries, each element:
 {"type":"income","amount":<number>,"source":"<source in English>","date":"YYYY-MM-DD","paymentType":"<Online|Cash>","bank":"<bank name or empty>","notes":""}
 
+For DEBT entries, each element:
+{"type":"debt","amount":<number>,"debtType":"<they-owe|i-owe>","person":"<person name>","date":"YYYY-MM-DD","notes":"<optional notes>"}
+
 Example input: "today I spent 30 rs on breakfast and 100 on lunch. I also bought a fan from Amazon using credit card for 2000 rs"
-Example output: [{"type":"expense","amount":30,"category":"Food & Dining","date":"${today}","description":"Breakfast","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":100,"category":"Food & Dining","date":"${today}","description":"Lunch","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":2000,"category":"Shopping","date":"${today}","description":"Fan from Amazon","payment":"Credit Card","cardName":"","notes":""}]`,
+Example output: [{"type":"expense","amount":30,"category":"Food & Dining","date":"${today}","description":"Breakfast","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":100,"category":"Food & Dining","date":"${today}","description":"Lunch","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":2000,"category":"Shopping","date":"${today}","description":"Fan from Amazon","payment":"Credit Card","cardName":"","notes":""}]
+
+Example input: "I lent 5000 to John yesterday and borrowed 2000 from Mom"
+Example output: [{"type":"debt","amount":5000,"debtType":"they-owe","person":"John","date":"<yesterday>","notes":""},{"type":"debt","amount":2000,"debtType":"i-owe","person":"Mom","date":"${today}","notes":""}]`,
     user: text
   };
 }
@@ -323,7 +332,7 @@ async function callHuggingFaceAPI(text) {
 
 function validateSingleEntry(data) {
   if (!data || typeof data !== 'object') return null;
-  if (!data.type || !['expense', 'income'].includes(data.type)) return null;
+  if (!data.type || !['expense', 'income', 'debt'].includes(data.type)) return null;
   if (!data.amount || isNaN(parseFloat(data.amount)) || parseFloat(data.amount) <= 0) return null;
 
   // Normalize amount
@@ -349,11 +358,16 @@ function validateSingleEntry(data) {
     data.description = data.description || '-';
     data.cardName = data.cardName || '';
     data.notes = data.notes || '';
-  } else {
+  } else if (data.type === 'income') {
     // Income
     data.source = data.source || 'Other';
     data.paymentType = ['Online', 'Cash'].includes(data.paymentType) ? data.paymentType : 'Online';
     data.bank = data.bank || '';
+    data.notes = data.notes || '';
+  } else {
+    // Debt
+    data.debtType = DEBT_TYPES.includes(data.debtType) ? data.debtType : 'they-owe';
+    data.person = data.person || 'Unknown';
     data.notes = data.notes || '';
   }
 
@@ -433,7 +447,7 @@ async function saveEntry() {
           encoding: 'plain',
           createdAt: serverTimestamp()
         });
-      } else {
+      } else if (entry.type === 'income') {
         await addDoc(collection(db, 'income'), {
           uid: currentUser.uid,
           amount: entry.amount,
@@ -445,14 +459,38 @@ async function saveEntry() {
           encoding: 'plain',
           createdAt: serverTimestamp()
         });
+      } else {
+        // Debt
+        await addDoc(collection(db, 'debts'), {
+          uid: currentUser.uid,
+          amount: entry.amount,
+          type: entry.debtType,
+          person: entry.person,
+          date: entry.date,
+          notes: entry.notes || '',
+          settled: false,
+          settledDate: '',
+          encoding: 'plain',
+          createdAt: serverTimestamp()
+        });
       }
       savedCount++;
     }
 
     const totalAmount = parsedData.reduce((sum, e) => sum + e.amount, 0);
-    const label = savedCount === 1
-      ? `🎉 ${parsedData[0].type === 'expense' ? 'Expense' : 'Income'} of ${fmt(totalAmount)} saved!`
-      : `🎉 ${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
+    const debtCount = parsedData.filter(e => e.type === 'debt').length;
+    const otherCount = savedCount - debtCount;
+
+    let label;
+    if (debtCount > 0 && otherCount === 0) {
+      label = `🎉 ${debtCount} debt${debtCount > 1 ? 's' : ''} of ${fmt(totalAmount)} saved!`;
+    } else if (debtCount > 0) {
+      label = `🎉 ${savedCount} entries saved (${debtCount} debt${debtCount > 1 ? 's' : ''})! Total: ${fmt(totalAmount)}`;
+    } else {
+      label = savedCount === 1
+        ? `🎉 ${parsedData[0].type === 'expense' ? 'Expense' : 'Income'} of ${fmt(totalAmount)} saved!`
+        : `🎉 ${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
+    }
     showVoiceStatus(label, 'success');
 
     // Show toast on the page
@@ -589,7 +627,7 @@ function showPreview(entries) {
             </div>
           </div>
         </div>`;
-    } else {
+    } else if (data.type === 'income') {
       html += `
         <div class="voice-preview-card">
           <div class="voice-preview-header income">
@@ -616,6 +654,39 @@ function showPreview(entries) {
             ${data.bank ? `<div class="voice-preview-field">
               <span class="voice-preview-label">Bank</span>
               <span class="voice-preview-value">${escapeHtml(data.bank)}</span>
+            </div>` : ''}
+          </div>
+        </div>`;
+    } else {
+      // Debt
+      const debtLabel = data.debtType === 'they-owe' ? 'They Owe Me' : 'I Owe Them';
+      const debtClass = data.debtType === 'they-owe' ? 'income' : 'expense';
+      html += `
+        <div class="voice-preview-card">
+          <div class="voice-preview-header ${debtClass}">
+            <i data-lucide="hand-coins"></i>
+            <span>Debt: ${debtLabel}${entries.length > 1 ? ' #' + (idx + 1) : ''}</span>
+          </div>
+          <div class="voice-preview-grid">
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Amount</span>
+              <span class="voice-preview-value amount">${fmt(data.amount)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Date</span>
+              <span class="voice-preview-value">${formatDateShort(data.date)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Person</span>
+              <span class="voice-preview-value">${escapeHtml(data.person)}</span>
+            </div>
+            <div class="voice-preview-field">
+              <span class="voice-preview-label">Type</span>
+              <span class="voice-preview-value">${debtLabel}</span>
+            </div>
+            ${data.notes ? `<div class="voice-preview-field full">
+              <span class="voice-preview-label">Notes</span>
+              <span class="voice-preview-value">${escapeHtml(data.notes)}</span>
             </div>` : ''}
           </div>
         </div>`;

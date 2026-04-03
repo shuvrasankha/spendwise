@@ -137,6 +137,28 @@ window.handleLogout = async () => {
   window.location.href = 'index.html';
 };
 
+// ── Mobile Menu ──────────────────────────────────────────────────────────────
+window.toggleMobileMenu = () => {
+  const overlay = document.getElementById('mobile-menu-overlay');
+  const panel = document.getElementById('mobile-menu-panel');
+  if (overlay && panel) {
+    overlay.classList.toggle('open');
+    panel.classList.toggle('open');
+  }
+};
+
+window.closeMobileMenu = () => {
+  const overlay = document.getElementById('mobile-menu-overlay');
+  const panel = document.getElementById('mobile-menu-panel');
+  if (overlay) overlay.classList.remove('open');
+  if (panel) panel.classList.remove('open');
+};
+
+window.navigateTo = (url) => {
+  closeMobileMenu();
+  window.location.href = url;
+};
+
 // ── Currency ────────────────────────────────────────────────────────────────
 function initCurrencySelector() {
   const sel = document.getElementById('currency-select');
