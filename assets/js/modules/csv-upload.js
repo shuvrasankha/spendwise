@@ -246,6 +246,59 @@ function closeModal() {
   isProcessing = false;
 }
 
+// ── Consent Dialog ───────────────────────────────────────────────────────────
+function showCSVConsentDialog() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '9999';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-box';
+    modal.style.maxWidth = '480px';
+    modal.innerHTML = `
+      <div class="modal-icon" style="background: var(--accent-bg); color: var(--accent);"><i data-lucide="file-spreadsheet"></i></div>
+      <h3>CSV Upload Consent</h3>
+      <p style="font-size: 0.875rem; color: var(--text2); margin-bottom: 16px; line-height: 1.5;">
+        Your CSV file will be sent to an AI service (Hugging Face) for automatic column detection and transaction extraction.
+      </p>
+      <p style="font-size: 0.8125rem; color: var(--text3); margin-bottom: 16px; line-height: 1.4;">
+        <strong>What is sent:</strong> The raw CSV content including all columns and rows (max 200 rows).<br>
+        <strong>What happens:</strong> AI analyzes the data to detect columns, categories, and dates, then returns structured transaction data.
+      </p>
+      <p style="font-size: 0.8125rem; color: var(--text3); margin-bottom: 20px; line-height: 1.4;">
+        Your data is processed securely and is not stored by the AI service. You can review and edit all detected transactions before importing.
+      </p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="csv-consent-decline">Cancel</button>
+        <button class="btn-primary" id="csv-consent-accept">I Understand &amp; Continue</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    if (window.lucide) lucide.createIcons();
+
+    document.getElementById('csv-consent-accept').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(true);
+    });
+
+    document.getElementById('csv-consent-decline').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(false);
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+        resolve(false);
+      }
+    });
+  });
+}
+
 function resetModalState() {
   const fileInput = document.getElementById('csv-file-input');
   if (fileInput) fileInput.value = '';
@@ -349,6 +402,15 @@ async function handleFileUpload() {
   if (!file) {
     showToast('Please select a CSV file.', 'error');
     return;
+  }
+
+  // Check consent
+  const consentKey = 'csvUploadConsent';
+  const hasConsented = localStorage.getItem(consentKey);
+  if (!hasConsented) {
+    const agreed = await showCSVConsentDialog();
+    if (!agreed) return;
+    localStorage.setItem(consentKey, 'true');
   }
 
   isProcessing = true;
