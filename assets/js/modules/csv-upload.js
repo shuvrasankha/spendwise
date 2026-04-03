@@ -2,15 +2,18 @@
 // Reads a user-uploaded CSV, sends it to an LLM for structured extraction,
 // previews the result, and batch-saves to Firestore.
 
-import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { app } from '../config/firebase.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
 
 // ── Firebase (reuse the app already initialized by app.js) ───────────────────
-const app = getApp();
+// app imported from config
 const auth = getAuth(app);
 const db = getFirestore(app);
 

@@ -3,7 +3,13 @@
     "allow": [
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(sed *)",
+      "Bash(do)",
+      "Bash(done)"
     ]
   },
   "$version": 3

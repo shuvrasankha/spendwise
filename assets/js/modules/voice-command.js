@@ -1,19 +1,15 @@
 // voice-command.js — SpendWise Voice Command Module
 // Uses Web Speech API (speech→text) + Hugging Face Inference API (text→structured data)
 
-import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { app } from '../config/firebase.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// Currency helpers from global scope (currency.js loads before this module)
-const fmt = window.fmt;
-
-// ── Firebase (reuse the app already initialized by app.js / income.js) ───────
-// getApp() returns the default Firebase app that was initialized by the main script.
-// This ensures we share the same auth state (so we can see the logged-in user).
-const app = getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Currency helpers from global scope (currency.js loads before this module)
+const fmt = window.fmt;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  🔑  HUGGING FACE API TOKEN

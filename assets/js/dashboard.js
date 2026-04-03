@@ -1,8 +1,8 @@
 // SpendWise app.js - Firebase Modular SDK
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { auth, gProvider, db } from '../config/firebase.js';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -18,20 +18,7 @@ const setCurrency = window.setCurrency;
 // and Firestore Security Rules (uid-scoped data access).
 // To further restrict this key: Firebase Console → Project Settings → API key restrictions
 // → add your production domain (e.g. yourapp.netlify.app) under "Application restrictions".
-const firebaseConfig = {
-  apiKey: "AIzaSyBKOgU4yeEhwGedRfVZfp8p0LGibfPO2hI",
-  authDomain: "spendwise-app-f7227.firebaseapp.com",
-  projectId: "spendwise-app-f7227",
-  storageBucket: "spendwise-app-f7227.firebasestorage.app",
-  messagingSenderId: "243303574314",
-  appId: "1:243303574314:web:e1c66c625f814559c38c53",
-  measurementId: "G-W8LZXEF75G"
-};
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const gProvider = new GoogleAuthProvider();
 
 // ── Security helpers ────────────────────────────────────────────────────────
 

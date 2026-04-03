@@ -1,8 +1,8 @@
 // income.js — SpendWise Income Tracker (Firebase Modular SDK)
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { auth, gProvider, db } from '../config/firebase.js';
+import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -12,19 +12,7 @@ const buildCurrencyOptions = window.buildCurrencyOptions;
 const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBKOgU4yeEhwGedRfVZfp8p0LGibfPO2hI",
-  authDomain: "spendwise-app-f7227.firebaseapp.com",
-  projectId: "spendwise-app-f7227",
-  storageBucket: "spendwise-app-f7227.firebasestorage.app",
-  messagingSenderId: "243303574314",
-  appId: "1:243303574314:web:e1c66c625f814559c38c53",
-  measurementId: "G-W8LZXEF75G"
-};
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;

@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="logo2.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="assets/css/style.css" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -66,7 +66,7 @@
   <div id="auth-screen" class="auth-screen hidden">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="logo.png" alt="SpendWise Logo" class="auth-logo-image">
+        <img src="assets/images/logo.png" alt="SpendWise Logo" class="auth-logo-image">
         <p>Track every rupee, effortlessly.</p>
       </div>
       <div class="tab-switcher">
@@ -148,7 +148,7 @@
   <div id="app" class="app">
     <nav class="navbar">
       <div class="nav-left">
-        <img src="logo.png" alt="SpendWise Logo" class="nav-logo-image">
+        <img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image">
       </div>
       <div class="nav-right">
         <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
@@ -1296,14 +1296,14 @@
 
     </div>
   </div>
-  <script src="currency.js"></script>
-  <script type="module" src="app.js"></script>
-  <script type="module" src="voice-command.js"></script>
-  <script type="module" src="ai-insights.js"></script>
-  <script type="module" src="csv-upload.js"></script>
+  <script src="assets/js/utils/currency.js"></script>
+  <script type="module" src="assets/js/dashboard.js"></script>
+  <script type="module" src="assets/js/modules/voice-command.js"></script>
+  <script type="module" src="assets/js/modules/insights.js"></script>
+  <script type="module" src="assets/js/modules/csv-upload.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(() => {
+      navigator.serviceWorker.register('/sw.js').then(() => {
         console.log('Service Worker Registered');
       });
     }
