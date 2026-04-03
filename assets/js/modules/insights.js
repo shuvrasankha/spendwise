@@ -13,11 +13,6 @@ const fmt = window.fmt;
 const getCurrency = window.getCurrency;
 const getCurrencyInfo = window.getCurrencyInfo;
 
-// ── Firebase (reuse the app already initialized by app.js) ───────────────────
-// app imported from config
-const auth = getAuth(app);
-const db = getFirestore(app);
-
 // ══════════════════════════════════════════════════════════════════════════════
 //  🔑  HUGGING FACE API TOKEN
 //  Same pattern as voice-command.js — placeholder replaced by GitHub Actions

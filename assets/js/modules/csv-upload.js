@@ -12,11 +12,6 @@ const db = getFirestore(app);
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
 
-// ── Firebase (reuse the app already initialized by app.js) ───────────────────
-// app imported from config
-const auth = getAuth(app);
-const db = getFirestore(app);
-
 // ══════════════════════════════════════════════════════════════════════════════
 //  🔑  HUGGING FACE API CONFIG
 //  Since Netlify is removed, we use Hugging Face router which supports CORS natively.

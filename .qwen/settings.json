@@ -9,7 +9,9 @@
       "Bash(cp *)",
       "Bash(sed *)",
       "Bash(do)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(node *)",
+      "Bash(grep *)"
     ]
   },
   "$version": 3
