@@ -1,6 +1,6 @@
 // income.js — SpendWise Income Tracker (Firebase Modular SDK)
 
-import { auth, gProvider, db } from '../config/firebase.js';
+import { auth, gProvider, db } from './config/firebase.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 

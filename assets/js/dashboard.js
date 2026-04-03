@@ -1,6 +1,6 @@
 // SpendWise app.js - Firebase Modular SDK
 
-import { auth, gProvider, db } from '../config/firebase.js';
+import { auth, gProvider, db } from './config/firebase.js';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -143,19 +143,24 @@ onAuthStateChanged(auth, user => {
     if (cached && cached.length) {
       // Render from cache instantly — no skeleton delay
       allExpenses = cached;
-      updateCards();
-      renderDashboardTable();
-      renderHistory();
-      populateYearPicker();
-      initPeriodPicker();
-      updatePeriodSummary();
-      requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+      // Only update elements that exist on this page
+      if (document.getElementById("sum-daily")) {
+        updateCards();
+        renderDashboardTable();
+        populateYearPicker();
+        initPeriodPicker();
+        updatePeriodSummary();
+        requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+      }
+      if (document.getElementById("history-body")) {
+        renderHistory();
+      }
       // Silently sync with Firestore in the background
       setTimeout(() => loadExpenses(true), 0);
     } else {
       // No cache — show skeleton and fetch from Firestore
-      showTableSkeleton("table-body", 5);
-      showTableSkeleton("history-body", 7);
+      if (document.getElementById("table-body")) showTableSkeleton("table-body", 5);
+      if (document.getElementById("history-body")) showTableSkeleton("history-body", 7);
       setTimeout(() => loadExpenses(), 0);
     }
     // Load income data for dashboard cards (always fresh)
@@ -168,8 +173,14 @@ onAuthStateChanged(auth, user => {
     }
   } else {
     currentUser = null;
-    document.getElementById("auth-screen").classList.remove("hidden");
-    document.getElementById("app").classList.add("hidden");
+    // If this page has an auth screen, show it. Otherwise redirect to index.html
+    const authScreen = document.getElementById("auth-screen");
+    if (authScreen) {
+      authScreen.classList.remove("hidden");
+      document.getElementById("app").classList.add("hidden");
+    } else {
+      window.location.href = "index.html";
+    }
   }
 });
 
@@ -247,9 +258,11 @@ function friendlyErr(code) {
 }
 
 window.showPage = (page) => {
+  const pageEl = document.getElementById("page-" + page);
+  if (!pageEl) return; // Page doesn't exist on this HTML file
   document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
   document.querySelectorAll(".sidebar-btn, .bottom-nav-btn").forEach(b => b.classList.remove("active"));
-  document.getElementById("page-" + page).classList.remove("hidden");
+  pageEl.classList.remove("hidden");
   const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
   const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
 
@@ -300,13 +313,17 @@ async function loadExpenses(isSilentSync = false) {
     // Save to localStorage cache
     saveToCache(currentUser.uid, allExpenses);
 
-    // Render lightweight content immediately
-    updateCards();
-    renderDashboardTable();
-    renderHistory();
-    populateYearPicker();
-    initPeriodPicker();
-    updatePeriodSummary();
+    // Render lightweight content immediately — only if elements exist
+    if (document.getElementById("sum-daily")) {
+      updateCards();
+      renderDashboardTable();
+      populateYearPicker();
+      initPeriodPicker();
+      updatePeriodSummary();
+    }
+    if (document.getElementById("history-body")) {
+      renderHistory();
+    }
 
     // Defer chart rendering to next frame to avoid blocking
     requestAnimationFrame(() => {
@@ -320,6 +337,7 @@ async function loadExpenses(isSilentSync = false) {
 // ── Load Income (for dashboard cards) ────────────────────────────────────────
 async function loadIncome() {
   if (!currentUser) return;
+  if (!document.getElementById("sum-income")) return;
   try {
     const q = query(collection(db, "income"), where("uid", "==", currentUser.uid));
     const snap = await getDocs(q);
@@ -333,6 +351,7 @@ async function loadIncome() {
 }
 
 function updateIncomeCards() {
+  if (!document.getElementById("sum-income")) return;
   const incomeEl = document.getElementById("sum-income");
   const savingsEl = document.getElementById("sum-savings");
   const savingsCard = document.getElementById("card-savings");
@@ -574,6 +593,7 @@ window.deleteFromEdit = async () => {
 };
 
 function updateCards() {
+  if (!document.getElementById("sum-daily")) return;
   const now = new Date(); const today = todayStr();
   const ws = getWeekStart();
   const ms = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
@@ -604,6 +624,7 @@ window.switchTableTab = (tab) => {
 };
 
 function renderDashboardTable() {
+  if (!document.getElementById("table-body")) return;
   const now = new Date(); const today = todayStr(); let from;
   if (activeTab === "daily") from = today;
   else if (activeTab === "weekly") from = getWeekStart();
@@ -632,6 +653,7 @@ window.sortHistory = (col) => {
 };
 
 function renderHistory(data) {
+  if (!document.getElementById("history-body")) return;
   // Always work on a copy so we never mutate allExpenses or the filter result
   const source = data !== undefined ? data : allExpenses;
   filteredExpenses = source.slice();   // ← key fix: copy, not reference
@@ -891,7 +913,7 @@ function pad(n) { return String(n).padStart(2, "0"); }
 function todayStr() { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
 function getWeekStart() { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(d.setDate(diff)); return m.getFullYear() + "-" + pad(m.getMonth() + 1) + "-" + pad(m.getDate()); }
 function formatDate(ds) { return new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
-function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; document.getElementById("dashboard-greeting").textContent = g + (n ? ", " + n : "") + "!"; }
+function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; const el = document.getElementById("dashboard-greeting") || document.getElementById("income-greeting"); if (el) el.textContent = g + (n ? ", " + n : "") + "!"; }
 
 // ── Currency ────────────────────────────────────────────────────────────────
 function initCurrencySelector() {
@@ -969,6 +991,7 @@ function getCategoryBreakdown() {
 }
 
 function renderPieChart() {
+  if (!document.getElementById("categoryPieChart")) return;
   const categoryData = getCategoryBreakdown();
   const labels = Object.keys(categoryData);
   const data = Object.values(categoryData);
@@ -1152,6 +1175,7 @@ function getTrendData() {
 }
 
 function renderTrendChart() {
+  if (!document.getElementById("trendLineChart")) return;
   const { labels, data } = getTrendData();
 
   const chartCanvas = document.getElementById('trendLineChart');
@@ -1309,6 +1333,7 @@ window.resetForm = () => {
 
 // PERIOD PICKER
 function populateYearPicker() {
+  if (!document.getElementById("picker-year")) return;
   const yearSelect = document.getElementById('picker-year');
   const currentYear = new Date().getFullYear();
   const years = new Set([currentYear]);
@@ -1323,6 +1348,7 @@ function populateYearPicker() {
 }
 
 function initPeriodPicker() {
+  if (!document.getElementById("picker-month")) return;
   const now = new Date();
   document.getElementById('picker-month').value = String(now.getMonth() + 1).padStart(2, '0');
   document.getElementById('picker-year').value = now.getFullYear();
@@ -1370,6 +1396,7 @@ function getPeriodExpenses() {
 }
 
 function updatePeriodSummary() {
+  if (!document.getElementById("period-total")) return;
   const rows = getPeriodExpenses();
   const total = rows.reduce((s, e) => s + e.amount, 0);
   const max = rows.length ? Math.max(...rows.map(e => e.amount)) : 0;
