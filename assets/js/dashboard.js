@@ -36,23 +36,13 @@ function escapeHtml(str) {
 // dec: legacy migration decoder only.
 // Old Firestore records were stored with a XOR+base64 scheme.
 // Numbers (new-format records) need no decoding — return them directly.
-const _LEGACY_KEY = "SpendWise_2024_K";
+// NOTE: The XOR key has been removed for security. Legacy encoded data
+// will be returned as-is (base64 string). Migrate any remaining legacy
+// records to plain format via the Firebase console.
 function dec(encoded) {
   if (typeof encoded !== "string") return encoded;  // plain number
-  // Quick check: valid base64 strings match this pattern
-  if (!/^[A-Za-z0-9+/]+=*$/.test(encoded) || encoded.length < 4) return encoded;
-  try {
-    const s = atob(encoded);
-    let r = "";
-    for (let i = 0; i < s.length; i++)
-      r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
-    // Verify decoded result is printable text (no control chars / high bytes)
-    if (/^[\x20-\x7E]*$/.test(r) && r.length > 0) return r;
-    // Decoded to garbage → input was plain text, not encoded
-    return encoded;
-  } catch {
-    return encoded; // not base64 → already plain text
-  }
+  // No longer decode XOR — return as-is for migration purposes
+  return encoded;
 }
 
 // ── localStorage cache helpers ──────────────────────────────────────────────
@@ -247,7 +237,12 @@ window.closeMobileMenu = () => {
 
 window.navigateTo = (url) => {
   closeMobileMenu();
-  window.location.href = url;
+  // Only allow navigation to known internal pages
+  const allowed = ['index.html', 'expense.html', 'income.html', 'history.html', 'debt.html', 'insights.html'];
+  const clean = url.split('#')[0].split('?')[0];
+  if (allowed.includes(clean)) {
+    window.location.href = url;
+  }
 };
 
 window.toggleProfileMenu = (e) => {

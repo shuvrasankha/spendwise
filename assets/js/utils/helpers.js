@@ -30,20 +30,11 @@ export function escapeHtml(str) {
 }
 
 // dec: legacy migration decoder only
-const _LEGACY_KEY = "SpendWise_2024_K";
+// NOTE: XOR key removed for security. Legacy encoded data returned as-is.
 export function dec(encoded) {
   if (typeof encoded !== "string") return encoded;
-  if (!/^[A-Za-z0-9+/]+=*$/.test(encoded) || encoded.length < 4) return encoded;
-  try {
-    const s = atob(encoded);
-    let r = "";
-    for (let i = 0; i < s.length; i++)
-      r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
-    if (/^[\x20-\x7E]*$/.test(r) && r.length > 0) return r;
-    return encoded;
-  } catch {
-    return encoded;
-  }
+  // No longer decode XOR — return as-is for migration purposes
+  return encoded;
 }
 
 // Abbreviated currency for chart Y-axis

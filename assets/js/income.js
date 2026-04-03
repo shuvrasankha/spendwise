@@ -156,7 +156,11 @@ window.closeMobileMenu = () => {
 
 window.navigateTo = (url) => {
   closeMobileMenu();
-  window.location.href = url;
+  const allowed = ['index.html', 'expense.html', 'income.html', 'history.html', 'debt.html', 'insights.html'];
+  const clean = url.split('#')[0].split('?')[0];
+  if (allowed.includes(clean)) {
+    window.location.href = url;
+  }
 };
 
 // ── Currency ────────────────────────────────────────────────────────────────
