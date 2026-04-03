@@ -148,7 +148,7 @@
   <div id="app" class="app">
     <nav class="navbar">
       <div class="nav-left">
-        <img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image">
+        <a href="index.html" class="nav-logo-link"><img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image"></a>
       </div>
       <div class="nav-right">
         <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
@@ -164,6 +164,9 @@
               <label for="currency-select">Currency</label>
               <select id="currency-select" onchange="handleCurrencyChange(this.value)"></select>
             </div>
+            <button class="btn-profile-action" onclick="openBackupModal()">
+              <i data-lucide="database"></i><span>Backup & Restore</span>
+            </button>
             <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
               <i data-lucide="log-out"></i><span>Logout</span>
             </button>
@@ -864,6 +867,47 @@
   <script type="module" src="assets/js/dashboard.js"></script>
   <script type="module" src="assets/js/modules/insights.js"></script>
   <script type="module" src="assets/js/modules/csv-upload.js"></script>
+  <script type="module" src="assets/js/modules/backup.js"></script>
+
+  <!-- Backup & Restore Modal -->
+  <div id="backup-modal" class="modal-overlay hidden">
+    <div class="modal-box backup-modal-box">
+      <div class="modal-header">
+        <h3><i data-lucide="database"></i> Backup & Restore</h3>
+        <button class="modal-close-btn" onclick="closeBackupModal()" title="Close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Export Section -->
+        <div class="backup-section">
+          <h4><i data-lucide="download"></i> Export Backup</h4>
+          <p>Download all your expenses, income, and debts as a JSON file.</p>
+          <button class="btn-backup" id="btn-export" onclick="exportData()">
+            <i data-lucide="download"></i> Export Backup
+          </button>
+        </div>
+
+        <!-- Import Section -->
+        <div class="backup-section">
+          <h4><i data-lucide="upload"></i> Import Backup</h4>
+          <p>Restore your data from a previously exported backup file.</p>
+          <div class="backup-file-drop" id="backup-file-drop">
+            <i data-lucide="file-up"></i>
+            <p>Drag & drop your backup file here</p>
+            <p class="backup-file-sub">or click to browse</p>
+            <input type="file" id="backup-file-input" accept=".json" class="backup-file-input" onchange="handleFileSelect(event)" />
+            <span id="backup-file-name" class="backup-file-name">No file selected</span>
+          </div>
+          <button class="btn-backup" id="btn-import" onclick="handleImportClick()">
+            <i data-lucide="upload"></i> Import Backup
+          </button>
+        </div>
+
+        <div id="backup-status" class="backup-status hidden"></div>
+      </div>
+    </div>
+  </div>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then(() => {
