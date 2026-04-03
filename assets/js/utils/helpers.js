@@ -1,0 +1,66 @@
+// utils/helpers.js — Shared utility functions
+
+export function pad(n) { return String(n).padStart(2, '0'); }
+
+export function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+
+export function getWeekStart() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const m = new Date(d.setDate(diff));
+  return m.getFullYear() + '-' + pad(m.getMonth() + 1) + '-' + pad(m.getDate());
+}
+
+export function formatDate(ds) {
+  return new Date(ds + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// escapeHtml: neutralises XSS — always call before injecting user text into innerHTML
+export function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// dec: legacy migration decoder only
+const _LEGACY_KEY = "SpendWise_2024_K";
+export function dec(encoded) {
+  if (typeof encoded !== "string") return encoded;
+  if (!/^[A-Za-z0-9+/]+=*$/.test(encoded) || encoded.length < 4) return encoded;
+  try {
+    const s = atob(encoded);
+    let r = "";
+    for (let i = 0; i < s.length; i++)
+      r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
+    if (/^[\x20-\x7E]*$/.test(r) && r.length > 0) return r;
+    return encoded;
+  } catch {
+    return encoded;
+  }
+}
+
+// Abbreviated currency for chart Y-axis
+export function fmtTick(value) {
+  return window.fmtCompact ? window.fmtCompact(value) : value;
+}
+
+// Friendly error messages for Firebase auth codes
+export function friendlyErr(code) {
+  const m = {
+    "auth/user-not-found": "No account with this email.",
+    "auth/wrong-password": "Incorrect password.",
+    "auth/email-already-in-use": "Email already registered.",
+    "auth/invalid-email": "Invalid email.",
+    "auth/weak-password": "Password too short.",
+    "auth/popup-closed-by-user": "Sign-in cancelled.",
+    "auth/invalid-credential": "Invalid email or password."
+  };
+  return m[code] || "Something went wrong. Try again.";
+}

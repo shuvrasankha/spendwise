@@ -2,14 +2,15 @@
 // Reads a user-uploaded CSV, sends it to an LLM for structured extraction,
 // previews the result, and batch-saves to Firestore.
 
-import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { app } from '../config/firebase.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ── Firebase (reuse the app already initialized by app.js) ───────────────────
-const app = getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Currency helpers from global scope (currency.js loads before this module)
+const fmt = window.fmt;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  🔑  HUGGING FACE API CONFIG
@@ -20,7 +21,7 @@ const HF_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Lightweight, very fast model
 
 let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
 try {
-  const cfg = await import('./voice-config.js'); // Reuse HF token from voice-config if present
+  const cfg = await import('../../voice-config.js'); // Reuse HF token from voice-config if present
   if (cfg.HF_TOKEN) HF_TOKEN = cfg.HF_TOKEN;
 } catch (_) { /* not present */ }
 
@@ -51,9 +52,7 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-function fmt(n) {
-  return 'Rs ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// fmt() is now provided by currency.js
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');

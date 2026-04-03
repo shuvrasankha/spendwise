@@ -1,14 +1,17 @@
 // ai-insights.js — SpendWise AI Spending Analysis Module
 // Uses expense + income data + Hugging Face Inference API for smart financial insights
 
-import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { app } from '../config/firebase.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ── Firebase (reuse the app already initialized by app.js) ───────────────────
-const app = getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Currency helpers from global scope (currency.js loads before this module)
+const fmt = window.fmt;
+const getCurrency = window.getCurrency;
+const getCurrencyInfo = window.getCurrencyInfo;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  🔑  HUGGING FACE API TOKEN
@@ -16,7 +19,7 @@ const db = getFirestore(app);
 // ══════════════════════════════════════════════════════════════════════════════
 let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
 try {
-  const config = await import('./voice-config.js');
+  const config = await import('../../voice-config.js');
   if (config.HF_TOKEN) HF_TOKEN = config.HF_TOKEN;
 } catch (_) { /* voice-config.js not present — use embedded token */ }
 const HF_MODEL = 'Qwen/Qwen2.5-Coder-32B-Instruct:fastest';
@@ -45,9 +48,7 @@ function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
-function fmt(n) {
-  return 'Rs ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// fmt() is now provided by currency.js
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -183,21 +184,23 @@ async function gatherFinancialData(month, year) {
 //  PROMPT ENGINEERING — Build the analysis prompt
 // ══════════════════════════════════════════════════════════════════════════════
 function buildAnalysisPrompt(data) {
+  const cur = getCurrencyInfo(getCurrency());
+  const sym = cur.symbol;
   const categoryList = Object.entries(data.categoryBreakdown)
     .sort((a, b) => b[1] - a[1])
-    .map(([cat, amt]) => `  - ${cat}: Rs ${amt.toFixed(2)}`)
+    .map(([cat, amt]) => `  - ${cat}: ${sym} ${amt.toFixed(2)}`)
     .join('\n');
 
   const dayOfWeekList = Object.entries(data.dayOfWeekSpending)
-    .map(([day, amt]) => `  - ${day}: Rs ${amt.toFixed(2)}`)
+    .map(([day, amt]) => `  - ${day}: ${sym} ${amt.toFixed(2)}`)
     .join('\n');
 
   const paymentList = Object.entries(data.paymentBreakdown)
-    .map(([method, amt]) => `  - ${method}: Rs ${amt.toFixed(2)}`)
+    .map(([method, amt]) => `  - ${method}: ${sym} ${amt.toFixed(2)}`)
     .join('\n');
 
   const topExpenseList = data.topExpenses
-    .map((e, i) => `  ${i + 1}. Rs ${e.amount.toFixed(2)} — ${e.category} (${e.description}) on ${e.date}`)
+    .map((e, i) => `  ${i + 1}. ${sym} ${e.amount.toFixed(2)} — ${e.category} (${e.description}) on ${e.date}`)
     .join('\n');
 
   const system = `You are a personal finance analyst for SpendWise, an Indian expense tracking app. Analyze the user's financial data for ${data.month} ${data.year} and provide personalized, actionable insights.
@@ -235,10 +238,10 @@ Return JSON in this EXACT format:
   const user = `Here is my financial data for ${data.month} ${data.year}:
 
 📊 OVERVIEW:
-- Total Expenses: Rs ${data.totalExpenses.toFixed(2)} (${data.transactionCount} transactions)
-- Total Income: Rs ${data.totalIncome.toFixed(2)} (${data.incomeCount} entries)
-- Net Savings: Rs ${data.netSavings.toFixed(2)}
-- Average Daily Spend: Rs ${data.avgDailySpend.toFixed(2)} (${data.daysElapsed} days elapsed of ${data.daysInMonth})
+- Total Expenses: ${sym} ${data.totalExpenses.toFixed(2)} (${data.transactionCount} transactions)
+- Total Income: ${sym} ${data.totalIncome.toFixed(2)} (${data.incomeCount} entries)
+- Net Savings: ${sym} ${data.netSavings.toFixed(2)}
+- Average Daily Spend: ${sym} ${data.avgDailySpend.toFixed(2)} (${data.daysElapsed} days elapsed of ${data.daysInMonth})
 
 📁 CATEGORY BREAKDOWN:
 ${categoryList || '  No expenses recorded.'}
@@ -253,8 +256,8 @@ ${paymentList || '  No payment data.'}
 ${topExpenseList || '  No expenses recorded.'}
 
 📈 PREVIOUS MONTH (${data.prevMonth.name}):
-- Total Expenses: Rs ${data.prevMonth.totalExpenses.toFixed(2)}
-- Total Income: Rs ${data.prevMonth.totalIncome.toFixed(2)}
+- Total Expenses: ${sym} ${data.prevMonth.totalExpenses.toFixed(2)}
+- Total Income: ${sym} ${data.prevMonth.totalIncome.toFixed(2)}
 
 Please analyze my spending and provide insights.`;
 
