@@ -21,7 +21,7 @@ const HF_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Lightweight, very fast model
 
 let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
 try {
-  const cfg = await import('./voice-config.js'); // Reuse HF token from voice-config if present
+  const cfg = await import('../../voice-config.js'); // Reuse HF token from voice-config if present
   if (cfg.HF_TOKEN) HF_TOKEN = cfg.HF_TOKEN;
 } catch (_) { /* not present */ }
 

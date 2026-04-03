@@ -19,7 +19,7 @@ const getCurrencyInfo = window.getCurrencyInfo;
 // ══════════════════════════════════════════════════════════════════════════════
 let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
 try {
-  const config = await import('./voice-config.js');
+  const config = await import('../../voice-config.js');
   if (config.HF_TOKEN) HF_TOKEN = config.HF_TOKEN;
 } catch (_) { /* voice-config.js not present — use embedded token */ }
 const HF_MODEL = 'Qwen/Qwen2.5-Coder-32B-Instruct:fastest';
