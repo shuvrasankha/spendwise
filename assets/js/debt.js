@@ -295,10 +295,10 @@ function renderDebts() {
     tdAct.className = 'text-center';
     tdAct.innerHTML = `
       <div class="action-buttons">
-        <button class="btn-action settle" onclick="openDebtSettleModal('${d.id}')" title="Settle">
+        <button class="btn-action settle" data-action="openDebtSettleModal" data-debt-id="${d.id}" title="Settle">
           <i data-lucide="check-circle"></i>
         </button>
-        <button class="btn-action delete" onclick="openDebtDeleteModal('${d.id}')" title="Delete">
+        <button class="btn-action delete" data-action="openDebtDeleteModal" data-debt-id="${d.id}" title="Delete">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
