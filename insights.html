@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://integrate.api.nvidia.com https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://integrate.api.nvidia.com https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
   <title>SpendWise - AI Insights</title>
   <link rel="icon" type="image/png" href="assets/images/logo2.png">
   <link rel="manifest" href="manifest.json">
@@ -322,7 +322,7 @@
   <script src="assets/js/utils/currency.js"></script>
   <script type="module" src="assets/js/dashboard.js"></script>
   <script type="module" src="assets/js/modules/insights.js"></script>
-  <script>
+  <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }

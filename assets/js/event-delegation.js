@@ -100,7 +100,7 @@
     'saveEditIncome': function() { if (window.saveEditIncome) window.saveEditIncome(); },
     'deleteFromIncomeEdit': function() { if (window.deleteFromIncomeEdit) window.deleteFromIncomeEdit(); },
     'closeIncDeleteModal': function() { if (window.closeIncDeleteModal) window.closeIncDeleteModal(); },
-    'confirmIncomeDelete': function() { if (window.confirmIncomeDelete) window.confirmIncomeDelete(); },
+    'confirmIncDelete': function() { if (window.confirmIncDelete) window.confirmIncDelete(); },
 
     // Debt
     'addDebt': function() { if (window.addDebt) window.addDebt(); },
@@ -155,6 +155,60 @@
   // Initialize event delegation
   function initEventDelegation() {
     document.addEventListener('click', function(e) {
+      // Handle pagination buttons (data-page-action)
+      const pageBtn = e.target.closest('[data-page-action]');
+      if (pageBtn && !pageBtn.disabled) {
+        e.preventDefault();
+        const page = parseInt(pageBtn.dataset.page, 10);
+        const type = pageBtn.dataset.pageAction;
+        if (!isNaN(page)) {
+          if (type === 'expense' && window.goToHistoryPage) {
+            window.goToHistoryPage(page);
+          } else if (type === 'income' && window.goToIncHistoryPage) {
+            window.goToIncHistoryPage(page);
+          }
+        }
+        return;
+      }
+
+      // Handle expense edit/delete buttons
+      const editExpBtn = e.target.closest('[data-edit-expense]');
+      if (editExpBtn) {
+        e.preventDefault();
+        if (window.openEditExpense) window.openEditExpense(editExpBtn.dataset.editExpense);
+        return;
+      }
+      const delExpBtn = e.target.closest('[data-delete-expense]');
+      if (delExpBtn) {
+        e.preventDefault();
+        if (window.deleteExpense) window.deleteExpense(delExpBtn.dataset.deleteExpense);
+        return;
+      }
+
+      // Handle income edit/delete buttons
+      const editIncBtn = e.target.closest('[data-edit-income]');
+      if (editIncBtn) {
+        e.preventDefault();
+        if (window.openIncEdit) window.openIncEdit(editIncBtn.dataset.editIncome);
+        return;
+      }
+      const delIncBtn = e.target.closest('[data-delete-income]');
+      if (delIncBtn) {
+        e.preventDefault();
+        if (window.deleteIncEntry) window.deleteIncEntry(delIncBtn.dataset.deleteIncome);
+        return;
+      }
+
+      // Handle tag removal
+      const tagRemoveBtn = e.target.closest('[data-remove-tag]');
+      if (tagRemoveBtn) {
+        e.preventDefault();
+        const tag = tagRemoveBtn.dataset.removeTag;
+        const prefix = tagRemoveBtn.dataset.tagPrefix;
+        if (window.removeTag) window.removeTag(prefix, tag);
+        return;
+      }
+
       const target = e.target.closest('[data-action]');
       if (!target) return;
 

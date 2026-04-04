@@ -375,7 +375,6 @@ async function loadExpenses(isSilentSync = false) {
 // ── Load Income (for dashboard cards) ────────────────────────────────────────
 async function loadIncome() {
   if (!currentUser) return;
-  if (!document.getElementById("sum-income")) return;
   try {
     const q = query(collection(db, "income"), where("uid", "==", currentUser.uid));
     const snap = await getDocs(q);
@@ -384,7 +383,12 @@ async function loadIncome() {
       const amt = parseFloat(raw.amount);
       return { id: d.id, ...raw, amount: isNaN(amt) ? 0 : amt };
     });
+    allIncome.sort((a, b) => b.date.localeCompare(a.date));
     updateIncomeCards();
+    // If on history page, render income history
+    if (document.getElementById("inc-history-body")) {
+      renderIncomeHistory();
+    }
   } catch (e) { console.error("Income load error:", e); }
 }
 
@@ -742,7 +746,7 @@ function renderHistory(data) {
 window.goToHistoryPage = (p) => {
   historyPage = p;
   renderHistory(filteredExpenses || allExpenses);
-  const card = document.querySelector("#page-history .table-card");
+  const card = document.querySelector("#expense-history-section .table-card");
   if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
@@ -756,24 +760,24 @@ function renderPagination(totalItems, totalPages) {
   let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
   if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
 
-  let html = `<button class="page-btn" onclick="goToHistoryPage(${historyPage - 1})" ${historyPage === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
+  let html = `<button class="page-btn" data-page-action="expense" data-page="${historyPage - 1}" ${historyPage === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
 
   if (startP > 1) {
-    html += `<button class="page-btn" onclick="goToHistoryPage(1)">1</button>`;
+    html += `<button class="page-btn" data-page-action="expense" data-page="1">1</button>`;
     if (startP > 2) html += `<span class="pagination-dots">…</span>`;
   }
   for (let i = startP; i <= endP; i++) {
-    html += `<button class="page-btn${i === historyPage ? " active" : ""}" onclick="goToHistoryPage(${i})">${i}</button>`;
+    html += `<button class="page-btn${i === historyPage ? " active" : ""}" data-page-action="expense" data-page="${i}">${i}</button>`;
   }
   if (endP < totalPages) {
     if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
-    html += `<button class="page-btn" onclick="goToHistoryPage(${totalPages})">${totalPages}</button>`;
+    html += `<button class="page-btn" data-page-action="expense" data-page="${totalPages}">${totalPages}</button>`;
   }
 
   const from = (historyPage - 1) * HISTORY_PER_PAGE + 1;
   const to = Math.min(historyPage * HISTORY_PER_PAGE, totalItems);
   html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
-  html += `<button class="page-btn" onclick="goToHistoryPage(${historyPage + 1})" ${historyPage === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>`;
+  html += `<button class="page-btn" data-page-action="expense" data-page="${historyPage + 1}" ${historyPage === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>`;
 
   el.innerHTML = html;
   if (window.lucide) lucide.createIcons();
@@ -887,7 +891,7 @@ function renderTable(tbodyId, rows, del) {
     if (del) {
       const tdAct = document.createElement('td');
       tdAct.className = 'text-center';
-      tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' onclick="openEditExpense('${e.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteExpense('${e.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
+      tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' data-edit-expense='${e.id}' title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' data-delete-expense='${e.id}' title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
       tr.appendChild(tdAct);
     }
 
@@ -1406,7 +1410,7 @@ function renderTagsDisplay(prefix, tags) {
   const container = document.getElementById(`${prefix}-tags-display`);
   if (!container) return;
   container.innerHTML = tags.map(tag =>
-    `<span class="tag-badge">#${escapeHtml(tag)}<span class="tag-remove" onclick="removeTag('${prefix}','${escapeHtml(tag)}')">&times;</span></span>`
+    `<span class="tag-badge">#${escapeHtml(tag)}<span class="tag-remove" data-remove-tag="${escapeHtml(tag)}" data-tag-prefix="${prefix}">&times;</span></span>`
   ).join('');
 }
 
@@ -1749,7 +1753,7 @@ function renderIncomeTableRows(rows) {
 
     const tdAct = document.createElement('td');
     tdAct.className = 'text-center';
-    tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' onclick="openIncEdit('${entry.id}')" title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' onclick="deleteIncEntry('${entry.id}')" title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
+    tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' data-edit-income='${entry.id}' title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' data-delete-income='${entry.id}' title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
     tr.appendChild(tdAct);
 
     tbody.appendChild(tr);
@@ -1787,22 +1791,22 @@ function renderIncPagination(totalItems, totalPages) {
   let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
   if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
 
-  let html = `<button class="page-btn" onclick="goToIncHistoryPage(${incHistoryPage - 1})" ${incHistoryPage === 1 ? 'disabled' : ''}><i data-lucide="chevron-left"></i></button>`;
+  let html = `<button class="page-btn" data-page-action="income" data-page="${incHistoryPage - 1}" ${incHistoryPage === 1 ? 'disabled' : ''}><i data-lucide="chevron-left"></i></button>`;
   if (startP > 1) {
-    html += `<button class="page-btn" onclick="goToIncHistoryPage(1)">1</button>`;
+    html += `<button class="page-btn" data-page-action="income" data-page="1">1</button>`;
     if (startP > 2) html += `<span class="pagination-dots">…</span>`;
   }
   for (let i = startP; i <= endP; i++) {
-    html += `<button class="page-btn${i === incHistoryPage ? ' active' : ''}" onclick="goToIncHistoryPage(${i})">${i}</button>`;
+    html += `<button class="page-btn${i === incHistoryPage ? ' active' : ''}" data-page-action="income" data-page="${i}">${i}</button>`;
   }
   if (endP < totalPages) {
     if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
-    html += `<button class="page-btn" onclick="goToIncHistoryPage(${totalPages})">${totalPages}</button>`;
+    html += `<button class="page-btn" data-page-action="income" data-page="${totalPages}">${totalPages}</button>`;
   }
   const from = (incHistoryPage - 1) * INC_HISTORY_PER_PAGE + 1;
   const to = Math.min(incHistoryPage * INC_HISTORY_PER_PAGE, totalItems);
   html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
-  html += `<button class="page-btn" onclick="goToIncHistoryPage(${incHistoryPage + 1})" ${incHistoryPage === totalPages ? 'disabled' : ''}><i data-lucide="chevron-right"></i></button>`;
+  html += `<button class="page-btn" data-page-action="income" data-page="${incHistoryPage + 1}" ${incHistoryPage === totalPages ? 'disabled' : ''}><i data-lucide="chevron-right"></i></button>`;
 
   el.innerHTML = html;
   if (window.lucide) lucide.createIcons();
