@@ -56,6 +56,9 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
+  // Skip non-http/https requests (chrome-extension:, blob:, etc.)
+  if (!url.protocol.startsWith('http')) return;
+
   // HTML pages: network-first (always get latest)
   if (e.request.destination === 'document' || url.pathname.endsWith('.html')) {
     e.respondWith(
