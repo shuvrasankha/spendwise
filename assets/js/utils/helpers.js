@@ -30,25 +30,27 @@ export function escapeHtml(str) {
 }
 
 // dec: legacy migration decoder only
-const _LEGACY_KEY = "SpendWise_2024_K";
+// NOTE: XOR key removed for security. Legacy encoded data returned as-is.
 export function dec(encoded) {
   if (typeof encoded !== "string") return encoded;
-  if (!/^[A-Za-z0-9+/]+=*$/.test(encoded) || encoded.length < 4) return encoded;
-  try {
-    const s = atob(encoded);
-    let r = "";
-    for (let i = 0; i < s.length; i++)
-      r += String.fromCharCode(s.charCodeAt(i) ^ _LEGACY_KEY.charCodeAt(i % _LEGACY_KEY.length));
-    if (/^[\x20-\x7E]*$/.test(r) && r.length > 0) return r;
-    return encoded;
-  } catch {
-    return encoded;
-  }
+  // No longer decode XOR — return as-is for migration purposes
+  return encoded;
 }
 
 // Abbreviated currency for chart Y-axis
 export function fmtTick(value) {
   return window.fmtCompact ? window.fmtCompact(value) : value;
+}
+
+// Sanitize user input before storing in Firestore
+// Strips control characters, enforces max length
+export function sanitize(str, maxLen = 500) {
+  if (typeof str !== 'string') return '';
+  // Remove control characters except newlines and tabs
+  let clean = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  // Truncate to max length
+  if (clean.length > maxLen) clean = clean.substring(0, maxLen);
+  return clean.trim();
 }
 
 // Friendly error messages for Firebase auth codes

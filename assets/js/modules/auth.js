@@ -86,10 +86,18 @@ export function setupProfileMenu() {
 export function updateUserAvatar(user) {
   const avatarEl = document.getElementById("user-avatar");
   if (!avatarEl) return;
+  avatarEl.innerHTML = '';
   if (user.photoURL) {
-    avatarEl.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName || user.email || 'U')[0].toUpperCase()}'"/>`;
+    const img = document.createElement('img');
+    img.src = user.photoURL;
+    img.referrerPolicy = 'no-referrer';
+    img.alt = 'Profile';
+    img.addEventListener('error', () => {
+      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+    });
+    avatarEl.appendChild(img);
   } else {
-    avatarEl.textContent = (user.displayName || user.email || "U")[0].toUpperCase();
+    avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
   }
 }
 

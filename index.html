@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Content-Security-Policy: defense-in-depth fallback (primary enforcement via Netlify headers in netlify.toml) -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://integrate.api.nvidia.com https://corsproxy.io https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
+    content="default-src 'self'; script-src 'self' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://integrate.api.nvidia.com https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
   <title>SpendWise - Daily Expense Tracker</title>
   <link rel="icon" type="image/png" href="assets/images/logo2.png">
   <link rel="manifest" href="manifest.json">
@@ -14,11 +14,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -70,8 +70,8 @@
         <p>Track every rupee, effortlessly.</p>
       </div>
       <div class="tab-switcher">
-        <button class="tab-btn active" onclick="switchTab('login')">Login</button>
-        <button class="tab-btn" onclick="switchTab('signup')">Sign Up</button>
+        <button class="tab-btn active" data-action="switchTabLogin">Login</button>
+        <button class="tab-btn" data-action="switchTabSignup">Sign Up</button>
       </div>
       <div id="login-form" class="auth-form">
         <div class="form-group">
@@ -83,15 +83,15 @@
         <div class="form-group">
           <div class="password-label-row">
             <label>Password</label>
-            <button type="button" class="btn-forgot" onclick="showForgotPassword()">Forgot password?</button>
+            <button type="button" class="btn-forgot" data-action="showForgotPassword">Forgot password?</button>
           </div>
           <div class="input-icon-wrap"><i data-lucide="lock"></i>
             <input type="password" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
           </div>
         </div>
-        <button class="btn-primary" onclick="handleLogin()">Login</button>
+        <button class="btn-primary" data-action="handleLogin">Login</button>
         <div class="divider"><span>or</span></div>
-        <button class="btn-google" onclick="handleGoogleLogin()">
+        <button class="btn-google" data-action="handleGoogleLogin">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -125,9 +125,9 @@
               placeholder="Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character" />
           </div>
         </div>
-        <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+        <button class="btn-primary" data-action="handleSignup">Create Account</button>
         <div class="divider"><span>or</span></div>
-        <button class="btn-google" onclick="handleGoogleLogin()">
+        <button class="btn-google" data-action="handleGoogleLogin">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -151,10 +151,10 @@
         <a href="index.html" class="nav-logo-link"><img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image"></a>
       </div>
       <div class="nav-right">
-        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
+        <button class="theme-toggle" data-action="toggleTheme" title="Toggle Theme" id="theme-btn">
           <i id="theme-icon" data-lucide="sun"></i>
         </button>
-        <button class="menu-toggle" onclick="toggleMobileMenu()" title="Menu" id="menu-toggle-btn">
+        <button class="menu-toggle" data-action="toggleMobileMenu" title="Menu" id="menu-toggle-btn">
           <i data-lucide="menu"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
@@ -162,12 +162,12 @@
           <div class="profile-dropdown hidden" id="profile-dropdown">
             <div class="profile-currency-wrap">
               <label for="currency-select">Currency</label>
-              <select id="currency-select" onchange="handleCurrencyChange(this.value)"></select>
+              <select id="currency-select" data-change="handleCurrencyChange"></select>
             </div>
-            <button class="btn-profile-action" onclick="openBackupModal()">
+            <button class="btn-profile-action" data-action="openBackupModal">
               <i data-lucide="database"></i><span>Backup & Restore</span>
             </button>
-            <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
+            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout">
               <i data-lucide="log-out"></i><span>Logout</span>
             </button>
           </div>
@@ -176,36 +176,36 @@
     </nav>
 
     <!-- Mobile Menu -->
-    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" data-action="closeMobileMenu"></div>
     <div class="mobile-menu-panel" id="mobile-menu-panel">
       <div class="mobile-menu-header">
         <span class="mobile-menu-title">Menu</span>
-        <button class="mobile-menu-close" onclick="closeMobileMenu()">
+        <button class="mobile-menu-close" data-action="closeMobileMenu">
           <i data-lucide="x"></i>
         </button>
       </div>
       <nav class="mobile-menu-nav">
-        <button class="mobile-menu-btn active" onclick="navigateTo('index.html')" id="mmnu-dashboard">
+        <button class="mobile-menu-btn active" data-action="navigateToDashboard" id="mmnu-dashboard">
           <i data-lucide="layout-dashboard"></i> Dashboard
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('expense.html')" id="mmnu-add">
+        <button class="mobile-menu-btn" data-action="navigateToExpense" id="mmnu-add">
           <i data-lucide="wallet"></i> Expense
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('income.html')" id="mmnu-income">
+        <button class="mobile-menu-btn" data-action="navigateToIncome" id="mmnu-income">
           <i data-lucide="trending-up"></i> Income
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('history.html')" id="mmnu-history">
+        <button class="mobile-menu-btn" data-action="navigateToHistory" id="mmnu-history">
           <i data-lucide="history"></i> History
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('debt.html')" id="mmnu-debt">
+        <button class="mobile-menu-btn" data-action="navigateToDebt" id="mmnu-debt">
           <i data-lucide="hand-coins"></i> Debt Tracker
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('insights.html')" id="mmnu-insights">
+        <button class="mobile-menu-btn" data-action="navigateToInsights" id="mmnu-insights">
           <i data-lucide="sparkles"></i> AI Insights
         </button>
       </nav>
       <div class="mobile-menu-footer">
-        <button class="btn-logout" onclick="handleLogout()">
+        <button class="btn-logout" data-action="handleLogout">
           <i data-lucide="log-out"></i> Logout
         </button>
       </div>
@@ -215,19 +215,19 @@
       <button class="bottom-nav-btn active" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='expense.html'" id="bnav-add">
+      <button class="bottom-nav-btn" data-action="navigateToExpense" id="bnav-add">
         <i data-lucide="wallet"></i><span>Expense</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='income.html'" id="bnav-income">
+      <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
         <i data-lucide="trending-up"></i><span>Income</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='history.html'" id="bnav-history">
+      <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='debt.html'" id="bnav-debt">
+      <button class="bottom-nav-btn" data-action="navigateToDebt" id="bnav-debt">
         <i data-lucide="hand-coins"></i><span>Debt</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='insights.html'" id="bnav-insights">
+      <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>AI</span>
       </button>
     </div>
@@ -237,19 +237,19 @@
         <button class="sidebar-btn active" id="snav-dashboard">
           <i data-lucide="layout-dashboard"></i> Dashboard
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='expense.html'" id="snav-add">
+        <button class="sidebar-btn" data-action="navigateToExpense" id="snav-add">
           <i data-lucide="wallet"></i> Expense
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='income.html'" id="snav-income">
+        <button class="sidebar-btn" data-action="navigateToIncome" id="snav-income">
           <i data-lucide="trending-up"></i> Income
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='history.html'" id="snav-history">
+        <button class="sidebar-btn" data-action="navigateToHistory" id="snav-history">
           <i data-lucide="history"></i> History
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='debt.html'" id="snav-debt">
+        <button class="sidebar-btn" data-action="navigateToDebt" id="snav-debt">
           <i data-lucide="hand-coins"></i> Debt Tracker
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='insights.html'" id="snav-insights">
+        <button class="sidebar-btn" data-action="navigateToInsights" id="snav-insights">
           <i data-lucide="sparkles"></i> AI Insights
         </button>
       </nav>
@@ -350,7 +350,7 @@
                 <option value="">All Years</option>
               </select>
             </div>
-            <button class="btn-period-reset" onclick="resetPeriodPicker()" title="Reset to current month">
+            <button class="btn-period-reset" data-action="resetPeriodPicker" title="Reset to current month">
               <i data-lucide="rotate-ccw"></i>
             </button>
           </div>
@@ -411,12 +411,12 @@
         <div class="table-card">
           <div class="table-header">
             <div class="table-tabs">
-              <button class="table-tab active" onclick="switchTableTab('daily')" id="ttab-daily">Daily</button>
-              <button class="table-tab" onclick="switchTableTab('weekly')" id="ttab-weekly">Weekly</button>
-              <button class="table-tab" onclick="switchTableTab('monthly')" id="ttab-monthly">Monthly</button>
-              <button class="table-tab" onclick="switchTableTab('yearly')" id="ttab-yearly">Yearly</button>
+              <button class="table-tab active" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
+              <button class="table-tab" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
+              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
+              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
             </div>
-            <button class="btn-download" onclick="downloadCSV()">
+            <button class="btn-download" data-action="downloadCSV">
               <i data-lucide="download"></i> Download CSV
             </button>
           </div>
@@ -588,8 +588,8 @@
       <h3>Delete Expense?</h3>
       <p>This action cannot be undone.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-        <button class="btn-danger" onclick="confirmDelete()">
+        <button class="btn-secondary" data-action="closeModal">Cancel</button>
+        <button class="btn-danger" data-action="confirmDelete">
           <i data-lucide="trash-2"></i> Delete
         </button>
       </div>
@@ -603,8 +603,8 @@
       <h3>Delete Income Entry?</h3>
       <p>This action cannot be undone.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeIncDeleteModal()">Cancel</button>
-        <button class="btn-danger" onclick="confirmIncDelete()">
+        <button class="btn-secondary" data-action="closeIncDeleteModal">Cancel</button>
+        <button class="btn-danger" data-action="confirmIncDelete">
           <i data-lucide="trash-2"></i> Delete
         </button>
       </div>
@@ -616,7 +616,7 @@
     <div class="modal-box edit-modal-box">
       <div class="modal-header">
         <h3>Edit Income</h3>
-        <button class="modal-close-btn" onclick="closeIncEditModal()" title="Close">
+        <button class="modal-close-btn" data-action="closeIncEditModal" title="Close">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -647,7 +647,7 @@
             <label>Payment Type *</label>
             <div class="input-icon-wrap">
               <i data-lucide="credit-card"></i>
-              <select id="inc-edit-payment" onchange="toggleIncEditBank(this.value)">
+              <select id="inc-edit-payment" data-change="toggleIncEditBank">
                 <option value="Online">Online</option>
                 <option value="Cash">Cash</option>
               </select>
@@ -668,11 +668,11 @@
         <div id="inc-edit-error" class="form-msg error hidden"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeIncEditModal()">Cancel</button>
-        <button class="btn-danger" onclick="deleteFromIncEdit()" style="margin-left:auto">
+        <button class="btn-secondary" data-action="closeIncEditModal">Cancel</button>
+        <button class="btn-danger" data-action="deleteFromIncEdit" style="margin-left:auto">
           <i data-lucide="trash-2"></i> Delete
         </button>
-        <button class="btn-income-primary" onclick="saveIncEdit()">
+        <button class="btn-income-primary" data-action="saveIncEdit">
           <i data-lucide="check-circle"></i> Save Changes
         </button>
       </div>
@@ -684,7 +684,7 @@
     <div class="modal-box edit-modal-box">
       <div class="modal-header">
         <h3 id="edit-modal-title">Edit Expense</h3>
-        <button class="modal-close-btn" onclick="closeEditModal()" title="Close">
+        <button class="modal-close-btn" data-action="closeEditModal" title="Close">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -776,7 +776,7 @@
             <label>Payment Method</label>
             <div class="input-icon-wrap">
               <i data-lucide="credit-card"></i>
-              <select id="edit-payment" onchange="toggleCardName('edit-card-name-wrap', this.value)">
+              <select id="edit-payment" data-change="toggleCardNameEdit">
                 <option value="UPI">UPI</option>
                 <option value="Cash">Cash</option>
                 <option value="Credit Card">Credit Card</option>
@@ -808,11 +808,11 @@
         <div id="edit-error" class="form-msg error hidden"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
-        <button class="btn-danger" onclick="deleteFromEdit()" style="margin-left:auto">
+        <button class="btn-secondary" data-action="closeEditModal">Cancel</button>
+        <button class="btn-danger" data-action="deleteFromEdit" style="margin-left:auto">
           <i data-lucide="trash-2"></i> Delete
         </button>
-        <button class="btn-primary" onclick="saveEditExpense()">
+        <button class="btn-primary" data-action="saveEditExpense">
           <i data-lucide="check-circle"></i> Save Changes
         </button>
       </div>
@@ -838,8 +838,8 @@
         </div>
         <div id="forgot-error" class="auth-error hidden" style="margin-bottom:12px"></div>
         <div class="modal-actions">
-          <button class="btn-secondary" onclick="closeForgotModal()">Cancel</button>
-          <button class="btn-primary" onclick="handleForgotPassword()">
+          <button class="btn-secondary" data-action="closeForgotModal">Cancel</button>
+          <button class="btn-primary" data-action="handleForgotPassword">
             <i data-lucide="send"></i> Send Reset Link
           </button>
         </div>
@@ -856,8 +856,8 @@
           <span>Didn&apos;t receive it? Check your spam folder or try again.</span>
         </div>
         <div class="modal-actions" style="justify-content:center;margin-top:20px">
-          <button class="btn-primary" onclick="closeForgotModal()">Done</button>
-          <button class="btn-secondary" onclick="resetForgotModal()">Try Again</button>
+          <button class="btn-primary" data-action="closeForgotModal">Done</button>
+          <button class="btn-secondary" data-action="resetForgotModal">Try Again</button>
         </div>
       </div>
 
@@ -874,7 +874,7 @@
     <div class="modal-box backup-modal-box">
       <div class="modal-header">
         <h3><i data-lucide="database"></i> Backup & Restore</h3>
-        <button class="modal-close-btn" onclick="closeBackupModal()" title="Close">
+        <button class="modal-close-btn" data-action="closeBackupModal" title="Close">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -883,7 +883,7 @@
         <div class="backup-section">
           <h4><i data-lucide="download"></i> Export Backup</h4>
           <p>Download all your expenses, income, and debts as a JSON file.</p>
-          <button class="btn-backup" id="btn-export" onclick="exportData()">
+          <button class="btn-backup" id="btn-export" data-action="exportData">
             <i data-lucide="download"></i> Export Backup
           </button>
         </div>
@@ -896,10 +896,10 @@
             <i data-lucide="file-up"></i>
             <p>Drag & drop your backup file here</p>
             <p class="backup-file-sub">or click to browse</p>
-            <input type="file" id="backup-file-input" accept=".json" class="backup-file-input" onchange="handleFileSelect(event)" />
+            <input type="file" id="backup-file-input" accept=".json" class="backup-file-input" data-change="handleFileSelect" />
             <span id="backup-file-name" class="backup-file-name">No file selected</span>
           </div>
-          <button class="btn-backup" id="btn-import" onclick="handleImportClick()">
+          <button class="btn-backup" id="btn-import" data-action="handleImportClick">
             <i data-lucide="upload"></i> Import Backup
           </button>
         </div>
@@ -930,6 +930,7 @@
       }
     });
   </script>
+  <script src="assets/js/event-delegation.js"></script>
 </body>
 
 </html>

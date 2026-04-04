@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://integrate.api.nvidia.com https://corsproxy.io https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
+    content="default-src 'self'; script-src 'self' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://router.huggingface.co https://integrate.api.nvidia.com https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
   <title>SpendWise - AI Insights</title>
   <link rel="icon" type="image/png" href="assets/images/logo2.png">
   <link rel="manifest" href="manifest.json">
@@ -13,10 +13,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -66,8 +66,8 @@
         <p>Track every rupee, effortlessly.</p>
       </div>
       <div class="tab-switcher">
-        <button class="tab-btn active" onclick="switchTab('login')">Login</button>
-        <button class="tab-btn" onclick="switchTab('signup')">Sign Up</button>
+        <button class="tab-btn active" data-action="switchTabLogin">Login</button>
+        <button class="tab-btn" data-action="switchTabSignup">Sign Up</button>
       </div>
       <div id="login-form" class="auth-form">
         <div class="form-group">
@@ -79,15 +79,15 @@
         <div class="form-group">
           <div class="password-label-row">
             <label>Password</label>
-            <button type="button" class="btn-forgot" onclick="showForgotPassword()">Forgot password?</button>
+            <button type="button" class="btn-forgot" data-action="showForgotPassword">Forgot password?</button>
           </div>
           <div class="input-icon-wrap"><i data-lucide="lock"></i>
             <input type="password" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
           </div>
         </div>
-        <button class="btn-primary" onclick="handleLogin()">Login</button>
+        <button class="btn-primary" data-action="handleLogin">Login</button>
         <div class="divider"><span>or</span></div>
-        <button class="btn-google" onclick="handleGoogleLogin()">
+        <button class="btn-google" data-action="handleGoogleLogin">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -121,9 +121,9 @@
               placeholder="Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character" />
           </div>
         </div>
-        <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+        <button class="btn-primary" data-action="handleSignup">Create Account</button>
         <div class="divider"><span>or</span></div>
-        <button class="btn-google" onclick="handleGoogleLogin()">
+        <button class="btn-google" data-action="handleGoogleLogin">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -147,10 +147,10 @@
         <a href="index.html" class="nav-logo-link"><img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image"></a>
       </div>
       <div class="nav-right">
-        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="theme-btn">
+        <button class="theme-toggle" data-action="toggleTheme" title="Toggle Theme" id="theme-btn">
           <i id="theme-icon" data-lucide="sun"></i>
         </button>
-        <button class="menu-toggle" onclick="toggleMobileMenu()" title="Menu" id="menu-toggle-btn">
+        <button class="menu-toggle" data-action="toggleMobileMenu" title="Menu" id="menu-toggle-btn">
           <i data-lucide="menu"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
@@ -158,9 +158,9 @@
           <div class="profile-dropdown hidden" id="profile-dropdown">
             <div class="profile-currency-wrap">
               <label for="currency-select">Currency</label>
-              <select id="currency-select" onchange="handleCurrencyChange(this.value)"></select>
+              <select id="currency-select" data-change="handleCurrencyChange"></select>
             </div>
-            <button class="btn-logout profile-logout-btn" onclick="handleLogout()" title="Logout">
+            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout">
               <i data-lucide="log-out"></i><span>Logout</span>
             </button>
           </div>
@@ -169,36 +169,36 @@
     </nav>
 
     <!-- Mobile Menu -->
-    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" data-action="closeMobileMenu"></div>
     <div class="mobile-menu-panel" id="mobile-menu-panel">
       <div class="mobile-menu-header">
         <span class="mobile-menu-title">Menu</span>
-        <button class="mobile-menu-close" onclick="closeMobileMenu()">
+        <button class="mobile-menu-close" data-action="closeMobileMenu">
           <i data-lucide="x"></i>
         </button>
       </div>
       <nav class="mobile-menu-nav">
-        <button class="mobile-menu-btn" onclick="navigateTo('index.html')" id="mmnu-dashboard">
+        <button class="mobile-menu-btn" data-action="navigateToDashboard" id="mmnu-dashboard">
           <i data-lucide="layout-dashboard"></i> Dashboard
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('expense.html')" id="mmnu-add">
+        <button class="mobile-menu-btn" data-action="navigateToExpense" id="mmnu-add">
           <i data-lucide="wallet"></i> Expense
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('income.html')" id="mmnu-income">
+        <button class="mobile-menu-btn" data-action="navigateToIncome" id="mmnu-income">
           <i data-lucide="trending-up"></i> Income
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('history.html')" id="mmnu-history">
+        <button class="mobile-menu-btn" data-action="navigateToHistory" id="mmnu-history">
           <i data-lucide="history"></i> History
         </button>
-        <button class="mobile-menu-btn" onclick="navigateTo('debt.html')" id="mmnu-debt">
+        <button class="mobile-menu-btn" data-action="navigateToDebt" id="mmnu-debt">
           <i data-lucide="hand-coins"></i> Debt Tracker
         </button>
-        <button class="mobile-menu-btn active" onclick="navigateTo('insights.html')" id="mmnu-insights">
+        <button class="mobile-menu-btn active" data-action="navigateToInsights" id="mmnu-insights">
           <i data-lucide="sparkles"></i> AI Insights
         </button>
       </nav>
       <div class="mobile-menu-footer">
-        <button class="btn-logout" onclick="handleLogout()">
+        <button class="btn-logout" data-action="handleLogout">
           <i data-lucide="log-out"></i> Logout
         </button>
       </div>
@@ -206,19 +206,19 @@
 
     <!-- Bottom nav (mobile) -->
     <div class="bottom-nav">
-      <button class="bottom-nav-btn" onclick="window.location.href='index.html'" id="bnav-dashboard">
+      <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='expense.html'" id="bnav-add">
+      <button class="bottom-nav-btn" data-action="navigateToExpense" id="bnav-add">
         <i data-lucide="wallet"></i><span>Expense</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='income.html'" id="bnav-income">
+      <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
         <i data-lucide="trending-up"></i><span>Income</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='history.html'" id="bnav-history">
+      <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
-      <button class="bottom-nav-btn" onclick="window.location.href='debt.html'" id="bnav-debt">
+      <button class="bottom-nav-btn" data-action="navigateToDebt" id="bnav-debt">
         <i data-lucide="hand-coins"></i><span>Debt</span>
       </button>
       <button class="bottom-nav-btn active" id="bnav-insights">
@@ -229,19 +229,19 @@
     <!-- Sidebar (desktop) -->
     <aside class="sidebar">
       <nav class="sidebar-nav">
-        <button class="sidebar-btn" onclick="window.location.href='index.html'" id="snav-dashboard">
+        <button class="sidebar-btn" data-action="navigateToDashboard" id="snav-dashboard">
           <i data-lucide="layout-dashboard"></i> Dashboard
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='expense.html'" id="snav-add">
+        <button class="sidebar-btn" data-action="navigateToExpense" id="snav-add">
           <i data-lucide="wallet"></i> Expense
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='income.html'" id="snav-income">
+        <button class="sidebar-btn" data-action="navigateToIncome" id="snav-income">
           <i data-lucide="trending-up"></i> Income
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='history.html'" id="snav-history">
+        <button class="sidebar-btn" data-action="navigateToHistory" id="snav-history">
           <i data-lucide="history"></i> History
         </button>
-        <button class="sidebar-btn" onclick="window.location.href='debt.html'" id="snav-debt">
+        <button class="sidebar-btn" data-action="navigateToDebt" id="snav-debt">
           <i data-lucide="hand-coins"></i> Debt Tracker
         </button>
         <button class="sidebar-btn active" id="snav-insights">
@@ -295,7 +295,7 @@
       <div id="insights-error" class="insights-error-card hidden">
         <div class="insights-error-icon"><i data-lucide="alert-circle"></i></div>
         <p class="insights-error-text">An error occurred.</p>
-        <button class="btn-secondary" onclick="document.getElementById('insights-error').classList.add('hidden')">Dismiss</button>
+        <button class="btn-secondary" data-action="dismissInsightsError">Dismiss</button>
       </div>
 
       <!-- Empty state -->
@@ -330,6 +330,7 @@
       lucide.createIcons();
     });
   </script>
+  <script src="assets/js/event-delegation.js"></script>
 </body>
 
 </html>

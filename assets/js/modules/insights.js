@@ -338,6 +338,59 @@ function loadInsightsCache(uid, month, year) {
   } catch { return null; }
 }
 
+// ── Consent Dialog ───────────────────────────────────────────────────────────
+function showConsentDialog() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '9999';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-box';
+    modal.style.maxWidth = '480px';
+    modal.innerHTML = `
+      <div class="modal-icon" style="background: var(--accent-bg); color: var(--accent);"><i data-lucide="brain"></i></div>
+      <h3>AI Analysis Consent</h3>
+      <p style="font-size: 0.875rem; color: var(--text2); margin-bottom: 16px; line-height: 1.5;">
+        To provide personalized insights, your financial data (expenses, income, categories, and spending patterns) will be sent to an AI service (Hugging Face) for analysis.
+      </p>
+      <p style="font-size: 0.8125rem; color: var(--text3); margin-bottom: 16px; line-height: 1.4;">
+        <strong>What is sent:</strong> Transaction amounts, categories, dates, payment methods, and aggregated spending patterns.<br>
+        <strong>What is NOT sent:</strong> Your name, email, or any personally identifiable information.
+      </p>
+      <p style="font-size: 0.8125rem; color: var(--text3); margin-bottom: 20px; line-height: 1.4;">
+        Your data is processed securely and is not stored by the AI service. You can revoke consent at any time by clearing your browser data.
+      </p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="consent-decline">Decline</button>
+        <button class="btn-primary" id="consent-accept">I Understand &amp; Continue</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    if (window.lucide) lucide.createIcons();
+
+    document.getElementById('consent-accept').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(true);
+    });
+
+    document.getElementById('consent-decline').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(false);
+    });
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+        resolve(false);
+      }
+    });
+  });
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  MAIN ANALYSIS ORCHESTRATOR
 // ══════════════════════════════════════════════════════════════════════════════
@@ -346,6 +399,15 @@ async function runAnalysis() {
   if (!currentUser) {
     showInsightError('Please log in to use AI Insights.');
     return;
+  }
+
+  // Check consent
+  const consentKey = 'aiInsightsConsent';
+  const hasConsented = localStorage.getItem(consentKey);
+  if (!hasConsented) {
+    const agreed = await showConsentDialog();
+    if (!agreed) return;
+    localStorage.setItem(consentKey, 'true');
   }
 
   const monthSelect = document.getElementById('insights-month');

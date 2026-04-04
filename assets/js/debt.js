@@ -12,6 +12,9 @@ const buildCurrencyOptions = window.buildCurrencyOptions;
 const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
+// Sanitize helper from utils
+import { sanitize } from './utils/helpers.js';
+
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
 let allDebts = [];
@@ -54,6 +57,25 @@ function dismissPageLoader() {
   setTimeout(() => loader.remove(), 450);
 }
 
+// ── Avatar helper (XSS-safe) ────────────────────────────────────────────────
+function updateUserAvatar(user) {
+  const avatarEl = document.getElementById('user-avatar');
+  if (!avatarEl) return;
+  avatarEl.innerHTML = '';
+  if (user.photoURL) {
+    const img = document.createElement('img');
+    img.src = user.photoURL;
+    img.referrerPolicy = 'no-referrer';
+    img.alt = 'Profile';
+    img.addEventListener('error', () => {
+      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+    });
+    avatarEl.appendChild(img);
+  } else {
+    avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+  }
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const savedTheme = localStorage.getItem('theme') ||
   (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -86,13 +108,7 @@ onAuthStateChanged(auth, user => {
     }
     currentUser = user;
     document.getElementById('app').classList.remove('hidden');
-
-    const avatarEl = document.getElementById('user-avatar');
-    if (user.photoURL) {
-      avatarEl.innerHTML = `<img src="${user.photoURL}" referrerpolicy="no-referrer" alt="Profile" onerror="this.parentElement.textContent='${(user.displayName || user.email || 'U')[0].toUpperCase()}'"/>`;
-    } else {
-      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-    }
+    updateUserAvatar(user);
 
     updateThemeIcon();
     initCurrencySelector();
@@ -148,7 +164,11 @@ window.closeMobileMenu = () => {
 
 window.navigateTo = (url) => {
   closeMobileMenu();
-  window.location.href = url;
+  const allowed = ['index.html', 'expense.html', 'income.html', 'history.html', 'debt.html', 'insights.html'];
+  const clean = url.split('#')[0].split('?')[0];
+  if (allowed.includes(clean)) {
+    window.location.href = url;
+  }
 };
 
 // ── Currency ────────────────────────────────────────────────────────────────
@@ -275,10 +295,10 @@ function renderDebts() {
     tdAct.className = 'text-center';
     tdAct.innerHTML = `
       <div class="action-buttons">
-        <button class="btn-action settle" onclick="openDebtSettleModal('${d.id}')" title="Settle">
+        <button class="btn-action settle" data-action="openDebtSettleModal" data-debt-id="${d.id}" title="Settle">
           <i data-lucide="check-circle"></i>
         </button>
-        <button class="btn-action delete" onclick="openDebtDeleteModal('${d.id}')" title="Delete">
+        <button class="btn-action delete" data-action="openDebtDeleteModal" data-debt-id="${d.id}" title="Delete">
           <i data-lucide="trash-2"></i>
         </button>
       </div>
@@ -346,9 +366,9 @@ function renderDebtHistory() {
 // ── Add Debt ─────────────────────────────────────────────────────────────────
 window.addDebt = async () => {
   const amount = parseFloat(document.getElementById('debt-amount').value);
-  const person = document.getElementById('debt-person').value.trim();
+  const person = sanitize(document.getElementById('debt-person').value.trim(), 100);
   const date = document.getElementById('debt-date').value;
-  const notes = document.getElementById('debt-notes').value.trim();
+  const notes = sanitize(document.getElementById('debt-notes').value.trim(), 500);
 
   if (!amount || amount <= 0) { showDebtFormMsg('Enter a valid amount.', 'error'); return; }
   if (!person) { showDebtFormMsg('Enter person name.', 'error'); return; }
