@@ -107,18 +107,12 @@
     'resetDebtForm': function() { if (window.resetDebtForm) window.resetDebtForm(); },
     'setDebtTypeTheyOwe': function() { if (window.setDebtType) window.setDebtType('they-owe'); },
     'setDebtTypeIOwe': function() { if (window.setDebtType) window.setDebtType('i-owe'); },
-    'openDebtDeleteModal': function(e) {
-      const btn = e.target.closest('[data-action="openDebtDeleteModal"]');
-      if (!btn) return;
-      const id = btn.dataset.debtId;
+    'openDebtDeleteModal': function(id) {
       if (window.openDebtDeleteModal) window.openDebtDeleteModal(id);
     },
     'closeDebtDeleteModal': function() { if (window.closeDebtDeleteModal) window.closeDebtDeleteModal(); },
     'confirmDebtDelete': function() { if (window.confirmDebtDelete) window.confirmDebtDelete(); },
-    'openDebtSettleModal': function(e) {
-      const btn = e.target.closest('[data-action="openDebtSettleModal"]');
-      if (!btn) return;
-      const id = btn.dataset.debtId;
+    'openDebtSettleModal': function(id) {
       if (window.openDebtSettleModal) window.openDebtSettleModal(id);
     },
     'closeDebtSettleModal': function() { if (window.closeDebtSettleModal) window.closeDebtSettleModal(); },
@@ -220,7 +214,12 @@
       const handler = actionHandlers[action];
       if (handler) {
         e.preventDefault();
-        handler(e);
+        // Pass debt ID for debt modal actions
+        if (action === 'openDebtDeleteModal' || action === 'openDebtSettleModal') {
+          handler(target.dataset.debtId);
+        } else {
+          handler(e);
+        }
       }
     });
 
