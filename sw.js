@@ -1,6 +1,6 @@
 // sw.js — SpendWise Service Worker with caching strategy
 
-const CACHE_NAME = 'spendwise-v1';
+const CACHE_NAME = 'spendwise-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',

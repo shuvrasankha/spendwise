@@ -108,13 +108,17 @@
     'setDebtTypeTheyOwe': function() { if (window.setDebtType) window.setDebtType('they-owe'); },
     'setDebtTypeIOwe': function() { if (window.setDebtType) window.setDebtType('i-owe'); },
     'openDebtDeleteModal': function(e) {
-      const id = e.currentTarget.dataset.debtId;
+      const btn = e.target.closest('[data-action="openDebtDeleteModal"]');
+      if (!btn) return;
+      const id = btn.dataset.debtId;
       if (window.openDebtDeleteModal) window.openDebtDeleteModal(id);
     },
     'closeDebtDeleteModal': function() { if (window.closeDebtDeleteModal) window.closeDebtDeleteModal(); },
     'confirmDebtDelete': function() { if (window.confirmDebtDelete) window.confirmDebtDelete(); },
     'openDebtSettleModal': function(e) {
-      const id = e.currentTarget.dataset.debtId;
+      const btn = e.target.closest('[data-action="openDebtSettleModal"]');
+      if (!btn) return;
+      const id = btn.dataset.debtId;
       if (window.openDebtSettleModal) window.openDebtSettleModal(id);
     },
     'closeDebtSettleModal': function() { if (window.closeDebtSettleModal) window.closeDebtSettleModal(); },
