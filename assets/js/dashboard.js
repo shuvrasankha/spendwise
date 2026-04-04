@@ -1218,15 +1218,15 @@ function getTrendData() {
       dateGroups[monthLabel] = monthExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else {
-    // Yearly view - show all years
+    // Yearly view - show all years from all expenses
     const years = new Set();
-    periodExpenses.forEach(e => {
+    allExpenses.forEach(e => {
       if (e.date) years.add(e.date.substring(0, 4));
     });
     const sortedYears = Array.from(years).sort();
     sortedYears.forEach(year => {
       labels.push(year);
-      const yearExpenses = periodExpenses.filter(e => e.date.substring(0, 4) === year);
+      const yearExpenses = allExpenses.filter(e => e.date.substring(0, 4) === year);
       dateGroups[year] = yearExpenses.reduce((s, e) => s + e.amount, 0);
     });
   }
