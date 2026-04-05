@@ -249,7 +249,29 @@ RULES:
 6. For expenses, pick the best matching category from: ${EXPENSE_CATEGORIES.join(', ')}
 7. For expenses, pick payment method from: ${PAYMENT_METHODS.join(', ')}. Default to "UPI" if not mentioned.
 8. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), and bank if mentioned.
-9. For debts, determine the type: "they-owe" (someone owes the user) or "i-owe" (user owes someone). Keywords like "gave", "lent", "owes me" → they-owe. Keywords like "borrowed", "took", "owe them" → i-owe.
+9. For debts, determining the type is CRITICAL. You MUST carefully distinguish between:
+   
+   ➤ "they-owe" (someone OWES the user / user LENT or GAVE money):
+     - English: "I lent", "I gave", "they owe me", "I loaned", "I paid for them", "advanced"
+     - Hindi: "मैंने दिया", "उसने माँगा", "उसे देना है", "मैंने उधार दिया"
+     - Bengali: "আমি দিয়েছি", "ওকে ধার দিয়েছি"
+     - Tamil: "நான் கொடுத்தேன்", "அவன் வாங்கினான்"
+     - Keywords: LENT, GAVE, LOANED, PAID FOR, ADVANCED, OWES ME
+   
+   ➤ "i-owe" (user OWES someone / user BORROWED or TOOK money):
+     - English: "I borrowed", "I took", "I owe them", "I need to pay back", "got from"
+     - Hindi: "मैंने उधार लिया", "मुझे देना है", "मैंने माँगा"
+     - Bengali: "আমি ধার নিয়েছি", "আমাকে দিতে হবে"
+     - Tamil: "நான் வாங்கினேன்", "எனக்கு தரனும்"
+     - Keywords: BORROWED, TOOK, OWE THEM, NEED TO PAY, GOT FROM
+   
+   IMPORTANT RULES for debt type:
+   - "I gave 5000 to John" → they-owe (you gave money, John owes you)
+   - "I took 5000 from John" → i-owe (you took money, you owe John)
+   - "I lent 5000 to John" → they-owe (you lent money, John owes you)
+   - "I borrowed 5000 from John" → i-owe (you borrowed, you owe John)
+   - "Paid 500 for friend's ticket" → they-owe (you paid for someone, they owe you)
+   - "Got 1000 from mom" → i-owe (you received money, you owe mom)
 10. Return ONLY valid JSON, no markdown, no explanation.
 11. All JSON field values MUST be in English, regardless of input language.
 12. ALWAYS return a JSON ARRAY (even for a single transaction).
@@ -266,8 +288,20 @@ For DEBT entries, each element:
 Example input: "today I spent 30 rs on breakfast and 100 on lunch. I also bought a fan from Amazon using credit card for 2000 rs"
 Example output: [{"type":"expense","amount":30,"category":"Food & Dining","date":"${today}","description":"Breakfast","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":100,"category":"Food & Dining","date":"${today}","description":"Lunch","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":2000,"category":"Shopping","date":"${today}","description":"Fan from Amazon","payment":"Credit Card","cardName":"","notes":""}]
 
-Example input: "I lent 5000 to John yesterday and borrowed 2000 from Mom"
-Example output: [{"type":"debt","amount":5000,"debtType":"they-owe","person":"John","date":"<yesterday>","notes":""},{"type":"debt","amount":2000,"debtType":"i-owe","person":"Mom","date":"${today}","notes":""}]`,
+Example input: "I lent 5000 to John yesterday"
+Example output: [{"type":"debt","amount":5000,"debtType":"they-owe","person":"John","date":"<yesterday's date>","notes":""}]
+
+Example input: "I borrowed 2000 from Mom"
+Example output: [{"type":"debt","amount":2000,"debtType":"i-owe","person":"Mom","date":"${today}","notes":""}]
+
+Example input: "I gave 3000 rupees to Ravi for dinner"
+Example output: [{"type":"debt","amount":3000,"debtType":"they-owe","person":"Ravi","date":"${today}","notes":"For dinner"}]
+
+Example input: "I took 10000 from my brother"
+Example output: [{"type":"debt","amount":10000,"debtType":"i-owe","person":"Brother","date":"${today}","notes":""}]
+
+Example input: "Paid 500 for my friend's movie ticket"
+Example output: [{"type":"debt","amount":500,"debtType":"they-owe","person":"Friend","date":"${today}","notes":"Movie ticket"}]`,
     user: text
   };
 }
