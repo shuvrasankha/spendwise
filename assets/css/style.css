@@ -1327,6 +1327,291 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 .insight-section-header { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .insight-section-header svg { width: 18px; height: 18px; color: var(--accent); }
 .insight-section-header h3 { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+
+/* Debt Analysis Styles */
+.debt-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.debt-summary-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: all var(--transition);
+}
+
+.debt-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+}
+
+.debt-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.debt-card-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.debt-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.debt-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.debt-amount {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.debt-sub {
+  font-size: 0.6875rem;
+  color: var(--text3);
+}
+
+.debt-net-position {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.net-position-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text3);
+}
+
+.net-position-header svg {
+  width: 16px;
+  height: 16px;
+}
+
+.net-position-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.net-position-value.positive {
+  color: var(--success);
+}
+
+.net-position-value.negative {
+  color: var(--danger);
+}
+
+.net-position-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.net-position-badge.positive {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.net-position-badge.negative {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.net-position-desc {
+  font-size: 0.75rem;
+  color: var(--text3);
+  margin: 0;
+}
+
+.debt-settlement-rate {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.settlement-rate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text2);
+}
+
+.settlement-rate-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.settlement-rate-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.settlement-rate-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease;
+}
+
+.debt-insights-list {
+  margin-top: 16px;
+}
+
+.debt-insights-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.debt-insight-item {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: all var(--transition);
+}
+
+.debt-insight-item:hover {
+  border-color: var(--accent);
+  transform: translateX(2px);
+}
+
+.debt-insight-item .insight-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.debt-insight-item.insight-warning {
+  border-left: 3px solid var(--warning);
+}
+
+.debt-insight-item.insight-success {
+  border-left: 3px solid var(--success);
+}
+
+.debt-insight-item.insight-info {
+  border-left: 3px solid var(--accent);
+}
+
+.debt-insight-item .insight-content {
+  flex: 1;
+}
+
+.debt-insight-item .insight-content strong {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.debt-insight-item .insight-content p {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.debt-people {
+  margin-top: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.debt-people-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.debt-people-title.creditor {
+  color: var(--danger);
+}
+
+.debt-people-title svg {
+  width: 14px;
+  height: 14px;
+}
+
+.people-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.person-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text2);
+}
 .insight-alerts-grid { display: flex; flex-direction: column; gap: 8px; }
 .insight-alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: var(--radius-xs); border: 1px solid; }
 .insight-alert.alert-critical { background: var(--danger-bg); border-color: rgba(255, 59, 48, 0.2); }
@@ -1412,6 +1697,15 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   .insight-highlights { align-items: center; }
   .insight-card, .insight-section { padding: 14px; }
   .bottom-nav-btn { font-size: 0.625rem; }
+  
+  /* Debt analysis mobile */
+  .debt-summary-cards { grid-template-columns: 1fr; gap: 10px; }
+  .debt-summary-card { padding: 12px; }
+  .debt-card-icon { width: 32px; height: 32px; }
+  .debt-amount { font-size: 1rem; }
+  .net-position-value { font-size: 1.375rem; }
+  .people-list { gap: 6px; }
+  .person-item { padding: 5px 10px; font-size: 0.6875rem; }
 }
 
 /* =====================

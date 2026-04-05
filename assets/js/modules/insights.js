@@ -101,6 +101,23 @@ async function gatherFinancialData(month, year) {
     };
   });
 
+  // Fetch debts
+  const debtQ = query(collection(db, 'debts'), where('uid', '==', currentUser.uid));
+  const debtSnap = await getDocs(debtQ);
+  let debts = debtSnap.docs.map(d => {
+    const raw = d.data();
+    const amt = parseFloat(raw.amount);
+    return {
+      amount: isNaN(amt) ? 0 : amt,
+      type: raw.type || 'they-owe', // 'they-owe' or 'i-owe'
+      person: raw.person || 'Unknown',
+      date: raw.date || '',
+      notes: raw.notes || '',
+      settled: raw.settled || false,
+      settledDate: raw.settledDate || ''
+    };
+  });
+
   // Filter by selected month/year
   const yearStr = String(year);
   const monthStr = pad(month);
@@ -108,6 +125,15 @@ async function gatherFinancialData(month, year) {
 
   const selectedExpenses = expenses.filter(e => e.date && e.date.startsWith(prefix));
   const selectedIncome = income.filter(i => i.date && i.date.startsWith(prefix));
+  
+  // Filter debts: active debts created this month + settled debts settled this month
+  const activeDebtsThisMonth = debts.filter(d => 
+    !d.settled && d.date && d.date.startsWith(prefix)
+  );
+  const settledDebtsThisMonth = debts.filter(d => 
+    d.settled && d.settledDate && d.settledDate.startsWith(prefix)
+  );
+  const allRelevantDebts = [...activeDebtsThisMonth, ...settledDebtsThisMonth];
 
   // Previous month for comparison
   let prevMonth = month - 1;
@@ -149,6 +175,25 @@ async function gatherFinancialData(month, year) {
   const totalIncome = selectedIncome.reduce((sum, i) => sum + i.amount, 0);
   const prevTotalExpenses = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
   const prevTotalIncome = prevIncome.reduce((sum, i) => sum + i.amount, 0);
+  
+  // Debt aggregations
+  const totalOwedToYou = activeDebtsThisMonth
+    .filter(d => d.type === 'they-owe')
+    .reduce((sum, d) => sum + d.amount, 0);
+  
+  const totalYouOwe = activeDebtsThisMonth
+    .filter(d => d.type === 'i-owe')
+    .reduce((sum, d) => sum + d.amount, 0);
+  
+  const totalSettled = settledDebtsThisMonth
+    .reduce((sum, d) => sum + d.amount, 0);
+  
+  const settlementRate = allRelevantDebts.length > 0
+    ? (settledDebtsThisMonth.length / (activeDebtsThisMonth.length + settledDebtsThisMonth.length)) * 100
+    : 0;
+  
+  const netDebtPosition = totalOwedToYou - totalYouOwe;
+  
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
   const daysElapsed = (year === today.getFullYear() && month === today.getMonth() + 1)
@@ -176,6 +221,29 @@ async function gatherFinancialData(month, year) {
       name: MONTH_NAMES[prevMonth - 1],
       totalExpenses: prevTotalExpenses,
       totalIncome: prevTotalIncome
+    },
+    // Debt data
+    debt: {
+      totalOwedToYou,
+      totalYouOwe,
+      totalSettled,
+      settlementRate,
+      netDebtPosition,
+      activeCount: activeDebtsThisMonth.length,
+      settledCount: settledDebtsThisMonth.length,
+      totalDebtCount: allRelevantDebts.length,
+      activeDebts: activeDebtsThisMonth,
+      settledDebts: settledDebtsThisMonth,
+      // Top debtors (people who owe you most)
+      topDebtors: activeDebtsThisMonth
+        .filter(d => d.type === 'they-owe')
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5),
+      // Top creditors (people you owe most)
+      topCreditors: activeDebtsThisMonth
+        .filter(d => d.type === 'i-owe')
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5)
     }
   };
 }
@@ -213,6 +281,7 @@ IMPORTANT RULES:
 5. Return ONLY valid JSON, no markdown, no explanation.
 6. Amounts should include "Rs" prefix.
 7. Be encouraging but honest about overspending.
+8. Analyze debt patterns if debt data is present — highlight risks, settlement progress, and recommendations.
 
 Return JSON in this EXACT format:
 {
@@ -232,7 +301,19 @@ Return JSON in this EXACT format:
   ],
   "categoryAnalysis": [
     {"category": "<category name>", "amount": <number>, "percentage": <number>, "trend": "up|down|stable", "comment": "<brief analysis>"}
-  ]
+  ],
+  "debtAnalysis": {
+    "summary": "<one-line summary of debt health>",
+    "totalOwedToYou": <number>,
+    "totalYouOwe": <number>,
+    "netPosition": <number (positive means others owe you more)>,
+    "settlementRate": <percentage 0-100>,
+    "insights": [
+      {"title": "<debt insight title>", "description": "<insight detail>", "type": "info|warning|success"}
+    ],
+    "topDebtors": ["<person name>", ...],
+    "topCreditors": ["<person name>", ...]
+  }
 }`;
 
   const user = `Here is my financial data for ${data.month} ${data.year}:
@@ -254,6 +335,23 @@ ${paymentList || '  No payment data.'}
 
 🔝 TOP 5 EXPENSES:
 ${topExpenseList || '  No expenses recorded.'}
+
+💰 DEBT OVERVIEW:
+- Total Owed to You: ${sym} ${data.debt.totalOwedToYou.toFixed(2)} (${data.debt.activeCount} active debts)
+- Total You Owe: ${sym} ${data.debt.totalYouOwe.toFixed(2)}
+- Total Settled This Month: ${sym} ${data.debt.totalSettled.toFixed(2)} (${data.debt.settledCount} debts)
+- Net Debt Position: ${sym} ${data.debt.netDebtPosition.toFixed(2)} (${data.debt.netDebtPosition > 0 ? 'Others owe you more' : 'You owe more than others'})
+- Settlement Rate: ${data.debt.settlementRate.toFixed(1)}%
+
+👥 TOP DEBTORS (People who owe you):
+${data.debt.topDebtors.length > 0 
+  ? data.debt.topDebtors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}${d.notes ? ' (' + d.notes + ')' : ''}`).join('\n')
+  : '  No active debts to others.'}
+
+🏦 TOP CREDITORS (People you owe):
+${data.debt.topCreditors.length > 0 
+  ? data.debt.topCreditors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}${d.notes ? ' (' + d.notes + ')' : ''}`).join('\n')
+  : '  No active debts owed to others.'}
 
 📈 PREVIOUS MONTH (${data.prevMonth.name}):
 - Total Expenses: ${sym} ${data.prevMonth.totalExpenses.toFixed(2)}
@@ -420,7 +518,9 @@ async function runAnalysis() {
   // Check cache first
   const cached = loadInsightsCache(currentUser.uid, month, year);
   if (cached) {
-    renderInsights(cached, month, year);
+    // For cached results, we don't have debt data, so fetch it
+    const financialData = await gatherFinancialData(month, year);
+    renderInsights(cached, month, year, financialData);
     showCachedBadge(true);
     return;
   }
@@ -453,7 +553,7 @@ async function runAnalysis() {
     saveInsightsCache(currentUser.uid, month, year, insights);
 
     hideAnalyzingState();
-    renderInsights(insights, month, year);
+    renderInsights(insights, month, year, financialData);
   } catch (err) {
     hideAnalyzingState();
     if (err.message === 'HF_TOKEN_NOT_SET') {
@@ -564,7 +664,7 @@ function showCachedBadge(show) {
   if (badge) badge.classList.toggle('hidden', !show);
 }
 
-function renderInsights(insights, month, year) {
+function renderInsights(insights, month, year, data) {
   const container = document.getElementById('insights-results');
   const emptyState = document.getElementById('insights-empty');
   const errorState = document.getElementById('insights-error');
@@ -714,6 +814,116 @@ function renderInsights(insights, month, year) {
         </div>`;
     });
     html += `</div></div>`;
+  }
+
+  // ── Debt Analysis ──
+  const debtAnalysis = insights.debtAnalysis;
+  if (debtAnalysis && (data.debt.totalDebtCount > 0 || (debtAnalysis.insights && debtAnalysis.insights.length > 0))) {
+    const debt = data.debt;
+    const netPositionClass = debt.netDebtPosition >= 0 ? 'positive' : 'negative';
+    const netPositionIcon = debt.netDebtPosition >= 0 ? 'trending-up' : 'trending-down';
+    const netPositionLabel = debt.netDebtPosition >= 0 ? 'In Your Favor' : 'Needs Attention';
+    const settlementRateColor = debt.settlementRate >= 70 ? '#10b981' : debt.settlementRate >= 40 ? '#f59e0b' : '#ef4444';
+    
+    html += `<div class="insight-section" style="animation-delay: 0.3s">
+      <div class="insight-section-header">
+        <i data-lucide="hand-coins"></i>
+        <h3>Debt Analysis</h3>
+      </div>
+      
+      <div class="debt-summary-cards">
+        <div class="debt-summary-card">
+          <div class="debt-card-icon"><i data-lucide="arrow-down-left"></i></div>
+          <div class="debt-card-info">
+            <span class="debt-label">Owed to You</span>
+            <span class="debt-amount">${fmt(debt.totalOwedToYou)}</span>
+            <span class="debt-sub">${debt.activeCount} active debt${debt.activeCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        
+        <div class="debt-summary-card">
+          <div class="debt-card-icon" style="background: var(--danger-bg); color: var(--danger);"><i data-lucide="arrow-up-right"></i></div>
+          <div class="debt-card-info">
+            <span class="debt-label">You Owe</span>
+            <span class="debt-amount" style="color: var(--danger);">${fmt(debt.totalYouOwe)}</span>
+            <span class="debt-sub">Outstanding</span>
+          </div>
+        </div>
+        
+        <div class="debt-summary-card">
+          <div class="debt-card-icon" style="background: var(--success-bg); color: var(--success);"><i data-lucide="check-circle"></i></div>
+          <div class="debt-card-info">
+            <span class="debt-label">Settled</span>
+            <span class="debt-amount" style="color: var(--success);">${fmt(debt.totalSettled)}</span>
+            <span class="debt-sub">${debt.settledCount} debt${debt.settledCount !== 1 ? 's' : ''} cleared</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="debt-net-position">
+        <div class="net-position-header">
+          <i data-lucide="${netPositionIcon}"></i>
+          <span>Net Position</span>
+        </div>
+        <div class="net-position-value ${netPositionClass}">
+          ${fmt(Math.abs(debt.netDebtPosition))}
+          <span class="net-position-badge ${netPositionClass}">${netPositionLabel}</span>
+        </div>
+        <p class="net-position-desc">${debt.netDebtPosition > 0 ? 'Others owe you more than you owe them' : 'You owe more than others owe you'}</p>
+      </div>
+      
+      ${debt.settlementRate > 0 ? `
+      <div class="debt-settlement-rate">
+        <div class="settlement-rate-header">
+          <span>Settlement Rate</span>
+          <span class="settlement-rate-value">${debt.settlementRate.toFixed(1)}%</span>
+        </div>
+        <div class="settlement-rate-bar">
+          <div class="settlement-rate-fill" style="width: ${debt.settlementRate}%; background: ${settlementRateColor};"></div>
+        </div>
+      </div>` : ''}
+      
+      ${debtAnalysis.insights && debtAnalysis.insights.length > 0 ? `
+      <div class="debt-insights-list">
+        <h4 class="debt-insights-title">AI Debt Insights</h4>`;
+      
+      debtAnalysis.insights.forEach(insight => {
+        const typeIcon = insight.type === 'warning' ? 'alert-triangle' : insight.type === 'success' ? 'check-circle' : 'info';
+        const typeClass = insight.type || 'info';
+        html += `
+        <div class="debt-insight-item insight-${typeClass}">
+          <div class="insight-icon"><i data-lucide="${typeIcon}"></i></div>
+          <div class="insight-content">
+            <strong>${escapeHtml(insight.title)}</strong>
+            <p>${escapeHtml(insight.description)}</p>
+          </div>
+        </div>`;
+      });
+      
+      html += `</div>` : ''}
+      
+      ${debtAnalysis.topDebtors && debtAnalysis.topDebtors.length > 0 ? `
+      <div class="debt-people">
+        <h4 class="debt-people-title"><i data-lucide="users"></i> Top Debtors</h4>
+        <div class="people-list">`;
+      
+      debtAnalysis.topDebtors.forEach(person => {
+        html += `<div class="person-item"><span>${escapeHtml(person)}</span></div>`;
+      });
+      
+      html += `</div></div>` : ''}
+      
+      ${debtAnalysis.topCreditors && debtAnalysis.topCreditors.length > 0 ? `
+      <div class="debt-people">
+        <h4 class="debt-people-title creditors"><i data-lucide="users"></i> Top Creditors</h4>
+        <div class="people-list">`;
+      
+      debtAnalysis.topCreditors.forEach(person => {
+        html += `<div class="person-item"><span>${escapeHtml(person)}</span></div>`;
+      });
+      
+      html += `</div></div>` : ''}
+    </div>`;
   }
 
   container.innerHTML = html;
