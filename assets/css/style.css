@@ -770,6 +770,34 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 .input-icon-wrap input, .input-icon-wrap select { padding-left: 40px; width: 100%; }
 .input-icon-wrap:focus-within > i, .input-icon-wrap:focus-within > svg { color: var(--accent); }
 
+/* Date input - ensure native calendar picker works */
+input[type="date"] {
+  cursor: pointer;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 4px;
+  margin-right: 4px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Ensure date input calendar picker works inside icon wrapper */
+.input-icon-wrap input[type="date"] {
+  position: relative;
+  z-index: 1;
+}
+
+.input-icon-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+  position: relative;
+  z-index: 10;
+  background: transparent;
+}
+
 /* =====================
    LOGOS & IMAGES
 ===================== */
@@ -1253,8 +1281,20 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   display: flex; align-items: center; gap: 7px; background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius-xs); padding: 7px 10px; flex: 1;
 }
-.insights-select-wrap svg { width: 14px; height: 14px; color: var(--text3); flex-shrink: 0; }
-.insights-select-wrap select { background: transparent; border: none; color: var(--text); font-size: 0.8125rem; font-weight: 500; outline: none; cursor: pointer; width: 100%; -webkit-appearance: none; appearance: none; }
+.insights-select-wrap svg { width: 14px; height: 14px; color: var(--text3); flex-shrink: 0; pointer-events: none; }
+.insights-select-wrap select {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+  appearance: menulist;
+}
 .insights-action-btns { display: flex; gap: 6px; align-items: center; }
 .insights-analyze-btn {
   display: flex; align-items: center; gap: 7px; padding: 9px 18px;
