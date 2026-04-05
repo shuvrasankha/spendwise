@@ -843,6 +843,20 @@ function initVoiceUI() {
   if (fab) fab.style.display = 'none';
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  EXPOSE FUNCTIONS TO WINDOW (for event-delegation.js)
+// ══════════════════════════════════════════════════════════════════════════════
+window.openVoiceModal = openVoiceModal;
+window.closeVoiceModal = closeVoiceModal;
+window.startVoiceRecording = startListening;
+window.sendVoiceCommand = handleTextSubmit;
+window.cancelVoice = () => {
+  hidePreview();
+  hideVoiceStatus();
+  parsedData = null;
+};
+window.confirmVoice = saveEntry;
+
 // ── DOM-ready dispatcher ─────────────────────────────────────────────────────
 // Module scripts with top-level await can miss DOMContentLoaded. Handle both cases.
 if (document.readyState === 'loading') {
