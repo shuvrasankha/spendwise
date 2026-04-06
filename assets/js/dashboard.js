@@ -543,6 +543,7 @@ window.addExpense = async () => {
     const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() });
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+    dashboardPage = 1;
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -594,6 +595,7 @@ window.confirmDelete = async () => {
     showLoader();
     await deleteDoc(doc(db, "expenses", deleteTarget));
     allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
+    dashboardPage = 1;
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -713,6 +715,7 @@ window.saveEditExpense = async () => {
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
 
+    dashboardPage = 1;
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -762,6 +765,7 @@ function updateCards() {
 
 window.switchTableTab = (tab) => {
   activeTab = tab;
+  dashboardPage = 1;
   document.querySelectorAll(".table-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("ttab-" + tab).classList.add("active");
   renderDashboardTable();
@@ -773,17 +777,110 @@ window.switchTableTab = (tab) => {
 };
 
 function renderDashboardTable() {
-  if (!document.getElementById("table-body")) return;
+  console.log('=== RENDER DASHBOARD TABLE CALLED ===', {
+    tableBodyExists: !!document.getElementById("table-body"),
+    allExpensesLength: allExpenses.length,
+    activeTab,
+    dashboardPage
+  });
+
+  if (!document.getElementById("table-body")) {
+    console.log('❌ table-body element not found, returning early');
+    return;
+  }
+
   const now = new Date(); const today = todayStr(); let from;
   if (activeTab === "daily") from = today;
   else if (activeTab === "weekly") from = getWeekStart();
   else if (activeTab === "monthly") from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
   else from = now.getFullYear() + "-01-01";
-  renderTable("table-body", allExpenses.filter(e => e.date >= from && e.date <= today), false);
+
+  console.log('Filtering expenses:', { from, today, totalExpenses: allExpenses.length });
+
+  const filteredData = allExpenses.filter(e => e.date >= from && e.date <= today);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / DASHBOARD_PER_PAGE));
+  if (dashboardPage > totalPages) dashboardPage = totalPages;
+
+  const start = (dashboardPage - 1) * DASHBOARD_PER_PAGE;
+  const end = start + DASHBOARD_PER_PAGE;
+  const pageData = filteredData.slice(start, end);
+
+  console.log('Filtered data:', { 
+    total: filteredData.length, 
+    totalPages, 
+    currentPage: dashboardPage,
+    showing: `${start + 1}-${Math.min(end, filteredData.length)}`,
+    pageDataLength: pageData.length
+  });
+
+  renderTable("table-body", pageData, false);
+  console.log('✓ Table rendered, calling pagination...');
+  renderDashboardPagination(filteredData.length, totalPages);
+}
+
+function renderDashboardPagination(totalItems, totalPages) {
+  const el = document.getElementById("dashboard-pagination");
+  
+  console.log('=== renderDashboardPagination CALLED ===', { totalItems, totalPages, elExists: !!el });
+
+  if (!el) {
+    console.error('❌ dashboard-pagination element not found!');
+    return;
+  }
+
+  if (totalPages <= 1) { 
+    el.innerHTML = ""; 
+    return; 
+  }
+
+  const MAX_VISIBLE = 7;
+  let startP = Math.max(1, dashboardPage - Math.floor(MAX_VISIBLE / 2));
+  let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
+  if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
+
+  let html = `<button class="page-btn" data-dashboard-page="${dashboardPage - 1}" ${dashboardPage === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
+
+  if (startP > 1) {
+    html += `<button class="page-btn" data-dashboard-page="1">1</button>`;
+    if (startP > 2) html += `<span class="pagination-dots">…</span>`;
+  }
+  for (let i = startP; i <= endP; i++) {
+    html += `<button class="page-btn${i === dashboardPage ? " active" : ""}" data-dashboard-page="${i}">${i}</button>`;
+  }
+  if (endP < totalPages) {
+    if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
+    html += `<button class="page-btn" data-dashboard-page="${totalPages}">${totalPages}</button>`;
+  }
+
+  const from = (dashboardPage - 1) * DASHBOARD_PER_PAGE + 1;
+  const to = Math.min(dashboardPage * DASHBOARD_PER_PAGE, totalItems);
+  html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
+  html += `<button class="page-btn" data-dashboard-page="${dashboardPage + 1}" ${dashboardPage === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>`;
+
+  el.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+
+  // Add click handlers
+  el.querySelectorAll(".page-btn:not([disabled])").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const page = parseInt(btn.dataset.dashboardPage);
+      if (page && page !== dashboardPage) {
+        dashboardPage = page;
+        renderDashboardTable();
+        // Scroll to top of table
+        const card = document.querySelector(".table-card");
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  console.log('✓ Pagination rendered:', { htmlLength: html.length });
 }
 
 // ── Pagination & Sorting state ────────────────────────────────
+const DASHBOARD_PER_PAGE = 10;
 const HISTORY_PER_PAGE = 10;
+let dashboardPage = 1;
 let historyPage = 1;
 let sortCol = "date";
 let sortAsc = false;
@@ -1832,6 +1929,7 @@ function initPeriodPicker() {
 }
 
 window.onPeriodChange = function () {
+  dashboardPage = 1;
   updatePeriodLabel();
   renderDashboardTable();
   // Defer chart updates
@@ -1845,6 +1943,7 @@ window.resetPeriodPicker = function () {
   const now = new Date();
   document.getElementById('picker-month').value = String(now.getMonth() + 1).padStart(2, '0');
   document.getElementById('picker-year').value = now.getFullYear();
+  dashboardPage = 1;
   updatePeriodLabel(); renderDashboardTable();
 }
 
@@ -1886,12 +1985,34 @@ function updatePeriodSummary() {
 // Override renderDashboardTable to respect period picker
 const _baseRenderDashboard = renderDashboardTable;
 renderDashboardTable = function () {
+  console.log('=== OVERRIDE renderDashboardTable CALLED (period picker) ===');
+  
   const pm = document.getElementById('picker-month');
-  if (!pm) { _baseRenderDashboard(); return; }
-  const periodRows = getPeriodExpenses();
-  const now = new Date(); const today = todayStr();
+  if (!pm) { 
+    console.log('No picker-month element, calling base function');
+    _baseRenderDashboard(); 
+    return; 
+  }
+  
   const selectedMonth = document.getElementById('picker-month').value;
   const selectedYear = document.getElementById('picker-year').value;
+  
+  // For yearly tab, don't filter by month
+  let periodRows;
+  if (activeTab === 'yearly') {
+    // Only filter by year, ignore month
+    periodRows = allExpenses.filter(e => {
+      if (!e.date) return false;
+      if (selectedYear && e.date.substring(0, 4) !== String(selectedYear)) return false;
+      return true;
+    });
+    console.log('Yearly tab: got', periodRows.length, 'expenses');
+  } else {
+    // For other tabs, use the period picker
+    periodRows = getPeriodExpenses();
+  }
+  
+  const now = new Date(); const today = todayStr();
   let rows;
   if (activeTab === 'daily') {
     rows = periodRows.filter(e => e.date === today);
@@ -1907,11 +2028,41 @@ renderDashboardTable = function () {
     const lastDay = new Date(displayYear, parseInt(displayMonth), 0).getDate();
     const me = displayYear + '-' + displayMonth + '-' + pad(lastDay);
     rows = periodRows.filter(e => e.date >= ms && e.date <= me);
+  } else if (activeTab === 'yearly') {
+    // Yearly tab: show all expenses for selected year
+    rows = periodRows;
+    console.log('Yearly tab: showing all', rows.length, 'expenses');
   } else {
     rows = periodRows;
   }
-  renderTable('table-body', rows, false);
+
+  console.log('Override filtered data:', {
+    periodRowsLength: periodRows.length,
+    rowsLength: rows.length,
+    activeTab,
+    selectedMonth,
+    selectedYear
+  });
+
+  // Apply pagination
+  const totalPages = Math.max(1, Math.ceil(rows.length / DASHBOARD_PER_PAGE));
+  if (dashboardPage > totalPages) dashboardPage = totalPages;
+
+  const start = (dashboardPage - 1) * DASHBOARD_PER_PAGE;
+  const end = start + DASHBOARD_PER_PAGE;
+  const pageData = rows.slice(start, end);
+
+  console.log('Override pagination:', {
+    total: rows.length,
+    totalPages,
+    currentPage: dashboardPage,
+    showing: `${start + 1}-${Math.min(end, rows.length)}`
+  });
+
+  renderTable('table-body', pageData, false);
   updatePeriodSummary();
+  console.log('✓ Calling renderDashboardPagination from override...');
+  renderDashboardPagination(rows.length, totalPages);
 };
 
 // After data loads, init the picker (removed duplicate - using main optimization)
