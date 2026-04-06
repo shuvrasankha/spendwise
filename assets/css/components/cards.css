@@ -28,33 +28,14 @@
   transform: translateY(-2px);
 }
 
-/* Clickable summary cards (linked to pages) */
-a.summary-card-link {
-  text-decoration: none;
-  color: inherit;
-  display: block;
+/* Clickable summary cards (div-based, no link styling issues) */
+.summary-card-clickable {
   cursor: pointer;
   position: relative;
+  transition: all var(--transition);
 }
 
-/* Override global a:hover underline */
-a.summary-card-link:hover,
-a.summary-card-link:focus {
-  text-decoration: none !important;
-  color: inherit !important;
-}
-
-/* Prevent any text inside from underlining */
-a.summary-card-link .summary-label,
-a.summary-card-link .summary-amount,
-a.summary-card-link .summary-sub,
-a.summary-card-link:hover .summary-label,
-a.summary-card-link:hover .summary-amount,
-a.summary-card-link:hover .summary-sub {
-  text-decoration: none !important;
-}
-
-a.summary-card-link::after {
+.summary-card-clickable::after {
   content: '';
   position: absolute;
   top: var(--space-2);
@@ -68,20 +49,14 @@ a.summary-card-link::after {
   transition: opacity var(--transition);
 }
 
-a.summary-card-link:hover::after {
+.summary-card-clickable:hover::after {
   opacity: 1;
 }
 
-a.summary-card-link:hover {
+.summary-card-clickable:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-3px);
   border-color: var(--accent);
-  color: inherit;
-}
-
-/* Prevent double transform on hover */
-.summary-card.summary-card-link:hover {
-  transform: translateY(-3px);
 }
 
 
@@ -437,5 +412,44 @@ a.summary-card-link:hover {
   .insight-card,
   .insight-section {
     padding: var(--space-4);
+  }
+}
+
+/* Chart cards on small screens - increase size */
+@media (max-width: 480px) {
+  .chart-card {
+    padding: var(--space-5);
+  }
+
+  .chart-card .chart-header h3 {
+    font-size: var(--text-lg);
+  }
+
+  .chart-card .chart-header p {
+    font-size: var(--text-sm);
+  }
+
+  .chart-container {
+    min-height: 320px;
+    margin-top: var(--space-4);
+  }
+
+  .chart-container canvas {
+    max-height: 320px;
+  }
+}
+
+/* Chart cards on very small screens */
+@media (max-width: 360px) {
+  .chart-card {
+    padding: var(--space-4);
+  }
+
+  .chart-container {
+    min-height: 280px;
+  }
+
+  .chart-container canvas {
+    max-height: 280px;
   }
 }

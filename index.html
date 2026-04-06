@@ -265,30 +265,30 @@
           <p id="dashboard-greeting">Good morning!</p>
         </div>
         <div class="summary-cards">
-          <a href="expense.html" class="summary-card summary-card-link" id="card-monthly">
+          <div class="summary-card summary-card-clickable" id="card-monthly" onclick="window.location.href='expense.html'">
             <div class="summary-card-top">
               <span class="summary-label">Monthly Expense</span>
               <div class="summary-icon"><i data-lucide="wallet"></i></div>
             </div>
             <div class="summary-amount" id="sum-monthly">Rs 0.00</div>
             <div class="summary-sub" id="sum-monthly-count">0 transactions this month</div>
-          </a>
-          <a href="income.html" class="summary-card summary-card-link" id="card-income">
+          </div>
+          <div class="summary-card summary-card-clickable" id="card-income" onclick="window.location.href='income.html'">
             <div class="summary-card-top">
               <span class="summary-label">Monthly Income</span>
               <div class="summary-icon"><i data-lucide="circle-arrow-down"></i></div>
             </div>
             <div class="summary-amount" id="sum-income">Rs 0.00</div>
             <div class="summary-sub" id="sum-income-sub">0 entries this month</div>
-          </a>
-          <a href="debt.html" class="summary-card summary-card-link" id="card-debt">
+          </div>
+          <div class="summary-card summary-card-clickable" id="card-debt" onclick="window.location.href='debt.html'">
             <div class="summary-card-top">
               <span class="summary-label">Total Debt</span>
               <div class="summary-icon"><i data-lucide="hand-coins"></i></div>
             </div>
             <div class="summary-amount" id="sum-debt">Rs 0.00</div>
             <div class="summary-sub" id="sum-debt-count">0 active debts</div>
-          </a>
+          </div>
           <div class="summary-card" id="card-savings">
             <div class="summary-card-top">
               <span class="summary-label">Net Savings</span>
