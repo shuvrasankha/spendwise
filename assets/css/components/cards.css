@@ -28,6 +28,63 @@
   transform: translateY(-2px);
 }
 
+/* Clickable summary cards (linked to pages) */
+a.summary-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  cursor: pointer;
+  position: relative;
+}
+
+/* Override global a:hover underline */
+a.summary-card-link:hover,
+a.summary-card-link:focus {
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+/* Prevent any text inside from underlining */
+a.summary-card-link .summary-label,
+a.summary-card-link .summary-amount,
+a.summary-card-link .summary-sub,
+a.summary-card-link:hover .summary-label,
+a.summary-card-link:hover .summary-amount,
+a.summary-card-link:hover .summary-sub {
+  text-decoration: none !important;
+}
+
+a.summary-card-link::after {
+  content: '';
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7'/%3E%3Cpath d='M7 7h10v10'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+a.summary-card-link:hover::after {
+  opacity: 1;
+}
+
+a.summary-card-link:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  color: inherit;
+}
+
+/* Prevent double transform on hover */
+.summary-card.summary-card-link:hover {
+  transform: translateY(-3px);
+}
+
+
 .summary-card-top {
   display: flex;
   align-items: center;

@@ -80,7 +80,7 @@ function clearCache(uid) {
   try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
 }
 
-let currentUser = null, allExpenses = [], allIncome = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
+let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
 // ── Page loader ─────────────────────────────────────────────────────────────
 function dismissPageLoader() {
@@ -155,7 +155,7 @@ onAuthStateChanged(auth, user => {
       // Render from cache instantly — no skeleton delay
       allExpenses = cached;
       // Only update elements that exist on this page
-      if (document.getElementById("sum-daily")) {
+      if (document.getElementById("sum-monthly")) {
         updateCards();
         renderDashboardTable();
         populateYearPicker();
@@ -176,6 +176,8 @@ onAuthStateChanged(auth, user => {
     }
     // Load income data for dashboard cards (always fresh)
     setTimeout(() => loadIncome(), 0);
+    // Load debt data for dashboard cards
+    setTimeout(() => loadDebts(), 0);
 
     // Handle hash-based routing (e.g. index.html#history)
     const pageHash = window.location.hash.replace('#', '');
@@ -350,9 +352,11 @@ async function loadExpenses(isSilentSync = false) {
 
     // Save to localStorage cache
     saveToCache(currentUser.uid, allExpenses);
+    
+    console.log('loadExpenses: Loaded', allExpenses.length, 'expenses from Firestore');
 
     // Render lightweight content immediately — only if elements exist
-    if (document.getElementById("sum-daily")) {
+    if (document.getElementById("sum-monthly")) {
       updateCards();
       renderDashboardTable();
       populateYearPicker();
@@ -388,12 +392,52 @@ async function loadIncome() {
       return { id: d.id, ...raw, amount: isNaN(amt) ? 0 : amt };
     });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
+    console.log('loadIncome: Loaded', allIncome.length, 'income records from Firestore');
     updateIncomeCards();
     // If on history page, render income history
     if (document.getElementById("inc-history-body")) {
       renderIncomeHistory();
     }
   } catch (e) { console.error("Income load error:", e); }
+}
+
+// ── Load Debts ───────────────────────────────────────────────────────────────
+async function loadDebts() {
+  if (!currentUser) return;
+  try {
+    const q = query(collection(db, "debts"), where("uid", "==", currentUser.uid));
+    const snap = await getDocs(q);
+    allDebts = snap.docs.map(d => {
+      const raw = d.data();
+      const amt = parseFloat(raw.amount);
+      return {
+        id: d.id,
+        ...raw,
+        amount: isNaN(amt) ? 0 : amt,
+        settled: raw.settled === true || raw.settled === "true" || raw.settled === 1,
+        settledDate: raw.settledDate || '',
+      };
+    });
+    allDebts.sort((a, b) => b.date.localeCompare(a.date));
+    console.log('loadDebts: Loaded', allDebts.length, 'debts from Firestore');
+    updateDebtCards();
+  } catch (e) { console.error("Debt load error:", e); }
+}
+
+// ── Update Debt Cards ────────────────────────────────────────────────────────
+function updateDebtCards() {
+  if (!document.getElementById("sum-debt")) {
+    console.warn('sum-debt element not found');
+    return;
+  }
+
+  const activeDebts = allDebts.filter(d => !d.settled);
+  const totalDebt = activeDebts.reduce((s, d) => s + d.amount, 0);
+  
+  console.log('updateDebtCards:', { total: allDebts.length, active: activeDebts.length, totalDebt });
+  
+  document.getElementById("sum-debt").textContent = fmt(totalDebt);
+  document.getElementById("sum-debt-count").textContent = activeDebts.length + " active debt" + (activeDebts.length !== 1 ? "s" : "");
 }
 
 function updateIncomeCards() {
@@ -418,6 +462,9 @@ function updateIncomeCards() {
   const netSavings = monthlyIncome - monthlyExpenses;
 
   incomeEl.textContent = fmt(monthlyIncome);
+  document.getElementById("sum-income-sub").textContent = monthlyIncome > 0 
+    ? allIncome.filter(i => i.date >= ms && i.date <= today).length + " entries this month"
+    : "0 entries this month";
 
   savingsEl.textContent = fmt(Math.abs(netSavings));
   // Color the savings card based on positive/negative
@@ -695,22 +742,22 @@ window.deleteFromEdit = async () => {
 };
 
 function updateCards() {
-  if (!document.getElementById("sum-daily")) return;
-  const now = new Date(); const today = todayStr();
-  const ws = getWeekStart();
+  if (!document.getElementById("sum-monthly")) {
+    console.warn('sum-monthly element not found');
+    return;
+  }
+  const now = new Date();
+  const today = todayStr();
   const ms = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
-  const ys = now.getFullYear() + "-01-01";
-  function calc(f, t) { const r = allExpenses.filter(e => e.date >= f && e.date <= t); return { total: r.reduce((s, e) => s + e.amount, 0), count: r.length }; }
-  const d = calc(today, today), w = calc(ws, today), m = calc(ms, today), y = calc(ys, today);
-  document.getElementById("sum-daily").textContent = fmt(d.total);
-  document.getElementById("sum-weekly").textContent = fmt(w.total);
-  document.getElementById("sum-monthly").textContent = fmt(m.total);
-  document.getElementById("sum-yearly").textContent = fmt(y.total);
-  document.getElementById("sum-daily-count").textContent = d.count + " transaction" + (d.count !== 1 ? "s" : "");
-  document.getElementById("sum-weekly-count").textContent = w.count + " transaction" + (w.count !== 1 ? "s" : "");
-  document.getElementById("sum-monthly-count").textContent = m.count + " transaction" + (m.count !== 1 ? "s" : "");
-  document.getElementById("sum-yearly-count").textContent = y.count + " transaction" + (y.count !== 1 ? "s" : "");
 
+  // Monthly expenses
+  const monthlyExpenses = allExpenses.filter(e => e.date >= ms && e.date <= today);
+  const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
+  
+  console.log('updateCards:', { total: allExpenses.length, monthly: monthlyExpenses.length, monthTotal, monthStart: ms, today });
+  
+  document.getElementById("sum-monthly").textContent = fmt(monthTotal);
+  document.getElementById("sum-monthly-count").textContent = monthlyExpenses.length + " transaction" + (monthlyExpenses.length !== 1 ? "s" : "") + " this month";
 }
 
 window.switchTableTab = (tab) => {
