@@ -1,0 +1,623 @@
+/* ================================================================
+   SpendWise — Responsive Design System
+   Complete breakpoint coverage for all screen sizes and orientations
+   ================================================================ */
+
+/* =====================
+   MOBILE PORTRAIT (320-480px)
+   Small phones (iPhone SE, older devices)
+===================== */
+@media (max-width: 480px) {
+  /* Typography */
+  :root {
+    font-size: 15px;
+  }
+  
+  /* Page header */
+  .page-header {
+    padding: var(--space-4) var(--space-4);
+  }
+  
+  .page-header h2 {
+    font-size: var(--text-xl);
+  }
+  
+  /* Summary cards */
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  
+  .summary-card {
+    padding: var(--space-4);
+  }
+  
+  .summary-amount {
+    font-size: var(--text-xl);
+  }
+  
+  /* Navigation */
+  .bottom-nav-btn {
+    font-size: 0.625rem;
+  }
+  
+  .bottom-nav-btn svg,
+  .bottom-nav-btn i {
+    width: 18px;
+    height: 18px;
+  }
+  
+  /* Tables become cards */
+  .table-card__header,
+  .table-card__footer {
+    padding: var(--space-3) var(--space-4);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  
+  .table-card__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  /* Form actions stack vertically */
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+  }
+  
+  /* Mobile menu full width */
+  .mobile-menu-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  /* Modals become bottom sheets */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  
+  .modal,
+  .modal-box {
+    max-height: 85vh;
+    border-radius: var(--modal-border-radius) var(--modal-border-radius) 0 0;
+    transform: translateY(100%);
+  }
+  
+  .modal-overlay.open .modal,
+  .modal-overlay.open .modal-box {
+    transform: translateY(0);
+  }
+  
+  /* Chart cards */
+  .chart-card {
+    padding: var(--space-4);
+  }
+  
+  /* Voice FAB positioning */
+  .voice-fab {
+    bottom: calc(var(--bottom-nav-h) + var(--space-4) + var(--safe-bottom));
+  }
+  
+  /* Filter cards */
+  .filter-card__grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filter-card__actions {
+    flex-direction: column;
+  }
+  
+  .filter-card__actions .btn {
+    width: 100%;
+  }
+}
+
+/* =====================
+   MOBILE LANDSCAPE (height < 500px)
+   Phones rotated to landscape
+===================== */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Navbar */
+  .navbar {
+    height: calc(48px + var(--safe-top));
+  }
+  
+  /* Bottom nav - make it compact */
+  .bottom-nav {
+    height: calc(56px + var(--safe-bottom));
+  }
+  
+  .bottom-nav-btn {
+    flex-direction: row;
+    gap: var(--space-2);
+  }
+  
+  .bottom-nav-btn svg,
+  .bottom-nav-btn i {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .bottom-nav-btn span {
+    font-size: var(--text-xs);
+  }
+  
+  /* Modals - limit height */
+  .modal,
+  .modal-box {
+    max-height: 90vh;
+  }
+  
+  /* Voice FAB - reposition to avoid bottom nav */
+  .voice-fab {
+    bottom: calc(72px + var(--safe-bottom));
+    right: var(--space-3);
+  }
+  
+  /* Page header - compact */
+  .page-header {
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .page-header h2 {
+    font-size: var(--text-lg);
+  }
+  
+  .page-header p {
+    display: none;
+  }
+  
+  /* Charts - smaller */
+  .chart-card__canvas-wrap {
+    max-height: 250px;
+  }
+  
+  /* Forms - compact spacing */
+  .form-card__grid {
+    gap: var(--space-2);
+  }
+  
+  .form-group {
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* =====================
+   TABLET PORTRAIT (768-1023px)
+   iPad, Android tablets in portrait
+===================== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Content container */
+  .main-content {
+    max-width: var(--container-xl);
+    margin: 0 auto;
+  }
+  
+  /* Summary cards - 2 columns */
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Charts side by side if space allows */
+  .chart-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Tables - use more horizontal space */
+  .data-table {
+    font-size: var(--text-sm);
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  /* Sidebar - slightly wider */
+  .sidebar {
+    width: 240px;
+    padding: var(--space-6) var(--space-4);
+  }
+  
+  /* Main content margin for sidebar */
+  .main-content {
+    margin-left: 240px;
+  }
+  
+  /* Modals - wider */
+  .modal {
+    max-width: 640px;
+  }
+  
+  /* Voice FAB - sidebar offset */
+  .voice-fab {
+    right: calc(var(--space-6) + 240px);
+  }
+  
+  /* Page header */
+  .page-header {
+    padding: var(--space-6) var(--space-8);
+  }
+  
+  /* Form grid - 2 columns works well here */
+  .form-card__grid {
+    gap: var(--space-4);
+  }
+  
+  /* Insights */
+  .insight-card,
+  .insight-section {
+    padding: var(--space-5);
+  }
+}
+
+/* =====================
+   TABLET LANDSCAPE (1024-1366px)
+   iPad Pro, Surface, laptops
+===================== */
+@media (min-width: 1024px) and (max-width: 1366px) {
+  /* Content container */
+  .main-content {
+    max-width: var(--container-2xl);
+  }
+  
+  /* Summary cards - 4 columns */
+  .summary-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  /* Charts side by side */
+  .chart-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-w);
+    padding: var(--space-8) var(--space-5);
+  }
+  
+  .main-content {
+    margin-left: var(--sidebar-w);
+  }
+  
+  /* Tables - full width with good spacing */
+  .data-table th,
+  .data-table td {
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  /* Voice FAB */
+  .voice-fab {
+    right: calc(var(--space-6) + var(--sidebar-w));
+  }
+  
+  /* Page header */
+  .page-header {
+    padding: var(--space-6) var(--space-8);
+  }
+}
+
+/* =====================
+   DESKTOP (1367px+)
+   Standard laptops and larger
+===================== */
+@media (min-width: 1367px) {
+  /* Content container */
+  .main-content {
+    max-width: var(--container-2xl);
+    margin-left: var(--sidebar-w);
+  }
+  
+  /* Summary cards */
+  .summary-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  /* Charts */
+  .chart-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* =====================
+   LARGE DESKTOP (1920px+)
+   4K displays, large monitors
+===================== */
+@media (min-width: 1920px) {
+  :root {
+    font-size: 17px;
+  }
+  
+  .main-content {
+    max-width: var(--container-3xl);
+    margin-left: calc(var(--sidebar-w) + 40px);
+  }
+  
+  .sidebar {
+    width: 260px;
+  }
+  
+  .summary-cards {
+    gap: var(--space-4);
+  }
+  
+  .chart-card {
+    padding: var(--space-6);
+  }
+  
+  .data-table {
+    font-size: var(--text-md);
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: var(--space-4);
+  }
+}
+
+/* =====================
+   SAFE AREA INSETS
+   For notched devices (iPhone X+, some Android)
+===================== */
+
+/* Modals */
+.modal-overlay {
+  padding: calc(var(--space-4) + var(--safe-top))
+           calc(var(--space-4) + var(--safe-left))
+           calc(var(--space-4) + var(--safe-bottom))
+           calc(var(--space-4) + var(--safe-right));
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 0 var(--safe-left) var(--safe-bottom) var(--safe-right);
+  }
+}
+
+/* Mobile menu panel */
+.mobile-menu-panel {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Bottom navigation */
+.bottom-nav {
+  padding-bottom: var(--safe-bottom);
+}
+
+/* Navbar */
+.navbar {
+  padding-top: var(--safe-top);
+  height: calc(var(--nav-h) + var(--safe-top));
+}
+
+/* Toast notifications */
+.toast {
+  bottom: calc(var(--bottom-nav-h) + var(--space-4) + var(--safe-bottom));
+}
+
+@media (min-width: 768px) {
+  .toast {
+    bottom: calc(var(--space-6) + var(--safe-bottom));
+  }
+}
+
+/* =====================
+   FOLDABLE DEVICES
+   Surface Duo, Galaxy Fold
+===================== */
+
+/* Dual-screen portrait mode */
+@media (spanning: single-fold-vertical) {
+  .main-content {
+    max-width: 100%;
+    margin-left: 0;
+  }
+  
+  .sidebar {
+    display: none;
+  }
+  
+  .bottom-nav {
+    display: flex;
+  }
+}
+
+/* Dual-screen landscape mode */
+@media (spanning: single-fold-horizontal) {
+  .main-content {
+    max-width: 100%;
+    margin-left: 0;
+  }
+  
+  .sidebar {
+    display: none;
+  }
+  
+  .bottom-nav {
+    display: flex;
+  }
+}
+
+/* =====================
+   PRINT STYLES
+   For printing reports
+===================== */
+@media print {
+  /* Hide navigation and interactive elements */
+  .navbar,
+  .sidebar,
+  .bottom-nav,
+  .mobile-menu-overlay,
+  .mobile-menu-panel,
+  .voice-fab,
+  .btn,
+  .toast {
+    display: none !important;
+  }
+  
+  /* Reset layout */
+  .main-content {
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* Remove backgrounds and shadows */
+  .summary-card,
+  .chart-card,
+  .table-card,
+  .form-card,
+  .insight-card,
+  .insight-section {
+    background: white !important;
+    border: 1px solid #ddd !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  
+  /* Ensure text is readable */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Tables */
+  .data-table {
+    font-size: 10pt;
+  }
+  
+  .data-table th {
+    background: #f5f5f5 !important;
+  }
+  
+  /* Page breaks */
+  h2, h3 {
+    break-after: avoid;
+  }
+  
+  .table-card {
+    break-inside: avoid;
+  }
+}
+
+/* =====================
+   REDUCED MOTION
+   For users who prefer less animation
+===================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable specific animations */
+  .modal,
+  .modal-overlay,
+  .mobile-menu-panel,
+  .mobile-menu-overlay,
+  .profile-dropdown {
+    transition: none !important;
+  }
+  
+  .modal-overlay.open .modal,
+  .modal-overlay.open .modal-box {
+    transform: none !important;
+  }
+  
+  /* Disable hover transforms */
+  .summary-card:hover,
+  .insight-card:hover {
+    transform: none !important;
+  }
+  
+  /* Disable insight card fade-in animation */
+  .insight-card,
+  .insight-section {
+    animation: none !important;
+  }
+}
+
+/* =====================
+   HIGH CONTRAST MODE
+   For users who need better contrast
+===================== */
+@media (prefers-contrast: high) {
+  :root {
+    --border: #999;
+    --text3: #666;
+  }
+  
+  [data-theme="dark"] {
+    --border: #777;
+    --text3: #888;
+  }
+  
+  /* Stronger focus rings */
+  *:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+  
+  /* Bolder text for labels */
+  .summary-label,
+  .table-card__subtitle,
+  .filter-card__subtitle {
+    font-weight: var(--font-bold);
+  }
+}
+
+/* =====================
+   TOUCH DEVICE OPTIMIZATIONS
+   For devices without hover capability
+===================== */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .btn,
+  .sidebar-btn,
+  .bottom-nav-btn,
+  .mobile-menu-btn,
+  .table-actions .btn-action,
+  .theme-toggle,
+  .menu-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Remove hover effects */
+  .summary-card:hover,
+  .insight-card:hover,
+  .data-table tbody tr:hover {
+    transform: none;
+    background: transparent;
+  }
+  
+  /* Active states instead */
+  .summary-card:active {
+    background: var(--bg2);
+  }
+  
+  /* Remove text selection on double-tap */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Better scroll behavior */
+  .mobile-menu-nav,
+  .sidebar {
+    -webkit-overflow-scrolling: touch;
+  }
+}

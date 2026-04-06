@@ -362,6 +362,10 @@ async function loadExpenses(isSilentSync = false) {
     if (document.getElementById("history-body")) {
       renderHistory();
     }
+    // Update expense summary cards (expense page)
+    if (document.getElementById("exp-monthly")) {
+      updateExpenseCards();
+    }
 
     // Defer chart rendering to next frame to avoid blocking
     requestAnimationFrame(() => {
@@ -429,6 +433,52 @@ function updateIncomeCards() {
   }
 }
 
+// ── Update Expense Summary Cards (expense page) ─────────────────────────────
+function updateExpenseCards() {
+  const monthlyEl = document.getElementById("exp-monthly");
+  const yearlyEl = document.getElementById("exp-yearly");
+  const totalEl = document.getElementById("exp-total");
+  const dailyAvgEl = document.getElementById("exp-daily-avg");
+  
+  if (!monthlyEl && !yearlyEl && !totalEl && !dailyAvgEl) return;
+  
+  const now = new Date();
+  const thisMonth = now.getMonth() + 1;
+  const thisYear = now.getFullYear();
+  const ms = thisYear + "-" + pad(thisMonth) + "-01";
+  const yearStr = String(thisYear);
+  
+  // This month
+  const monthlyExpenses = allExpenses.filter(e => e.date >= ms && e.date <= todayStr());
+  const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
+  
+  if (monthlyEl) monthlyEl.textContent = fmt(monthTotal);
+  const monthCountEl = document.getElementById("exp-monthly-count");
+  if (monthCountEl) monthCountEl.textContent = monthlyExpenses.length + ' entr' + (monthlyExpenses.length !== 1 ? 'ies' : 'y');
+  
+  // This year
+  const yearlyExpenses = allExpenses.filter(e => e.date && e.date.startsWith(yearStr));
+  const yearTotal = yearlyExpenses.reduce((s, e) => s + e.amount, 0);
+  
+  if (yearlyEl) yearlyEl.textContent = fmt(yearTotal);
+  const yearCountEl = document.getElementById("exp-yearly-count");
+  if (yearCountEl) yearCountEl.textContent = yearlyExpenses.length + ' entr' + (yearlyExpenses.length !== 1 ? 'ies' : 'y');
+  
+  // Total
+  const totalAmount = allExpenses.reduce((s, e) => s + e.amount, 0);
+  if (totalEl) totalEl.textContent = fmt(totalAmount);
+  const totalCountEl = document.getElementById("exp-total-count");
+  if (totalCountEl) totalCountEl.textContent = allExpenses.length + ' entr' + (allExpenses.length !== 1 ? 'ies' : 'y');
+  
+  // Daily average
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const dailyAvg = dayOfMonth > 0 ? monthTotal / dayOfMonth : 0;
+  if (dailyAvgEl) dailyAvgEl.textContent = fmt(dailyAvg);
+  const dailySubEl = document.getElementById("exp-daily-sub");
+  if (dailySubEl) dailySubEl.textContent = `avg / day this month`;
+}
+
 window.addExpense = async () => {
   const amount = parseFloat(document.getElementById("exp-amount").value);
   const category = document.getElementById("exp-category").value;
@@ -449,6 +499,7 @@ window.addExpense = async () => {
     updateCards();
     renderDashboardTable();
     renderHistory();
+    updateExpenseCards();
     // Defer chart rendering
     requestAnimationFrame(() => {
       renderPieChart();
@@ -783,16 +834,216 @@ function renderPagination(totalItems, totalPages) {
   if (window.lucide) lucide.createIcons();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// CATEGORY MULTI-SELECT
+// ═══════════════════════════════════════════════════════════════════
+
+let selectedCategories = [];
+
+function initCategoryMultiSelect() {
+  const trigger = document.getElementById('category-trigger');
+  const dropdown = document.getElementById('category-dropdown');
+  const options = document.getElementById('category-options');
+  const selectAllBtn = document.getElementById('category-select-all-btn');
+  
+  if (!trigger || !dropdown || !options) return;
+  
+  // Toggle dropdown on trigger click
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
+    toggleCategoryDropdown(!isExpanded);
+  });
+  
+  // Keyboard support
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
+      toggleCategoryDropdown(!isExpanded);
+    }
+    if (e.key === 'Escape') {
+      toggleCategoryDropdown(false);
+    }
+  });
+  
+  // Handle checkbox changes
+  options.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') {
+      updateSelectedCategories();
+    }
+  });
+  
+  // Select All button
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const checkboxes = options.querySelectorAll('input[type="checkbox"]');
+      const allSelected = Array.from(checkboxes).every(cb => cb.checked);
+      
+      checkboxes.forEach(cb => {
+        cb.checked = !allSelected;
+      });
+      
+      selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
+      updateSelectedCategories();
+    });
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target) && e.target !== trigger) {
+      toggleCategoryDropdown(false);
+    }
+  });
+  
+  // Close on scroll and reposition on resize
+  let scrollTimeout;
+  window.addEventListener('scroll', () => {
+    if (trigger.getAttribute('aria-expanded') === 'true') {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => toggleCategoryDropdown(false), 150);
+    }
+  }, { passive: true });
+  
+  window.addEventListener('resize', () => {
+    if (trigger.getAttribute('aria-expanded') === 'true') {
+      toggleCategoryDropdown(false);
+    }
+  });
+}
+
+function toggleCategoryDropdown(open) {
+  const trigger = document.getElementById('category-trigger');
+  const dropdown = document.getElementById('category-dropdown');
+  
+  if (!trigger || !dropdown) return;
+  
+  if (open) {
+    // Position dropdown below trigger
+    const triggerRect = trigger.getBoundingClientRect();
+    const dropdownHeight = 320; // approximate max-height
+    const spaceBelow = window.innerHeight - triggerRect.bottom;
+    const spaceAbove = triggerRect.top;
+    
+    // Determine if we should show below or above
+    let topPosition;
+    if (spaceBelow >= dropdownHeight || spaceBelow > spaceAbove) {
+      // Show below
+      topPosition = triggerRect.bottom + 8;
+    } else {
+      // Show above
+      topPosition = triggerRect.top - dropdownHeight - 8;
+    }
+    
+    dropdown.style.top = topPosition + 'px';
+    dropdown.style.left = triggerRect.left + 'px';
+    dropdown.style.width = Math.max(triggerRect.width, 280) + 'px';
+    dropdown.style.maxHeight = '320px';
+    
+    // Adjust if it goes off-screen right
+    requestAnimationFrame(() => {
+      const dropdownRect = dropdown.getBoundingClientRect();
+      if (dropdownRect.right > window.innerWidth - 16) {
+        dropdown.style.left = (window.innerWidth - dropdownRect.width - 16) + 'px';
+      }
+      if (dropdownRect.left < 16) {
+        dropdown.style.left = '16px';
+      }
+    });
+    
+    dropdown.classList.remove('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+  } else {
+    dropdown.classList.add('hidden');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+}
+
+function updateSelectedCategories() {
+  const options = document.getElementById('category-options');
+  const chipsContainer = document.getElementById('category-chips');
+  const placeholder = document.getElementById('category-placeholder');
+  const selectAllBtn = document.getElementById('category-select-all-btn');
+  
+  if (!options) return;
+  
+  // Get selected values
+  selectedCategories = Array.from(options.querySelectorAll('input[type="checkbox"]:checked'))
+    .map(cb => cb.value);
+  
+  // Update chips
+  if (chipsContainer) {
+    chipsContainer.innerHTML = '';
+    selectedCategories.forEach(cat => {
+      const chip = document.createElement('div');
+      chip.className = 'category-chip';
+      chip.innerHTML = `
+        <span>${escapeHtml(cat)}</span>
+        <button type="button" aria-label="Remove ${cat}" data-category="${cat}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+      chipsContainer.appendChild(chip);
+    });
+    
+    // Add click handlers to remove buttons
+    chipsContainer.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const category = btn.dataset.category;
+        const checkbox = options.querySelector(`input[value="${CSS.escape(category)}"]`);
+        if (checkbox) {
+          checkbox.checked = false;
+          updateSelectedCategories();
+        }
+      });
+    });
+  }
+  
+  // Update placeholder text
+  if (placeholder) {
+    if (selectedCategories.length === 0) {
+      placeholder.textContent = 'All Categories';
+    } else if (selectedCategories.length === 1) {
+      placeholder.textContent = selectedCategories[0];
+    } else if (selectedCategories.length <= 3) {
+      placeholder.textContent = selectedCategories.join(', ');
+    } else {
+      placeholder.textContent = `${selectedCategories.length} categories selected`;
+    }
+  }
+  
+  // Update Select All button text
+  if (selectAllBtn) {
+    const checkboxes = options.querySelectorAll('input[type="checkbox"]');
+    const allSelected = Array.from(checkboxes).every(cb => cb.checked);
+    selectAllBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
+  }
+  
+  // Update field highlighting
+  updateFieldHighlight('filter-category', selectedCategories.length > 0 ? 'selected' : '');
+}
+
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCategoryMultiSelect);
+} else {
+  initCategoryMultiSelect();
+}
+
 window.applyFilters = () => {
   const from = document.getElementById("filter-from").value,
     to = document.getElementById("filter-to").value,
-    cat = document.getElementById("filter-category").value,
     q = document.getElementById("filter-search") ? document.getElementById("filter-search").value.toLowerCase().trim() : "";
 
   let data = allExpenses.slice();
   if (from) data = data.filter(e => e.date >= from);
   if (to) data = data.filter(e => e.date <= to);
-  if (cat) data = data.filter(e => e.category === cat);
+  if (selectedCategories.length > 0) data = data.filter(e => selectedCategories.includes(e.category));
   if (q) {
     data = data.filter(e =>
       e.description.toLowerCase().includes(q) ||
@@ -803,16 +1054,64 @@ window.applyFilters = () => {
 
   historyPage = 1;
   renderHistory(data);
+  updateFilterCount(from, to, selectedCategories, q);
 };
 
 window.clearFilters = () => {
-  ["filter-from", "filter-to", "filter-category", "filter-search"].forEach(id => {
+  ["filter-from", "filter-to", "filter-search"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
+  
+  // Clear category checkboxes
+  const options = document.getElementById('category-options');
+  if (options) {
+    options.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  }
+  selectedCategories = [];
+  updateSelectedCategories();
+  
   historyPage = 1;
   renderHistory(allExpenses);
+  updateFilterCount("", "", [], "");
 };
+
+function updateFilterCount(from, to, cats, q) {
+  const badge = document.getElementById('filter-count');
+  if (!badge) return;
+  
+  // Handle both array and string for backward compatibility
+  const catArray = Array.isArray(cats) ? cats : (cats ? [cats] : []);
+  
+  let activeCount = 0;
+  if (from) activeCount++;
+  if (to) activeCount++;
+  if (catArray.length > 0) activeCount++;
+  if (q) activeCount++;
+  
+  badge.textContent = `${activeCount} active`;
+  badge.style.opacity = activeCount > 0 ? '1' : '0.6';
+  
+  // Update field highlighting
+  updateFieldHighlight('filter-from', from);
+  updateFieldHighlight('filter-to', to);
+  updateFieldHighlight('filter-category', catArray.length > 0 ? 'selected' : '');
+  updateFieldHighlight('filter-search', q);
+}
+
+function updateFieldHighlight(inputId, value) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  
+  const field = input.closest('.filter-card__field');
+  if (!field) return;
+  
+  if (value && value.trim()) {
+    field.classList.add('has-value');
+  } else {
+    field.classList.remove('has-value');
+  }
+}
 
 function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
@@ -979,7 +1278,7 @@ function pad(n) { return String(n).padStart(2, "0"); }
 function todayStr() { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
 function getWeekStart() { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(d.setDate(diff)); return m.getFullYear() + "-" + pad(m.getMonth() + 1) + "-" + pad(m.getDate()); }
 function formatDate(ds) { return new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
-function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; const el = document.getElementById("dashboard-greeting") || document.getElementById("income-greeting"); if (el) el.textContent = g + (n ? ", " + n : "") + "!"; }
+function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; const el = document.getElementById("dashboard-greeting") || document.getElementById("income-greeting") || document.getElementById("expense-greeting"); if (el) el.textContent = g + (n ? ", " + n : "") + "!"; }
 
 // ── Currency ────────────────────────────────────────────────────────────────
 function initCurrencySelector() {
@@ -1002,6 +1301,7 @@ window.handleCurrencyChange = (code) => {
     renderHistory();
     updatePeriodSummary();
     updateIncomeCards();
+    updateExpenseCards();
     requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
   }
 };
@@ -1833,6 +2133,7 @@ window.applyIncomeFilters = () => {
 
   incHistoryPage = 1;
   renderIncomeHistory(data);
+  updateIncomeFilterCount(from, to, pay, q);
 };
 
 window.clearIncomeFilters = () => {
@@ -1842,7 +2143,28 @@ window.clearIncomeFilters = () => {
   });
   incHistoryPage = 1;
   renderIncomeHistory(allIncome);
+  updateIncomeFilterCount('', '', '', '');
 };
+
+function updateIncomeFilterCount(from, to, pay, q) {
+  const badge = document.getElementById('inc-filter-count');
+  if (!badge) return;
+  
+  let activeCount = 0;
+  if (from) activeCount++;
+  if (to) activeCount++;
+  if (pay) activeCount++;
+  if (q) activeCount++;
+  
+  badge.textContent = `${activeCount} active`;
+  badge.style.opacity = activeCount > 0 ? '1' : '0.6';
+  
+  // Update field highlighting
+  updateFieldHighlight('inc-filter-from', from);
+  updateFieldHighlight('inc-filter-to', to);
+  updateFieldHighlight('inc-filter-payment', pay);
+  updateFieldHighlight('inc-filter-search', q);
+}
 
 // ── Edit Income (from history page) ──────────────────────────
 window.openIncEdit = (id) => {

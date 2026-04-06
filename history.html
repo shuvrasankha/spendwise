@@ -15,7 +15,9 @@
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/style.css?v=3" />
+  <link rel="stylesheet" href="assets/css/responsive.css" />
   <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 </head>
 
@@ -154,7 +156,7 @@
           <i data-lucide="menu"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
-          <div class="user-avatar" id="user-avatar">U</div>
+          <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
             <div class="profile-currency-wrap">
               <label for="currency-select">Currency</label>
@@ -250,7 +252,7 @@
       </nav>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content">
       <!-- Page Header -->
       <div class="page-header">
         <h2>Transaction History</h2>
@@ -270,58 +272,122 @@
       <!-- ═══ EXPENSE HISTORY SECTION ═══ -->
       <div id="expense-history-section">
         <div class="filter-card">
-          <div class="filter-row">
-            <div class="form-group">
+          <div class="filter-card__header">
+            <div class="filter-card__title">
+              <i data-lucide="filter"></i>
+              <span>Filters</span>
+            </div>
+            <span class="filter-card__badge" id="filter-count">0 active</span>
+          </div>
+          <div class="filter-card__grid">
+            <div class="filter-card__field">
               <label>From</label>
               <div class="input-icon-wrap">
                 <i data-lucide="calendar"></i>
                 <input type="date" id="filter-from" />
               </div>
             </div>
-            <div class="form-group">
+            <div class="filter-card__field">
               <label>To</label>
               <div class="input-icon-wrap">
                 <i data-lucide="calendar"></i>
                 <input type="date" id="filter-to" />
               </div>
             </div>
-            <div class="form-group">
-              <label>Search Keyword</label>
+            <div class="filter-card__field">
+              <label>Search</label>
               <div class="input-icon-wrap">
                 <i data-lucide="search"></i>
                 <input type="text" id="filter-search" placeholder="Type to search..." data-keyup="applyFilters" />
               </div>
             </div>
-            <div class="form-group">
-              <label>Category</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="tag"></i>
-                <select id="filter-category">
-                  <option value="">All Categories</option>
-                  <option value="Food &amp; Dining">Food &amp; Dining</option>
-                  <option value="Transport">Transport</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Health">Health</option>
-                  <option value="Bills &amp; Utilities">Bills &amp; Utilities</option>
-                  <option value="Education">Education</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Groceries">Groceries</option>
-                  <option value="Subscription">Subscription</option>
-                  <option value="Rent">Rent</option>
-                  <option value="Investment">Investment</option>
-                  <option value="Personal Care">Personal Care</option>
-                  <option value="Gifts">Gifts</option>
-                  <option value="Other">Other</option>
-                </select>
+            <div class="filter-card__field filter-card__field--full-width">
+              <label>Categories</label>
+              <div class="category-select-wrap">
+                <div class="category-select-trigger" id="category-trigger" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false">
+                  <i data-lucide="tag"></i>
+                  <span id="category-placeholder">All Categories</span>
+                  <i data-lucide="chevron-down" class="category-chevron"></i>
+                </div>
+                <div class="category-dropdown hidden" id="category-dropdown" role="listbox" aria-multiselectable="true">
+                  <div class="category-dropdown-header">
+                    <span>Select Categories</span>
+                    <button class="category-select-all-btn" id="category-select-all-btn">Select All</button>
+                  </div>
+                  <div class="category-options" id="category-options">
+                    <label class="category-option">
+                      <input type="checkbox" value="Food & Dining" />
+                      <span>Food & Dining</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Transport" />
+                      <span>Transport</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Shopping" />
+                      <span>Shopping</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Entertainment" />
+                      <span>Entertainment</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Health" />
+                      <span>Health</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Bills & Utilities" />
+                      <span>Bills & Utilities</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Education" />
+                      <span>Education</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Travel" />
+                      <span>Travel</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Groceries" />
+                      <span>Groceries</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Subscription" />
+                      <span>Subscription</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Rent" />
+                      <span>Rent</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Investment" />
+                      <span>Investment</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Personal Care" />
+                      <span>Personal Care</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Gifts" />
+                      <span>Gifts</span>
+                    </label>
+                    <label class="category-option">
+                      <input type="checkbox" value="Other" />
+                      <span>Other</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="category-chips" id="category-chips"></div>
               </div>
             </div>
-            <div class="form-group filter-actions">
-              <button class="btn-primary" data-action="applyFilters">
-                <i data-lucide="filter"></i> Filter
-              </button>
-              <button class="btn-secondary" data-action="clearFilters">Clear</button>
-            </div>
+          </div>
+          <div class="filter-card__actions">
+            <button class="btn btn-secondary" data-action="clearFilters">
+              <i data-lucide="x"></i> Clear All
+            </button>
+            <button class="btn btn-primary" data-action="applyFilters">
+              <i data-lucide="filter"></i> Apply Filters
+            </button>
           </div>
         </div>
         <div class="table-card">
@@ -363,29 +429,36 @@
       <!-- ═══ INCOME HISTORY SECTION ═══ -->
       <div id="income-history-section" class="hidden">
         <div class="filter-card">
-          <div class="filter-row">
-            <div class="form-group">
+          <div class="filter-card__header">
+            <div class="filter-card__title">
+              <i data-lucide="filter"></i>
+              <span>Filters</span>
+            </div>
+            <span class="filter-card__badge" id="inc-filter-count">0 active</span>
+          </div>
+          <div class="filter-card__grid">
+            <div class="filter-card__field">
               <label>From</label>
               <div class="input-icon-wrap">
                 <i data-lucide="calendar"></i>
                 <input type="date" id="inc-filter-from" />
               </div>
             </div>
-            <div class="form-group">
+            <div class="filter-card__field">
               <label>To</label>
               <div class="input-icon-wrap">
                 <i data-lucide="calendar"></i>
                 <input type="date" id="inc-filter-to" />
               </div>
             </div>
-            <div class="form-group">
-              <label>Search Keyword</label>
+            <div class="filter-card__field">
+              <label>Search</label>
               <div class="input-icon-wrap">
                 <i data-lucide="search"></i>
                 <input type="text" id="inc-filter-search" placeholder="Search source, notes..." data-keyup="applyIncomeFilters" />
               </div>
             </div>
-            <div class="form-group">
+            <div class="filter-card__field">
               <label>Payment Type</label>
               <div class="input-icon-wrap">
                 <i data-lucide="credit-card"></i>
@@ -396,12 +469,14 @@
                 </select>
               </div>
             </div>
-            <div class="form-group filter-actions">
-              <button class="btn-income-primary" data-action="applyIncomeFilters">
-                <i data-lucide="filter"></i> Filter
-              </button>
-              <button class="btn-secondary" data-action="clearIncomeFilters">Clear</button>
-            </div>
+          </div>
+          <div class="filter-card__actions">
+            <button class="btn btn-secondary" data-action="clearIncomeFilters">
+              <i data-lucide="x"></i> Clear All
+            </button>
+            <button class="btn btn-success" data-action="applyIncomeFilters">
+              <i data-lucide="filter"></i> Apply Filters
+            </button>
           </div>
         </div>
         <div class="table-card">
@@ -680,6 +755,7 @@
 
   <script src="assets/js/utils/currency.js"></script>
   <script type="module" src="assets/js/dashboard.js"></script>
+  <script src="assets/js/modules/accessibility.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');

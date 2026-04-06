@@ -16,7 +16,9 @@
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css" />
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/style.css?v=3" />
+  <link rel="stylesheet" href="assets/css/responsive.css" />
   <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 </head>
@@ -158,7 +160,7 @@
           <i data-lucide="menu"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
-          <div class="user-avatar" id="user-avatar">U</div>
+          <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
             <div class="profile-currency-wrap">
               <label for="currency-select">Currency</label>
@@ -255,7 +257,7 @@
       </nav>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content">
 
       <div id="page-dashboard" class="page active">
         <div class="page-header">
@@ -868,6 +870,7 @@
   <script type="module" src="assets/js/modules/insights.js"></script>
   <script type="module" src="assets/js/modules/csv-upload.js"></script>
   <script type="module" src="assets/js/modules/backup.js"></script>
+  <script src="assets/js/modules/accessibility.js"></script>
 
   <!-- Backup & Restore Modal -->
   <div id="backup-modal" class="modal-overlay hidden">

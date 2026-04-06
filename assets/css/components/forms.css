@@ -1,0 +1,302 @@
+/* ================================================================
+   SpendWise — Form Components
+   Unified form system across all pages
+   ================================================================ */
+
+/* =====================
+   FORM CARD
+   Base container for all forms
+===================== */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-border-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow var(--transition);
+}
+
+@media (min-width: 1024px) {
+  .form-card:hover {
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* =====================
+   FORM HEADER
+   Unified header for all forms
+===================== */
+.form-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.form-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.form-card__icon svg,
+.form-card__icon i {
+  width: 20px;
+  height: 20px;
+}
+
+/* Variant: Accent (default) */
+.form-card__icon--accent {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+/* Variant: Success (income) */
+.form-card__icon--success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+/* Variant: Danger (expense) */
+.form-card__icon--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.form-card__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.form-card__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text2);
+  line-height: var(--leading-normal);
+  margin: 0;
+}
+
+/* =====================
+   FORM GRID
+   Responsive form layout
+===================== */
+.form-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 560px) {
+  .form-card__grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+}
+
+/* Full-width field */
+.form-card__field--full {
+  grid-column: 1 / -1;
+}
+
+/* =====================
+   FORM ACTIONS
+   Button container
+===================== */
+.form-card__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+@media (max-width: 480px) {
+  .form-card__actions {
+    flex-direction: column-reverse;
+  }
+  
+  .form-card__actions .btn {
+    width: 100%;
+  }
+}
+
+/* =====================
+   FORM MESSAGE
+   Success/error feedback
+===================== */
+.form-card__message {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  margin-top: var(--space-4);
+}
+
+.form-card__message--success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(40, 167, 69, 0.15);
+}
+
+.form-card__message--error {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(220, 53, 69, 0.15);
+}
+
+/* =====================
+   LEGACY ALIASES
+   Backward compatibility for existing HTML
+===================== */
+
+/* Income form */
+.income-form-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.income-form-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xs);
+  background: var(--success-bg);
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.income-form-icon i {
+  width: 20px;
+  height: 20px;
+}
+
+.income-form-header h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-1);
+}
+
+.income-form-header p {
+  font-size: var(--text-sm);
+  color: var(--text2);
+}
+
+/* Expense form */
+.expense-form-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.expense-form-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xs);
+  background: var(--danger-bg);
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.expense-form-icon i {
+  width: 20px;
+  height: 20px;
+}
+
+.expense-form-header h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-1);
+}
+
+.expense-form-header p {
+  font-size: var(--text-sm);
+  color: var(--text2);
+}
+
+/* Debt form */
+.debt-form-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.debt-form-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.debt-form-icon i {
+  width: 20px;
+  height: 20px;
+}
+
+.debt-form-header h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-1);
+}
+
+.debt-form-header p {
+  font-size: var(--text-sm);
+  color: var(--text2);
+}
+
+/* =====================
+   RESPONSIVE ADJUSTMENTS
+===================== */
+@media (min-width: 1024px) {
+  .income-form-header h3,
+  .expense-form-header h3,
+  .debt-form-header h3 {
+    font-size: var(--text-xl);
+  }
+  
+  .income-form-header p,
+  .expense-form-header p,
+  .debt-form-header p {
+    font-size: var(--text-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .income-form-header,
+  .expense-form-header,
+  .debt-form-header {
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+  }
+  
+  .income-form-icon,
+  .expense-form-icon,
+  .debt-form-icon {
+    width: 32px;
+    height: 32px;
+  }
+}

@@ -1,0 +1,335 @@
+/* ================================================================
+   SpendWise — Table Components
+   Unified data table system with responsive card layout
+   ================================================================ */
+
+/* =====================
+   DATA TABLE
+   Standard table styles
+===================== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+.data-table thead {
+  background: var(--table-header-bg);
+}
+
+.data-table th {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--table-border-color);
+}
+
+.data-table th.text-right {
+  text-align: right;
+}
+
+.data-table th.text-center {
+  text-align: center;
+}
+
+.data-table td {
+  padding: var(--space-3) var(--space-4);
+  color: var(--text);
+  border-bottom: 1px solid var(--table-border-color);
+  vertical-align: middle;
+}
+
+.data-table td.text-right {
+  text-align: right;
+}
+
+.data-table td.text-center {
+  text-align: center;
+}
+
+.data-table tbody tr {
+  transition: background var(--transition);
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg2);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Empty row */
+.data-table .empty-row {
+  text-align: center;
+  color: var(--text3);
+  font-style: italic;
+  padding: var(--space-10) var(--space-4);
+}
+
+/* =====================
+   TABLE CELL COMPONENTS
+===================== */
+
+/* Amount cell (emphasized) */
+.table-cell--amount {
+  font-weight: var(--font-bold);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-tight);
+}
+
+/* Date cell */
+.table-cell--date {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--text2);
+}
+
+/* Badge cell */
+.table-cell--badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+.table-cell--badge--success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.table-cell--badge--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.table-cell--badge--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.table-cell--badge--info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* Action buttons cell */
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.table-actions .btn-action {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.table-actions .btn-action:hover {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+.table-actions .btn-action svg,
+.table-actions .btn-action i {
+  width: 16px;
+  height: 16px;
+}
+
+.table-actions .btn-action--danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.table-actions .btn-action--success:hover {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+/* =====================
+   PAGINATION
+===================== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--table-border-color);
+  background: var(--surface2);
+  flex-wrap: wrap;
+}
+
+.pagination__btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.pagination__btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.pagination__btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: var(--font-semibold);
+}
+
+.pagination__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pagination__btn svg,
+.pagination__btn i {
+  width: 14px;
+  height: 14px;
+}
+
+.pagination__dots {
+  color: var(--text3);
+  font-size: var(--text-sm);
+  padding: 0 var(--space-1);
+}
+
+.pagination__info {
+  font-size: var(--text-xs);
+  color: var(--text3);
+  margin-left: var(--space-2);
+}
+
+/* =====================
+   MOBILE CARD LAYOUT
+   Tables become cards on small screens
+===================== */
+@media (max-width: 599px) {
+  .data-table thead {
+    display: none;
+  }
+  
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table td {
+    display: block;
+    width: 100%;
+  }
+  
+  .data-table tr {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--table-border-color);
+    margin-bottom: var(--space-2);
+  }
+  
+  .data-table tr:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+  
+  .data-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) 0;
+    border-bottom: none;
+    text-align: right;
+  }
+  
+  .data-table td::before {
+    content: attr(data-label);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wider);
+    margin-right: var(--space-3);
+    flex-shrink: 0;
+  }
+  
+  .data-table td.text-right {
+    text-align: right;
+  }
+  
+  .data-table td.text-center {
+    justify-content: center;
+  }
+  
+  .data-table .empty-row {
+    padding: var(--space-8) var(--space-4);
+  }
+  
+  .table-actions {
+    justify-content: flex-end;
+  }
+  
+  .pagination {
+    padding: var(--space-3) var(--space-4);
+  }
+}
+
+/* =====================
+   SORTABLE COLUMNS
+===================== */
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.data-table th.sortable:hover {
+  color: var(--text2);
+}
+
+.data-table th.sortable::after {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23636366' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.5;
+}
+
+.data-table th.sortable.sorted-asc::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230071e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+  opacity: 1;
+}
+
+.data-table th.sortable.sorted-desc::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230071e3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  opacity: 1;
+}
