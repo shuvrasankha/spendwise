@@ -125,6 +125,10 @@
       const el = document.getElementById('insights-error');
       if (el) el.classList.add('hidden');
     },
+    'dismissInsightError': function() {
+      const el = document.getElementById('insights-error');
+      if (el) el.classList.add('hidden');
+    },
 
     // Backup
     'openBackupModal': function() { if (window.openBackupModal) window.openBackupModal(); },

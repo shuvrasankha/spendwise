@@ -14,16 +14,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/tokens.css" />
-  <link rel="stylesheet" href="assets/css/style.css?v=3" />
+  <link rel="stylesheet" href="assets/css/style.css?v=4" />
   <link rel="stylesheet" href="assets/css/responsive.css" />
   <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
 
-  <!-- Full-page loader -->
   <div id="page-loader" class="page-loader">
     <div class="coin-scene">
       <div class="coin">
@@ -84,21 +83,17 @@
             <button type="button" class="btn-forgot" data-action="showForgotPassword">Forgot password?</button>
           </div>
           <div class="input-icon-wrap"><i data-lucide="lock"></i>
-            <input type="password" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" />
+            <input type="password" id="login-password" placeholder="••••••••" />
           </div>
         </div>
         <button class="btn-primary" data-action="handleLogin">Login</button>
         <div class="divider"><span>or</span></div>
         <button class="btn-google" data-action="handleGoogleLogin">
           <svg width="18" height="18" viewBox="0 0 24 24">
-            <path fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
           Continue with Google
         </button>
@@ -119,22 +114,17 @@
         <div class="form-group">
           <label>Password</label>
           <div class="input-icon-wrap"><i data-lucide="lock"></i>
-            <input type="password" id="signup-password"
-              placeholder="Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character" />
+            <input type="password" id="signup-password" placeholder="Min 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character" />
           </div>
         </div>
         <button class="btn-primary" data-action="handleSignup">Create Account</button>
         <div class="divider"><span>or</span></div>
         <button class="btn-google" data-action="handleGoogleLogin">
           <svg width="18" height="18" viewBox="0 0 24 24">
-            <path fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
           Continue with Google
         </button>
@@ -170,7 +160,6 @@
       </div>
     </nav>
 
-    <!-- Mobile Menu -->
     <div class="mobile-menu-overlay" id="mobile-menu-overlay" data-action="closeMobileMenu"></div>
     <div class="mobile-menu-panel" id="mobile-menu-panel">
       <div class="mobile-menu-header">
@@ -206,7 +195,6 @@
       </div>
     </div>
 
-    <!-- Bottom nav (mobile) -->
     <div class="bottom-nav">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
@@ -228,7 +216,6 @@
       </button>
     </div>
 
-    <!-- Sidebar (desktop) -->
     <aside class="sidebar">
       <nav class="sidebar-nav">
         <button class="sidebar-btn" data-action="navigateToDashboard" id="snav-dashboard">
@@ -253,69 +240,174 @@
     </aside>
 
     <main class="main-content" id="main-content">
-      <!-- ═══ AI INSIGHTS PAGE ═══ -->
-      <div class="insights-hero">
-        <div class="insights-hero-glow"></div>
-        <div class="insights-hero-content">
-          <div class="insights-hero-icon">
-            <i data-lucide="brain"></i>
-          </div>
-          <div>
-            <h2>AI Insights</h2>
-            <p>Smart analysis of your spending patterns</p>
+      <div class="insights-container">
+        <div class="insights-header">
+          <div class="insights-header-content">
+            <div class="insights-title-row">
+              <div class="insights-icon-wrap">
+                <i data-lucide="sparkles"></i>
+              </div>
+              <div>
+                <h1>AI Insights</h1>
+                <p>Get personalized financial analysis powered by AI</p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Controls -->
-      <div class="insights-controls">
-        <div class="insights-period-selects">
-          <div class="insights-select-wrap">
-            <i data-lucide="calendar"></i>
-            <select id="insights-month"></select>
+        <div class="insights-selector-card">
+          <div class="selector-section">
+            <label class="selector-label">
+              <i data-lucide="calendar-range"></i>
+              <span>Time Period</span>
+            </label>
+            <div class="period-tabs" id="period-tabs">
+              <button class="period-tab active" data-period="month">This Month</button>
+              <button class="period-tab" data-period="lastMonth">Last Month</button>
+              <button class="period-tab" data-period="quarter">Last 3 Months</button>
+              <button class="period-tab" data-period="year">This Year</button>
+              <button class="period-tab" data-period="custom">Custom</button>
+            </div>
+            <div class="custom-date-range hidden" id="custom-date-range">
+              <div class="date-input-wrap">
+                <label>From</label>
+                <input type="date" id="insights-start-date" />
+              </div>
+              <div class="date-input-wrap">
+                <label>To</label>
+                <input type="date" id="insights-end-date" />
+              </div>
+            </div>
           </div>
-          <div class="insights-select-wrap">
-            <i data-lucide="calendar-range"></i>
-            <select id="insights-year"></select>
+
+          <div class="selector-section">
+            <label class="selector-label">
+              <i data-lucide="target"></i>
+              <span>Analysis Type</span>
+            </label>
+            <div class="analysis-type-grid" id="analysis-type-grid">
+              <button class="analysis-type-card selected" data-type="overview">
+                <div class="type-icon"><i data-lucide="layout-dashboard"></i></div>
+                <div class="type-info">
+                  <span class="type-name">Overview</span>
+                  <span class="type-desc">Complete financial snapshot</span>
+                </div>
+                <div class="type-check"><i data-lucide="check"></i></div>
+              </button>
+              <button class="analysis-type-card" data-type="spending">
+                <div class="type-icon"><i data-lucide="trending-down"></i></div>
+                <div class="type-info">
+                  <span class="type-name">Spending</span>
+                  <span class="type-desc">Deep dive into expenses</span>
+                </div>
+                <div class="type-check"><i data-lucide="check"></i></div>
+              </button>
+              <button class="analysis-type-card" data-type="savings">
+                <div class="type-icon"><i data-lucide="piggy-bank"></i></div>
+                <div class="type-info">
+                  <span class="type-name">Savings</span>
+                  <span class="type-desc">Optimization strategies</span>
+                </div>
+                <div class="type-check"><i data-lucide="check"></i></div>
+              </button>
+              <button class="analysis-type-card" data-type="trends">
+                <div class="type-icon"><i data-lucide="line-chart"></i></div>
+                <div class="type-info">
+                  <span class="type-name">Trends</span>
+                  <span class="type-desc">Pattern analysis</span>
+                </div>
+                <div class="type-check"><i data-lucide="check"></i></div>
+              </button>
+              <button class="analysis-type-card" data-type="goals">
+                <div class="type-icon"><i data-lucide="target"></i></div>
+                <div class="type-info">
+                  <span class="type-name">Goals</span>
+                  <span class="type-desc">Progress tracking</span>
+                </div>
+                <div class="type-check"><i data-lucide="check"></i></div>
+              </button>
+              <button class="analysis-type-card" data-type="debt">
+                <div class="type-icon"><i data-lucide="hand-coins"></i></div>
+                <div class="type-info">
+                  <span class="type-name">Debt</span>
+                  <span class="type-desc">Debt management</span>
+                </div>
+                <div class="type-check"><i data-lucide="check"></i></div>
+              </button>
+            </div>
+          </div>
+
+          <div class="analyze-action">
+            <button class="analyze-btn" id="analyze-btn">
+              <div class="btn-content">
+                <i data-lucide="sparkles"></i>
+                <span>Generate Insights</span>
+              </div>
+              <div class="btn-loader hidden">
+                <div class="spinner"></div>
+              </div>
+            </button>
+            <span id="cached-indicator" class="cached-indicator hidden">
+              <i data-lucide="database"></i>
+              Cached
+            </span>
           </div>
         </div>
-        <div class="insights-action-btns">
-          <button class="insights-analyze-btn" id="insights-analyze-btn">
-            <i data-lucide="sparkles"></i>
-            <span>Analyze My Spending</span>
+
+        <div id="insights-error" class="insights-error hidden">
+          <div class="error-icon"><i data-lucide="alert-circle"></i></div>
+          <div class="error-content">
+            <h3>Something went wrong</h3>
+            <p id="error-message">Unable to generate insights. Please try again.</p>
+          </div>
+          <button class="error-dismiss" data-action="dismissInsightError">
+            <i data-lucide="x"></i>
           </button>
-          <button class="insights-refresh-btn" id="insights-refresh-btn" title="Refresh (bypass cache)">
-            <i data-lucide="refresh-cw"></i>
-          </button>
         </div>
-        <span id="insights-cached-badge" class="insights-cached-badge hidden">
-          <i data-lucide="database"></i> Cached result
-        </span>
-      </div>
 
-      <!-- Error state -->
-      <div id="insights-error" class="insights-error-card hidden">
-        <div class="insights-error-icon"><i data-lucide="alert-circle"></i></div>
-        <p class="insights-error-text">An error occurred.</p>
-        <button class="btn-secondary" data-action="dismissInsightsError">Dismiss</button>
-      </div>
-
-      <!-- Empty state -->
-      <div id="insights-empty" class="insights-empty-state">
-        <div class="insights-empty-illustration">
-          <div class="empty-orb">
-            <i data-lucide="brain"></i>
+        <div id="insights-empty" class="insights-empty">
+          <div class="empty-visual">
+            <div class="empty-orb-wrap">
+              <div class="empty-orb">
+                <i data-lucide="brain"></i>
+              </div>
+              <div class="orb-particles">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
           </div>
-          <div class="empty-sparkles">
-            <span></span><span></span><span></span>
+          <h3>Ready for Analysis</h3>
+          <p>Select a time period and analysis type, then tap <strong>Generate Insights</strong> to get AI-powered financial analysis.</p>
+        </div>
+
+        <div id="insights-loading" class="insights-loading hidden">
+          <div class="loading-animation">
+            <div class="loading-brain">
+              <div class="brain-ring"></div>
+              <div class="brain-ring"></div>
+              <div class="brain-core">
+                <i data-lucide="brain"></i>
+              </div>
+            </div>
+          </div>
+          <div class="loading-steps" id="loading-steps">
+            <div class="load-step active" data-step="1">
+              <div class="step-indicator"></div>
+              <span>Collecting your financial data</span>
+            </div>
+            <div class="load-step" data-step="2">
+              <div class="step-indicator"></div>
+              <span>Analyzing spending patterns</span>
+            </div>
+            <div class="load-step" data-step="3">
+              <div class="step-indicator"></div>
+              <span>Generating personalized insights</span>
+            </div>
           </div>
         </div>
-        <h3>Ready to Analyze</h3>
-        <p>Select a month and tap <strong>"Analyze My Spending"</strong> to get AI-powered insights about your financial habits.</p>
-      </div>
 
-      <!-- Results container (populated by ai-insights.js) -->
-      <div id="insights-results" class="insights-results hidden"></div>
+        <div id="insights-results" class="insights-results hidden"></div>
+      </div>
     </main>
   </div>
 
@@ -323,7 +415,7 @@
 
   <script src="assets/js/utils/currency.js"></script>
   <script type="module" src="assets/js/dashboard.js"></script>
-  <script type="module" src="assets/js/modules/insights.js"></script>
+  <script type="module" src="assets/js/modules/insights-v2.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
