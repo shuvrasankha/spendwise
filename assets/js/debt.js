@@ -374,19 +374,38 @@ window.addDebt = async () => {
   if (!person) { showDebtFormMsg('Enter person name.', 'error'); return; }
   if (!date) { showDebtFormMsg('Select a date.', 'error'); return; }
 
+  const debtData = {
+    uid: currentUser.uid,
+    amount,
+    type: currentDebtType,
+    person,
+    date,
+    notes: notes || '',
+    settled: false,
+    settledDate: '',
+    encoding: 'plain',
+    createdAt: serverTimestamp()
+  };
+
+  if (window.isOffline && window.isOffline()) {
+    if (typeof window.addToOfflineQueue === 'function') {
+      window.addToOfflineQueue('debt', debtData);
+      allDebts.unshift({ id: 'offline-' + Date.now(), amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', pending: true });
+      allDebts.sort((a, b) => b.date.localeCompare(a.date));
+      updateDebtSummary();
+      renderDebts();
+      renderDebtHistory();
+      resetDebtForm();
+      showDebtFormMsg('Debt saved offline. Will sync when online.', 'success');
+      showToast('Saved offline!', 'success');
+    } else {
+      showDebtFormMsg('Cannot save offline. Please check your connection.', 'error');
+    }
+    return;
+  }
+
   try {
-    const ref = await addDoc(collection(db, 'debts'), {
-      uid: currentUser.uid,
-      amount,
-      type: currentDebtType,
-      person,
-      date,
-      notes: notes || '',
-      settled: false,
-      settledDate: '',
-      encoding: 'plain',
-      createdAt: serverTimestamp()
-    });
+    const ref = await addDoc(collection(db, 'debts'), debtData);
 
     allDebts.unshift({ id: ref.id, amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '' });
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
@@ -398,7 +417,19 @@ window.addDebt = async () => {
     showToast('Debt added!', 'success');
   } catch (e) {
     console.error(e);
-    showDebtFormMsg('Failed to save. Try again.', 'error');
+    if (window.addToOfflineQueue && navigator.onLine === false) {
+      window.addToOfflineQueue('debt', debtData);
+      allDebts.unshift({ id: 'offline-' + Date.now(), amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', pending: true });
+      allDebts.sort((a, b) => b.date.localeCompare(a.date));
+      updateDebtSummary();
+      renderDebts();
+      renderDebtHistory();
+      resetDebtForm();
+      showDebtFormMsg('Saved offline due to error. Will sync when online.', 'success');
+      showToast('Saved offline!', 'success');
+    } else {
+      showDebtFormMsg('Failed to save. Try again.', 'error');
+    }
   }
 };
 

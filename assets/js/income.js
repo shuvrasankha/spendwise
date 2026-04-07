@@ -261,18 +261,35 @@ window.addIncome = async () => {
   if (!source) { showFormMsg('Enter income source / from.', 'error'); return; }
   if (paymentType === 'Online' && !bank) { showFormMsg('Enter bank/wallet name for online payments.', 'error'); return; }
 
+  const incomeData = {
+    uid: currentUser.uid,
+    amount,
+    date,
+    source,
+    paymentType,
+    bank: bank || '',
+    notes: notes || '',
+    encoding: 'plain',
+    createdAt: serverTimestamp()
+  };
+
+  if (window.isOffline && window.isOffline()) {
+    if (typeof window.addToOfflineQueue === 'function') {
+      window.addToOfflineQueue('income', incomeData);
+      allIncome.unshift({ id: 'offline-' + Date.now(), amount, date, source, paymentType, bank: bank || '', notes: notes || '', pending: true });
+      allIncome.sort((a, b) => b.date.localeCompare(a.date));
+      updateIncomeSummaryCards();
+      resetIncomeForm();
+      showFormMsg('Income saved offline. Will sync when online.', 'success');
+      showToast('Saved offline!', 'success');
+    } else {
+      showFormMsg('Cannot save offline. Please check your connection.', 'error');
+    }
+    return;
+  }
+
   try {
-    const ref = await addDoc(collection(db, 'income'), {
-      uid: currentUser.uid,
-      amount,
-      date,
-      source,
-      paymentType,
-      bank: bank || '',
-      notes: notes || '',
-      encoding: 'plain',
-      createdAt: serverTimestamp()
-    });
+    const ref = await addDoc(collection(db, 'income'), incomeData);
 
     allIncome.unshift({ id: ref.id, amount, date, source, paymentType, bank: bank || '', notes: notes || '' });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
@@ -282,7 +299,17 @@ window.addIncome = async () => {
     showToast('Income added!', 'success');
   } catch (e) {
     console.error(e);
-    showFormMsg('Failed to save. Try again.', 'error');
+    if (window.addToOfflineQueue && navigator.onLine === false) {
+      window.addToOfflineQueue('income', incomeData);
+      allIncome.unshift({ id: 'offline-' + Date.now(), amount, date, source, paymentType, bank: bank || '', notes: notes || '', pending: true });
+      allIncome.sort((a, b) => b.date.localeCompare(a.date));
+      updateIncomeSummaryCards();
+      resetIncomeForm();
+      showFormMsg('Saved offline due to error. Will sync when online.', 'success');
+      showToast('Saved offline!', 'success');
+    } else {
+      showFormMsg('Failed to save. Try again.', 'error');
+    }
   }
 };
 

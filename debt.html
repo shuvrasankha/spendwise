@@ -436,7 +436,8 @@
   <div id="offline-indicator" class="offline-indicator hidden" role="alert" aria-live="polite">
     <div class="offline-content">
       <i data-lucide="wifi-off"></i>
-      <span>You're offline. Changes will sync when connection is restored.</span>
+      <span>You're offline. <span id="sync-status" class="sync-status hidden">0 pending</span></span>
+      <button class="sync-btn" id="sync-btn" title="Sync Now"><i data-lucide="refresh-cw"></i></button>
       <button class="offline-dismiss" aria-label="Dismiss notification" id="offline-dismiss">
         <i data-lucide="x"></i>
       </button>
@@ -447,7 +448,12 @@
     <div class="online-content">
       <i data-lucide="wifi"></i>
       <span>Back online! Syncing your changes...</span>
+      <button class="sync-btn" id="sync-btn-online" title="Sync Now"><i data-lucide="refresh-cw"></i></button>
     </div>
+  </div>
+
+  <div id="pending-badge-container">
+    <span class="offline-queue-badge badge hidden" id="pending-badge" title="Pending transactions to sync">0</span>
   </div>
 
   <div id="toast" class="toast hidden"></div>
@@ -517,6 +523,7 @@
 
   <script src="assets/js/utils/currency.js"></script>
   <script src="assets/js/modules/network-status.js"></script>
+  <script src="assets/js/modules/offline-queue.js"></script>
   <script type="module" src="assets/js/debt.js"></script>
   <script type="module" src="assets/js/modules/voice-command.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>

@@ -5,6 +5,7 @@
 
   let isOffline = !navigator.onLine;
   let dismissTimer = null;
+  let isSyncing = false;
 
   function initNetworkStatus() {
     updateNetworkStatus();
@@ -15,6 +16,26 @@
     const dismissBtn = document.getElementById('offline-dismiss');
     if (dismissBtn) {
       dismissBtn.addEventListener('click', hideOfflineIndicator);
+    }
+
+    const syncBtnOffline = document.getElementById('sync-btn');
+    if (syncBtnOffline) {
+      syncBtnOffline.addEventListener('click', triggerSync);
+    }
+
+    const syncBtnOnline = document.getElementById('sync-btn-online');
+    if (syncBtnOnline) {
+      syncBtnOnline.addEventListener('click', triggerSync);
+    }
+
+    const pendingBadge = document.getElementById('pending-badge');
+    if (pendingBadge) {
+      pendingBadge.addEventListener('click', () => {
+        const count = window.getOfflineQueueCount ? window.getOfflineQueueCount() : 0;
+        if (count > 0 && typeof showSyncQueueModal === 'function') {
+          showSyncQueueModal();
+        }
+      });
     }
   }
 
@@ -57,15 +78,65 @@
   function handleOnline() {
     hideOfflineIndicator();
     showOnlineIndicator();
-    
-    if (typeof syncOfflineData === 'function') {
-      syncOfflineData();
-    }
+    triggerSync();
   }
 
   function handleOffline() {
     showOfflineIndicator();
   }
+
+  function triggerSync() {
+    if (isSyncing) return;
+    
+    if (typeof window.syncOfflineQueue === 'function') {
+      const queueCount = window.getOfflineQueueCount ? window.getOfflineQueueCount() : 0;
+      
+      if (queueCount > 0) {
+        isSyncing = true;
+        updateSyncButtonState(true);
+        
+        window.syncOfflineQueue().then(result => {
+          isSyncing = false;
+          updateSyncButtonState(false);
+          
+          if (typeof window.updatePendingBadge === 'function') {
+            window.updatePendingBadge();
+          }
+        }).catch(err => {
+          isSyncing = false;
+          updateSyncButtonState(false);
+          console.error('Sync failed:', err);
+        });
+      }
+    }
+  }
+
+  function updateSyncButtonState(syncing) {
+    const syncBtn = document.getElementById('sync-btn');
+    if (syncBtn) {
+      syncBtn.disabled = syncing;
+      const icon = syncBtn.querySelector('svg, i');
+      if (icon) {
+        if (syncing) {
+          syncBtn.classList.add('syncing');
+        } else {
+          syncBtn.classList.remove('syncing');
+        }
+      }
+    }
+  }
+
+  window.updateSyncStatus = function(count) {
+    const statusEl = document.getElementById('sync-status');
+    if (statusEl) {
+      if (count > 0) {
+        statusEl.textContent = `${count} pending`;
+        statusEl.classList.remove('hidden');
+      } else {
+        statusEl.classList.add('hidden');
+      }
+    }
+  };
 
   function showOnlineIndicator() {
     const indicator = document.getElementById('online-indicator');
@@ -101,8 +172,10 @@
     return isOffline;
   };
 
+  window.triggerSync = triggerSync;
+
   window.syncOfflineData = function() {
-    console.log('Syncing offline data...');
+    triggerSync();
   };
 
   document.addEventListener('DOMContentLoaded', initNetworkStatus);

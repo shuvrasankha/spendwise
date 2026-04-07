@@ -532,9 +532,35 @@ window.addExpense = async () => {
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   try {
-    showLoader();
     const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
-    const ref = await addDoc(collection(db, "expenses"), { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() });
+    const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
+    
+    if (window.isOffline && window.isOffline()) {
+      if (typeof window.addToOfflineQueue === 'function') {
+        window.addToOfflineQueue('expense', expenseData);
+        allExpenses.unshift({ id: 'offline-' + Date.now(), amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
+        allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+        dashboardPage = 1;
+        updateCards();
+        renderDashboardTable();
+        renderHistory();
+        updateExpenseCards();
+        requestAnimationFrame(() => {
+          renderPieChart();
+          renderTrendChart();
+        });
+        saveToCache(currentUser.uid, allExpenses);
+        resetForm();
+        showFormMsg("Expense saved offline. Will sync when online.", "success");
+        showToast("Saved offline!", "success");
+      } else {
+        showFormMsg("Cannot save offline. Please check your connection.", "error");
+      }
+      return;
+    }
+
+    showLoader();
+    const ref = await addDoc(collection(db, "expenses"), expenseData);
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1;
@@ -542,18 +568,41 @@ window.addExpense = async () => {
     renderDashboardTable();
     renderHistory();
     updateExpenseCards();
-    // Defer chart rendering
     requestAnimationFrame(() => {
       renderPieChart();
       renderTrendChart();
       hideLoader();
     });
-    // Update localStorage cache
     saveToCache(currentUser.uid, allExpenses);
     resetForm();
     showFormMsg("Expense added successfully!", "success");
     showToast("Expense added!", "success");
-  } catch (e) { console.error(e); showFormMsg("Failed to save. Check Firebase config.", "error"); hideLoader(); }
+  } catch (e) { 
+    console.error(e);
+    if (window.addToOfflineQueue && navigator.onLine === false) {
+      const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
+      const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
+      window.addToOfflineQueue('expense', expenseData);
+      allExpenses.unshift({ id: 'offline-' + Date.now(), amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
+      allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+      dashboardPage = 1;
+      updateCards();
+      renderDashboardTable();
+      renderHistory();
+      updateExpenseCards();
+      requestAnimationFrame(() => {
+        renderPieChart();
+        renderTrendChart();
+      });
+      saveToCache(currentUser.uid, allExpenses);
+      resetForm();
+      showFormMsg("Saved offline due to error. Will sync when online.", "success");
+      showToast("Saved offline!", "success");
+    } else {
+      showFormMsg("Failed to save. Check Firebase config.", "error"); 
+    }
+    hideLoader(); 
+  }
 };
 
 window.resetForm = () => {

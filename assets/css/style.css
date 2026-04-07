@@ -4323,6 +4323,89 @@ img {
   background: rgba(255, 255, 255, 0.3);
 }
 
+.sync-btn {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.sync-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sync-btn:active {
+  transform: scale(0.95);
+}
+
+.sync-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sync-btn.syncing svg,
+.sync-btn.syncing i {
+  animation: spin 1s linear infinite;
+}
+
+.sync-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sync-status {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.8125rem;
+}
+
+.sync-status.hidden {
+  display: none;
+}
+
+#pending-badge-container {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 9999;
+}
+
+.offline-queue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  background: var(--warning);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.offline-queue-badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.offline-queue-badge.hidden {
+  display: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .offline-dismiss svg {
   width: 14px;
   height: 14px;
