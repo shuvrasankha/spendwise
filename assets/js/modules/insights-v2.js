@@ -517,24 +517,62 @@ async function runAnalysis(forceRefresh = false) {
     renderInsights(insights, label);
   } catch (err) {
     hideLoadingState();
+    let errorTitle = 'Analysis Failed';
+    let errorMsg = 'Unable to generate insights. Please try again.';
+    let errorType = 'error';
+
     if (err.message === 'HF_TOKEN_NOT_SET') {
-      showError('AI token not configured. Please set up your Hugging Face API token.');
+      errorTitle = 'API Token Not Set';
+      errorMsg = 'Hugging Face API token is not configured. Please contact the app administrator or check your setup.';
+      errorType = 'warning';
     } else if (err.message === 'RATE_LIMITED') {
-      showError('Rate limited. Please wait a moment and try again.');
+      errorTitle = 'Rate Limit Exceeded';
+      errorMsg = 'Too many requests. Please wait a moment (30-60 seconds) and try again.';
+      errorType = 'warning';
     } else if (err.message === 'MODEL_LOADING') {
-      showError('AI model is loading. Please try again in 20-30 seconds.');
+      errorTitle = 'AI Model Loading';
+      errorMsg = 'The AI model is currently loading. Please wait 20-30 seconds and try again.';
+      errorType = 'info';
     } else if (err.message === 'NOT_AUTHENTICATED') {
-      showError('Please log in to use AI Insights.');
-    } else {
-      console.error('Analysis error:', err);
-      showError('Analysis failed. Please try again.');
+      errorTitle = 'Not Logged In';
+      errorMsg = 'Please log in to your account to use AI Insights.';
+      errorType = 'error';
+    } else if (err.name === 'FirebaseError' || err.code) {
+      const fbErrors = {
+        'permission-denied': { title: 'Permission Denied', msg: 'You do not have permission to access this data. Please check your account settings.' },
+        'not-found': { title: 'Data Not Found', msg: 'The requested data was not found. Please check your records.' },
+        'network-error': { title: 'Network Error', msg: 'Unable to connect to the server. Please check your internet connection.' },
+        'deadline-exceeded': { title: 'Request Timeout', msg: 'The request took too long. Please try again.' },
+        'unavailable': { title: 'Service Unavailable', msg: 'The service is temporarily unavailable. Please try again later.' },
+        'invalid-argument': { title: 'Invalid Data', msg: 'Some data is invalid. Please check your inputs.' }
+      };
+      const fbError = fbErrors[err.code] || fbErrors[err.code?.split('/')[1]];
+      if (fbError) {
+        errorTitle = fbError.title;
+        errorMsg = fbError.msg;
+      }
+    } else if (err.message.includes('fetch') || err.message.includes('network')) {
+      errorTitle = 'Network Error';
+      errorMsg = 'Unable to connect to the AI service. Please check your internet connection and try again.';
+      errorType = 'error';
+    } else if (err.message.includes('timeout')) {
+      errorTitle = 'Request Timeout';
+      errorMsg = 'The request took too long. Please try again or check your connection.';
+      errorType = 'warning';
+    } else if (err.message === 'EMPTY_RESPONSE') {
+      errorTitle = 'Empty Response';
+      errorMsg = 'The AI service returned an empty response. Please try again.';
+      errorType = 'warning';
     }
+
+    console.error('Analysis error:', err);
+    showError(`${errorTitle}: ${errorMsg}`, errorType);
   } finally {
     isAnalyzing = false;
   }
 }
 
-function showError(msg) {
+function showError(msg, errorType = 'error') {
   const errorEl = document.getElementById('insights-error');
   const results = document.getElementById('insights-results');
   const empty = document.getElementById('insights-empty');
@@ -545,8 +583,21 @@ function showError(msg) {
   if (loading) loading.classList.add('hidden');
 
   if (!errorEl) return;
-  document.getElementById('error-message').textContent = msg;
-  errorEl.classList.remove('hidden');
+  
+  const errorMessage = document.getElementById('error-message');
+  const errorIcon = errorEl.querySelector('.error-icon');
+  const errorTitle = errorEl.querySelector('h3');
+  
+  if (errorMessage) errorMessage.textContent = msg;
+  if (errorTitle) {
+    const titleMatch = msg.match(/^([^:]+):/);
+    errorTitle.textContent = titleMatch ? titleMatch[1] : 'Error';
+  }
+  
+  errorEl.classList.remove('hidden', 'error', 'warning', 'info');
+  errorEl.classList.add(errorType);
+  
+  if (window.lucide) lucide.createIcons();
 }
 
 function showLoadingState() {
@@ -865,13 +916,44 @@ function initUI() {
       const tab = e.target.closest('.period-tab');
       if (!tab) return;
 
-      periodTabs.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+      periodTabs.querySelectorAll('.period-tab').forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+        t.setAttribute('tabindex', '-1');
+      });
       tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      tab.setAttribute('tabindex', '0');
 
       selectedPeriod = tab.dataset.period;
 
       if (customRange) {
         customRange.classList.toggle('hidden', selectedPeriod !== 'custom');
+      }
+    });
+
+    periodTabs.addEventListener('keydown', (e) => {
+      const tabs = Array.from(periodTabs.querySelectorAll('.period-tab'));
+      const currentIndex = tabs.findIndex(t => t.getAttribute('aria-selected') === 'true');
+      
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIndex = (currentIndex + 1) % tabs.length;
+        tabs[nextIndex].click();
+        tabs[nextIndex].focus();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        tabs[prevIndex].click();
+        tabs[prevIndex].focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        tabs[0].click();
+        tabs[0].focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        tabs[tabs.length - 1].click();
+        tabs[tabs.length - 1].focus();
       }
     });
   }
@@ -881,10 +963,39 @@ function initUI() {
       const card = e.target.closest('.analysis-type-card');
       if (!card) return;
 
-      typeGrid.querySelectorAll('.analysis-type-card').forEach(c => c.classList.remove('selected'));
+      typeGrid.querySelectorAll('.analysis-type-card').forEach(c => {
+        c.classList.remove('selected');
+        c.setAttribute('aria-checked', 'false');
+      });
       card.classList.add('selected');
+      card.setAttribute('aria-checked', 'true');
 
       selectedAnalysisType = card.dataset.type;
+    });
+
+    typeGrid.addEventListener('keydown', (e) => {
+      const cards = Array.from(typeGrid.querySelectorAll('.analysis-type-card'));
+      const currentIndex = cards.findIndex(c => c.getAttribute('aria-checked') === 'true');
+      
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const nextIndex = (currentIndex + 1) % cards.length;
+        cards[nextIndex].click();
+        cards[nextIndex].focus();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prevIndex = (currentIndex - 1 + cards.length) % cards.length;
+        cards[prevIndex].click();
+        cards[prevIndex].focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        cards[0].click();
+        cards[0].focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        cards[cards.length - 1].click();
+        cards[cards.length - 1].focus();
+      }
     });
   }
 

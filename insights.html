@@ -256,93 +256,96 @@
         </div>
 
         <div class="insights-selector-card">
-          <div class="selector-section">
-            <label class="selector-label">
-              <i data-lucide="calendar-range"></i>
-              <span>Time Period</span>
-            </label>
-            <div class="period-tabs" id="period-tabs">
-              <button class="period-tab active" data-period="month">This Month</button>
-              <button class="period-tab" data-period="lastMonth">Last Month</button>
-              <button class="period-tab" data-period="quarter">Last 3 Months</button>
-              <button class="period-tab" data-period="year">This Year</button>
-              <button class="period-tab" data-period="custom">Custom</button>
-            </div>
-            <div class="custom-date-range hidden" id="custom-date-range">
-              <div class="date-input-wrap">
-                <label>From</label>
-                <input type="date" id="insights-start-date" />
+            <div class="selector-section">
+              <label class="selector-label" id="period-label">
+                <i data-lucide="calendar-range"></i>
+                <span>Time Period</span>
+              </label>
+              <div class="period-tabs" id="period-tabs" role="tablist" aria-labelledby="period-label">
+                <button class="period-tab active" data-period="month" role="tab" aria-selected="true" tabindex="0">This Month</button>
+                <button class="period-tab" data-period="lastMonth" role="tab" aria-selected="false" tabindex="-1">Last Month</button>
+                <button class="period-tab" data-period="quarter" role="tab" aria-selected="false" tabindex="-1">Last 3 Months</button>
+                <button class="period-tab" data-period="year" role="tab" aria-selected="false" tabindex="-1">This Year</button>
+                <button class="period-tab" data-period="custom" role="tab" aria-selected="false" tabindex="-1">Custom</button>
               </div>
-              <div class="date-input-wrap">
-                <label>To</label>
-                <input type="date" id="insights-end-date" />
+              <div class="custom-date-range hidden" id="custom-date-range" role="group" aria-label="Custom date range">
+                <div class="date-input-wrap">
+                  <label for="insights-start-date">From</label>
+                  <input type="date" id="insights-start-date" aria-describedby="start-date-desc" />
+                  <span id="start-date-desc" class="sr-only">Select start date for custom period</span>
+                </div>
+                <div class="date-input-wrap">
+                  <label for="insights-end-date">To</label>
+                  <input type="date" id="insights-end-date" aria-describedby="end-date-desc" />
+                  <span id="end-date-desc" class="sr-only">Select end date for custom period</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="selector-section">
-            <label class="selector-label">
-              <i data-lucide="target"></i>
-              <span>Analysis Type</span>
-            </label>
-            <div class="analysis-type-grid" id="analysis-type-grid">
-              <button class="analysis-type-card selected" data-type="overview">
-                <div class="type-icon"><i data-lucide="layout-dashboard"></i></div>
-                <div class="type-info">
-                  <span class="type-name">Overview</span>
-                  <span class="type-desc">Complete financial snapshot</span>
-                </div>
-                <div class="type-check"><i data-lucide="check"></i></div>
-              </button>
-              <button class="analysis-type-card" data-type="spending">
-                <div class="type-icon"><i data-lucide="trending-down"></i></div>
-                <div class="type-info">
-                  <span class="type-name">Spending</span>
-                  <span class="type-desc">Deep dive into expenses</span>
-                </div>
-                <div class="type-check"><i data-lucide="check"></i></div>
-              </button>
-              <button class="analysis-type-card" data-type="savings">
-                <div class="type-icon"><i data-lucide="piggy-bank"></i></div>
-                <div class="type-info">
-                  <span class="type-name">Savings</span>
-                  <span class="type-desc">Optimization strategies</span>
-                </div>
-                <div class="type-check"><i data-lucide="check"></i></div>
-              </button>
-              <button class="analysis-type-card" data-type="trends">
-                <div class="type-icon"><i data-lucide="line-chart"></i></div>
-                <div class="type-info">
-                  <span class="type-name">Trends</span>
-                  <span class="type-desc">Pattern analysis</span>
-                </div>
-                <div class="type-check"><i data-lucide="check"></i></div>
-              </button>
-              <button class="analysis-type-card" data-type="goals">
-                <div class="type-icon"><i data-lucide="target"></i></div>
-                <div class="type-info">
-                  <span class="type-name">Goals</span>
-                  <span class="type-desc">Progress tracking</span>
-                </div>
-                <div class="type-check"><i data-lucide="check"></i></div>
-              </button>
-              <button class="analysis-type-card" data-type="debt">
-                <div class="type-icon"><i data-lucide="hand-coins"></i></div>
-                <div class="type-info">
-                  <span class="type-name">Debt</span>
-                  <span class="type-desc">Debt management</span>
-                </div>
-                <div class="type-check"><i data-lucide="check"></i></div>
-              </button>
-            </div>
-          </div>
-
-          <div class="analyze-action">
-            <button class="analyze-btn" id="analyze-btn">
-              <div class="btn-content">
-                <i data-lucide="sparkles"></i>
-                <span>Generate Insights</span>
+            <div class="selector-section">
+              <label class="selector-label" id="analysis-type-label">
+                <i data-lucide="target"></i>
+                <span>Analysis Type</span>
+              </label>
+              <div class="analysis-type-grid" id="analysis-type-grid" role="radiogroup" aria-labelledby="analysis-type-label">
+                <button class="analysis-type-card selected" data-type="overview" role="radio" aria-checked="true" aria-label="Overview: Complete financial snapshot">
+                  <div class="type-icon"><i data-lucide="layout-dashboard"></i></div>
+                  <div class="type-info">
+                    <span class="type-name">Overview</span>
+                    <span class="type-desc">Complete financial snapshot</span>
+                  </div>
+                  <div class="type-check"><i data-lucide="check"></i></div>
+                </button>
+                <button class="analysis-type-card" data-type="spending" role="radio" aria-checked="false" aria-label="Spending: Deep dive into expenses">
+                  <div class="type-icon"><i data-lucide="trending-down"></i></div>
+                  <div class="type-info">
+                    <span class="type-name">Spending</span>
+                    <span class="type-desc">Deep dive into expenses</span>
+                  </div>
+                  <div class="type-check"><i data-lucide="check"></i></div>
+                </button>
+                <button class="analysis-type-card" data-type="savings" role="radio" aria-checked="false" aria-label="Savings: Optimization strategies">
+                  <div class="type-icon"><i data-lucide="piggy-bank"></i></div>
+                  <div class="type-info">
+                    <span class="type-name">Savings</span>
+                    <span class="type-desc">Optimization strategies</span>
+                  </div>
+                  <div class="type-check"><i data-lucide="check"></i></div>
+                </button>
+                <button class="analysis-type-card" data-type="trends" role="radio" aria-checked="false" aria-label="Trends: Pattern analysis">
+                  <div class="type-icon"><i data-lucide="line-chart"></i></div>
+                  <div class="type-info">
+                    <span class="type-name">Trends</span>
+                    <span class="type-desc">Pattern analysis</span>
+                  </div>
+                  <div class="type-check"><i data-lucide="check"></i></div>
+                </button>
+                <button class="analysis-type-card" data-type="goals" role="radio" aria-checked="false" aria-label="Goals: Progress tracking">
+                  <div class="type-icon"><i data-lucide="target"></i></div>
+                  <div class="type-info">
+                    <span class="type-name">Goals</span>
+                    <span class="type-desc">Progress tracking</span>
+                  </div>
+                  <div class="type-check"><i data-lucide="check"></i></div>
+                </button>
+                <button class="analysis-type-card" data-type="debt" role="radio" aria-checked="false" aria-label="Debt: Debt management">
+                  <div class="type-icon"><i data-lucide="hand-coins"></i></div>
+                  <div class="type-info">
+                    <span class="type-name">Debt</span>
+                    <span class="type-desc">Debt management</span>
+                  </div>
+                  <div class="type-check"><i data-lucide="check"></i></div>
+                </button>
               </div>
+            </div>
+
+            <div class="analyze-action">
+              <button class="analyze-btn" id="analyze-btn" aria-describedby="analyze-btn-desc">
+                <span id="analyze-btn-desc" class="sr-only">Click to generate AI-powered financial insights based on selected period and analysis type</span>
+                <div class="btn-content">
+                  <i data-lucide="sparkles"></i>
+                  <span>Generate Insights</span>
+                </div>
               <div class="btn-loader hidden">
                 <div class="spinner"></div>
               </div>
@@ -354,10 +357,10 @@
           </div>
         </div>
 
-        <div id="insights-error" class="insights-error hidden">
+        <div id="insights-error" class="insights-error hidden error">
           <div class="error-icon"><i data-lucide="alert-circle"></i></div>
           <div class="error-content">
-            <h3>Something went wrong</h3>
+            <h3 id="error-title">Something went wrong</h3>
             <p id="error-message">Unable to generate insights. Please try again.</p>
           </div>
           <button class="error-dismiss" data-action="dismissInsightError">
@@ -411,9 +414,27 @@
     </main>
   </div>
 
+  <div id="offline-indicator" class="offline-indicator hidden" role="alert" aria-live="polite">
+    <div class="offline-content">
+      <i data-lucide="wifi-off"></i>
+      <span>You're offline. Changes will sync when connection is restored.</span>
+      <button class="offline-dismiss" aria-label="Dismiss notification" id="offline-dismiss">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="online-indicator" class="online-indicator hidden" role="alert" aria-live="polite">
+    <div class="online-content">
+      <i data-lucide="wifi"></i>
+      <span>Back online! Syncing your changes...</span>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <script src="assets/js/utils/currency.js"></script>
+  <script src="assets/js/modules/network-status.js"></script>
   <script type="module" src="assets/js/dashboard.js"></script>
   <script type="module" src="assets/js/modules/insights-v2.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>

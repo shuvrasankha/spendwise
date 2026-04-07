@@ -19,6 +19,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/auth.js',
   './assets/js/modules/voice-command.js',
   './assets/js/modules/insights-v2.js',
+  './assets/js/modules/network-status.js',
   './assets/js/modules/csv-upload.js',
   './assets/js/modules/backup.js',
   './assets/images/logo.png',

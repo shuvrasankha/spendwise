@@ -433,6 +433,23 @@
     </div>
   </div>
 
+  <div id="offline-indicator" class="offline-indicator hidden" role="alert" aria-live="polite">
+    <div class="offline-content">
+      <i data-lucide="wifi-off"></i>
+      <span>You're offline. Changes will sync when connection is restored.</span>
+      <button class="offline-dismiss" aria-label="Dismiss notification" id="offline-dismiss">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="online-indicator" class="online-indicator hidden" role="alert" aria-live="polite">
+    <div class="online-content">
+      <i data-lucide="wifi"></i>
+      <span>Back online! Syncing your changes...</span>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <!-- Voice Command FAB -->
@@ -499,6 +516,7 @@
   </div>
 
   <script src="assets/js/utils/currency.js"></script>
+  <script src="assets/js/modules/network-status.js"></script>
   <script type="module" src="assets/js/debt.js"></script>
   <script type="module" src="assets/js/modules/voice-command.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
