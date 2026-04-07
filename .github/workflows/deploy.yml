@@ -34,7 +34,6 @@ jobs:
             echo "::warning::HF_TOKEN secret is not set!"
           else
             sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/voice-command.js
-            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/insights.js
             sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/insights-v2.js
             sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/csv-upload.js
             echo "Token injected successfully (length: ${#HF_TOKEN_VALUE})"

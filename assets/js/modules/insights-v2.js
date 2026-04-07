@@ -484,8 +484,6 @@ async function runAnalysis(forceRefresh = false) {
   const cacheKey = getCacheKey(currentUser.uid, selectedPeriod, selectedAnalysisType, startDate, endDate);
   const cached = forceRefresh ? null : loadInsightsCache(cacheKey);
 
-  console.log('Running analysis:', { period: selectedPeriod, type: selectedAnalysisType, forceRefresh, cached: !!cached });
-
   if (cached) {
     renderInsights(cached, label);
     showCachedBadge(true);

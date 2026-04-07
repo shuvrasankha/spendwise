@@ -352,8 +352,6 @@ async function loadExpenses(isSilentSync = false) {
 
     // Save to localStorage cache
     saveToCache(currentUser.uid, allExpenses);
-    
-    console.log('loadExpenses: Loaded', allExpenses.length, 'expenses from Firestore');
 
     // Render lightweight content immediately — only if elements exist
     if (document.getElementById("sum-monthly")) {
@@ -392,7 +390,6 @@ async function loadIncome() {
       return { id: d.id, ...raw, amount: isNaN(amt) ? 0 : amt };
     });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
-    console.log('loadIncome: Loaded', allIncome.length, 'income records from Firestore');
     updateIncomeCards();
     // If on history page, render income history
     if (document.getElementById("inc-history-body")) {
@@ -419,7 +416,6 @@ async function loadDebts() {
       };
     });
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
-    console.log('loadDebts: Loaded', allDebts.length, 'debts from Firestore');
     updateDebtCards();
   } catch (e) { console.error("Debt load error:", e); }
 }
@@ -433,8 +429,6 @@ function updateDebtCards() {
 
   const activeDebts = allDebts.filter(d => !d.settled);
   const totalDebt = activeDebts.reduce((s, d) => s + d.amount, 0);
-  
-  console.log('updateDebtCards:', { total: allDebts.length, active: activeDebts.length, totalDebt });
   
   document.getElementById("sum-debt").textContent = fmt(totalDebt);
   document.getElementById("sum-debt-count").textContent = activeDebts.length + " active debt" + (activeDebts.length !== 1 ? "s" : "");
@@ -757,8 +751,6 @@ function updateCards() {
   const monthlyExpenses = allExpenses.filter(e => e.date >= ms && e.date <= today);
   const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
   
-  console.log('updateCards:', { total: allExpenses.length, monthly: monthlyExpenses.length, monthTotal, monthStart: ms, today });
-  
   document.getElementById("sum-monthly").textContent = fmt(monthTotal);
   document.getElementById("sum-monthly-count").textContent = monthlyExpenses.length + " transaction" + (monthlyExpenses.length !== 1 ? "s" : "") + " this month";
 }
@@ -777,15 +769,7 @@ window.switchTableTab = (tab) => {
 };
 
 function renderDashboardTable() {
-  console.log('=== RENDER DASHBOARD TABLE CALLED ===', {
-    tableBodyExists: !!document.getElementById("table-body"),
-    allExpensesLength: allExpenses.length,
-    activeTab,
-    dashboardPage
-  });
-
   if (!document.getElementById("table-body")) {
-    console.log('❌ table-body element not found, returning early');
     return;
   }
 
@@ -795,8 +779,6 @@ function renderDashboardTable() {
   else if (activeTab === "monthly") from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
   else from = now.getFullYear() + "-01-01";
 
-  console.log('Filtering expenses:', { from, today, totalExpenses: allExpenses.length });
-
   const filteredData = allExpenses.filter(e => e.date >= from && e.date <= today);
   const totalPages = Math.max(1, Math.ceil(filteredData.length / DASHBOARD_PER_PAGE));
   if (dashboardPage > totalPages) dashboardPage = totalPages;
@@ -805,26 +787,14 @@ function renderDashboardTable() {
   const end = start + DASHBOARD_PER_PAGE;
   const pageData = filteredData.slice(start, end);
 
-  console.log('Filtered data:', { 
-    total: filteredData.length, 
-    totalPages, 
-    currentPage: dashboardPage,
-    showing: `${start + 1}-${Math.min(end, filteredData.length)}`,
-    pageDataLength: pageData.length
-  });
-
   renderTable("table-body", pageData, false);
-  console.log('✓ Table rendered, calling pagination...');
   renderDashboardPagination(filteredData.length, totalPages);
 }
 
 function renderDashboardPagination(totalItems, totalPages) {
   const el = document.getElementById("dashboard-pagination");
   
-  console.log('=== renderDashboardPagination CALLED ===', { totalItems, totalPages, elExists: !!el });
-
   if (!el) {
-    console.error('❌ dashboard-pagination element not found!');
     return;
   }
 
@@ -873,8 +843,6 @@ function renderDashboardPagination(totalItems, totalPages) {
       }
     });
   });
-
-  console.log('✓ Pagination rendered:', { htmlLength: html.length });
 }
 
 // ── Pagination & Sorting state ────────────────────────────────
@@ -1985,11 +1953,8 @@ function updatePeriodSummary() {
 // Override renderDashboardTable to respect period picker
 const _baseRenderDashboard = renderDashboardTable;
 renderDashboardTable = function () {
-  console.log('=== OVERRIDE renderDashboardTable CALLED (period picker) ===');
-  
   const pm = document.getElementById('picker-month');
   if (!pm) { 
-    console.log('No picker-month element, calling base function');
     _baseRenderDashboard(); 
     return; 
   }
@@ -2006,7 +1971,6 @@ renderDashboardTable = function () {
       if (selectedYear && e.date.substring(0, 4) !== String(selectedYear)) return false;
       return true;
     });
-    console.log('Yearly tab: got', periodRows.length, 'expenses');
   } else {
     // For other tabs, use the period picker
     periodRows = getPeriodExpenses();
@@ -2031,18 +1995,9 @@ renderDashboardTable = function () {
   } else if (activeTab === 'yearly') {
     // Yearly tab: show all expenses for selected year
     rows = periodRows;
-    console.log('Yearly tab: showing all', rows.length, 'expenses');
   } else {
     rows = periodRows;
   }
-
-  console.log('Override filtered data:', {
-    periodRowsLength: periodRows.length,
-    rowsLength: rows.length,
-    activeTab,
-    selectedMonth,
-    selectedYear
-  });
 
   // Apply pagination
   const totalPages = Math.max(1, Math.ceil(rows.length / DASHBOARD_PER_PAGE));
@@ -2052,22 +2007,12 @@ renderDashboardTable = function () {
   const end = start + DASHBOARD_PER_PAGE;
   const pageData = rows.slice(start, end);
 
-  console.log('Override pagination:', {
-    total: rows.length,
-    totalPages,
-    currentPage: dashboardPage,
-    showing: `${start + 1}-${Math.min(end, rows.length)}`
-  });
-
   renderTable('table-body', pageData, false);
   updatePeriodSummary();
-  console.log('✓ Calling renderDashboardPagination from override...');
   renderDashboardPagination(rows.length, totalPages);
 };
 
-// After data loads, init the picker (removed duplicate - using main optimization)
-const _baseSwitchTab = window.switchTableTab;
-
+// After data loads, init the picker
 document.addEventListener('DOMContentLoaded', () => {
   const pm = document.getElementById('picker-month');
   const py = document.getElementById('picker-year');
