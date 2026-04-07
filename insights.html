@@ -262,7 +262,7 @@
           </div>
           <div>
             <h2>AI Insights</h2>
-            <p>Comprehensive analysis of your financial patterns</p>
+            <p>Smart analysis of your spending patterns</p>
           </div>
         </div>
       </div>
@@ -272,23 +272,24 @@
         <div class="insights-period-selects">
           <div class="insights-select-wrap">
             <i data-lucide="calendar"></i>
-            <select id="insights-period">
-              <option value="this-year">This Year</option>
-              <option value="all-time">All Time</option>
-            </select>
+            <select id="insights-month"></select>
+          </div>
+          <div class="insights-select-wrap">
+            <i data-lucide="calendar-range"></i>
+            <select id="insights-year"></select>
           </div>
         </div>
         <div class="insights-action-btns">
           <button class="insights-analyze-btn" id="insights-analyze-btn">
             <i data-lucide="sparkles"></i>
-            <span>Analyze My Data</span>
+            <span>Analyze My Spending</span>
           </button>
           <button class="insights-refresh-btn" id="insights-refresh-btn" title="Refresh (bypass cache)">
             <i data-lucide="refresh-cw"></i>
           </button>
         </div>
         <span id="insights-cached-badge" class="insights-cached-badge hidden">
-          <i data-lucide="database"></i> Cached
+          <i data-lucide="database"></i> Cached result
         </span>
       </div>
 
@@ -310,7 +311,7 @@
           </div>
         </div>
         <h3>Ready to Analyze</h3>
-        <p>Select a period and tap <strong>"Analyze My Data"</strong> to get AI-powered insights about your financial habits.</p>
+        <p>Select a month and tap <strong>"Analyze My Spending"</strong> to get AI-powered insights about your financial habits.</p>
       </div>
 
       <!-- Results container (populated by ai-insights.js) -->

@@ -64,19 +64,15 @@ onAuthStateChanged(auth, user => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  DATA AGGREGATION — Collect ALL expenses, income & debts from Firestore
+//  DATA AGGREGATION — Collect expenses & income from Firestore
 // ══════════════════════════════════════════════════════════════════════════════
-async function gatherFinancialData(period) {
+async function gatherFinancialData(month, year) {
   if (!currentUser) throw new Error('NOT_AUTHENTICATED');
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  // Fetch all expenses
+  // Fetch expenses
   const expQ = query(collection(db, 'expenses'), where('uid', '==', currentUser.uid));
   const expSnap = await getDocs(expQ);
-  let allExpenses = expSnap.docs.map(d => {
+  let expenses = expSnap.docs.map(d => {
     const raw = d.data();
     const isPlain = raw.encoding === 'plain'
       || typeof raw.amount === 'number'
@@ -91,10 +87,10 @@ async function gatherFinancialData(period) {
     };
   });
 
-  // Fetch all income
+  // Fetch income
   const incQ = query(collection(db, 'income'), where('uid', '==', currentUser.uid));
   const incSnap = await getDocs(incQ);
-  let allIncome = incSnap.docs.map(d => {
+  let income = incSnap.docs.map(d => {
     const raw = d.data();
     const amt = parseFloat(raw.amount);
     return {
@@ -105,15 +101,15 @@ async function gatherFinancialData(period) {
     };
   });
 
-  // Fetch all debts
+  // Fetch debts
   const debtQ = query(collection(db, 'debts'), where('uid', '==', currentUser.uid));
   const debtSnap = await getDocs(debtQ);
-  let allDebts = debtSnap.docs.map(d => {
+  let debts = debtSnap.docs.map(d => {
     const raw = d.data();
     const amt = parseFloat(raw.amount);
     return {
       amount: isNaN(amt) ? 0 : amt,
-      type: raw.type || 'they-owe',
+      type: raw.type || 'they-owe', // 'they-owe' or 'i-owe'
       person: raw.person || 'Unknown',
       date: raw.date || '',
       notes: raw.notes || '',
@@ -122,144 +118,129 @@ async function gatherFinancialData(period) {
     };
   });
 
-  // Filter by period
-  let filteredExpenses, filteredIncome, periodLabel, monthlyBreakdown, totalMonths;
+  // Filter by selected month/year
+  const yearStr = String(year);
+  const monthStr = pad(month);
+  const prefix = yearStr + '-' + monthStr;
+
+  const selectedExpenses = expenses.filter(e => e.date && e.date.startsWith(prefix));
+  const selectedIncome = income.filter(i => i.date && i.date.startsWith(prefix));
   
-  if (period === 'this-year') {
-    // This Year: Jan 1 to Dec 31 of current year
-    periodLabel = `${currentYear} - Full Year`;
-    filteredExpenses = allExpenses.filter(e => e.date && e.date.startsWith(String(currentYear)));
-    filteredIncome = allIncome.filter(i => i.date && i.date.startsWith(String(currentYear)));
-    
-    // Monthly breakdown for the year
-    monthlyBreakdown = {};
-    for (let m = 1; m <= 12; m++) {
-      const prefix = `${currentYear}-${pad(m)}`;
-      const monthExpenses = filteredExpenses.filter(e => e.date.startsWith(prefix));
-      const monthIncome = filteredIncome.filter(i => i.date.startsWith(prefix));
-      monthlyBreakdown[MONTH_NAMES[m - 1]] = {
-        expenses: monthExpenses.reduce((s, e) => s + e.amount, 0),
-        income: monthIncome.reduce((s, i) => s + i.amount, 0),
-        count: monthExpenses.length
-      };
-    }
-    totalMonths = 12;
-  } else {
-    // All Time: every single record
-    periodLabel = 'All Time';
-    filteredExpenses = allExpenses.filter(e => e.date);
-    filteredIncome = allIncome.filter(i => i.date);
-    
-    // Monthly breakdown across all available months
-    monthlyBreakdown = {};
-    const yearMonths = new Set();
-    filteredExpenses.forEach(e => yearMonths.add(e.date.substring(0, 7)));
-    filteredIncome.forEach(i => yearMonths.add(i.date.substring(0, 7)));
-    
-    const sortedMonths = [...yearMonths].sort();
-    sortedMonths.forEach(ym => {
-      const [y, m] = ym.split('-');
-      const monthName = MONTH_NAMES[parseInt(m) - 1] + ' ' + y;
-      const prefix = ym;
-      const monthExpenses = filteredExpenses.filter(e => e.date.startsWith(prefix));
-      const monthIncome = filteredIncome.filter(i => i.date.startsWith(prefix));
-      monthlyBreakdown[monthName] = {
-        expenses: monthExpenses.reduce((s, e) => s + e.amount, 0),
-        income: monthIncome.reduce((s, i) => s + i.amount, 0),
-        count: monthExpenses.length
-      };
-    });
-    totalMonths = sortedMonths.length;
-  }
+  // Filter debts: active debts created this month + settled debts settled this month
+  const activeDebtsThisMonth = debts.filter(d => 
+    !d.settled && d.date && d.date.startsWith(prefix)
+  );
+  const settledDebtsThisMonth = debts.filter(d => 
+    d.settled && d.settledDate && d.settledDate.startsWith(prefix)
+  );
+  const allRelevantDebts = [...activeDebtsThisMonth, ...settledDebtsThisMonth];
+
+  // Previous month for comparison
+  let prevMonth = month - 1;
+  let prevYear = year;
+  if (prevMonth < 1) { prevMonth = 12; prevYear -= 1; }
+  const prevPrefix = String(prevYear) + '-' + pad(prevMonth);
+  const prevExpenses = expenses.filter(e => e.date && e.date.startsWith(prevPrefix));
+  const prevIncome = income.filter(i => i.date && i.date.startsWith(prevPrefix));
 
   // Aggregate category-wise spending
   const categoryBreakdown = {};
-  filteredExpenses.forEach(e => {
+  selectedExpenses.forEach(e => {
     categoryBreakdown[e.category] = (categoryBreakdown[e.category] || 0) + e.amount;
+  });
+
+  // Daily spending for pattern analysis
+  const dailySpending = {};
+  selectedExpenses.forEach(e => {
+    dailySpending[e.date] = (dailySpending[e.date] || 0) + e.amount;
   });
 
   // Payment method breakdown
   const paymentBreakdown = {};
-  filteredExpenses.forEach(e => {
+  selectedExpenses.forEach(e => {
     paymentBreakdown[e.payment] = (paymentBreakdown[e.payment] || 0) + e.amount;
   });
 
   // Day of week analysis
   const dayOfWeekSpending = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  filteredExpenses.forEach(e => {
+  selectedExpenses.forEach(e => {
     if (e.date) {
       const day = new Date(e.date + 'T00:00:00').getDay();
       dayOfWeekSpending[dayNames[day]] += e.amount;
     }
   });
 
-  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalIncome = filteredIncome.reduce((sum, i) => sum + i.amount, 0);
-
-  // Debt aggregations (all active debts + all settled)
-  const activeDebts = allDebts.filter(d => !d.settled);
-  const settledDebts = allDebts.filter(d => d.settled);
-
-  const totalOwedToYou = activeDebts
+  const totalExpenses = selectedExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalIncome = selectedIncome.reduce((sum, i) => sum + i.amount, 0);
+  const prevTotalExpenses = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const prevTotalIncome = prevIncome.reduce((sum, i) => sum + i.amount, 0);
+  
+  // Debt aggregations
+  const totalOwedToYou = activeDebtsThisMonth
     .filter(d => d.type === 'they-owe')
     .reduce((sum, d) => sum + d.amount, 0);
-
-  const totalYouOwe = activeDebts
+  
+  const totalYouOwe = activeDebtsThisMonth
     .filter(d => d.type === 'i-owe')
     .reduce((sum, d) => sum + d.amount, 0);
-
-  const totalSettled = settledDebts
+  
+  const totalSettled = settledDebtsThisMonth
     .reduce((sum, d) => sum + d.amount, 0);
-
-  const settlementRate = allDebts.length > 0
-    ? (settledDebts.length / allDebts.length) * 100
+  
+  const settlementRate = allRelevantDebts.length > 0
+    ? (settledDebtsThisMonth.length / (activeDebtsThisMonth.length + settledDebtsThisMonth.length)) * 100
     : 0;
-
+  
   const netDebtPosition = totalOwedToYou - totalYouOwe;
-
-  // Top expenses
-  const topExpenses = [...filteredExpenses].sort((a, b) => b.amount - a.amount).slice(0, 10);
-
-  // Calculate days in period
-  const daysInPeriod = filteredExpenses.length > 0
-    ? new Set(filteredExpenses.map(e => e.date)).size
-    : 1;
-  const avgDailySpend = daysInPeriod > 0 ? totalExpenses / daysInPeriod : 0;
+  
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
+  const daysElapsed = (year === today.getFullYear() && month === today.getMonth() + 1)
+    ? today.getDate()
+    : daysInMonth;
 
   return {
-    period: periodLabel,
-    periodType: period,
+    month: MONTH_NAMES[month - 1],
+    year,
     totalExpenses,
     totalIncome,
     netSavings: totalIncome - totalExpenses,
-    transactionCount: filteredExpenses.length,
-    incomeCount: filteredIncome.length,
-    avgDailySpend,
-    daysInPeriod,
-    totalMonths,
+    transactionCount: selectedExpenses.length,
+    incomeCount: selectedIncome.length,
+    avgDailySpend: daysElapsed > 0 ? totalExpenses / daysElapsed : 0,
+    daysElapsed,
+    daysInMonth,
     categoryBreakdown,
-    monthlyBreakdown,
+    dailySpending,
     paymentBreakdown,
     dayOfWeekSpending,
-    topExpenses,
-    incomeSources: filteredIncome,
+    topExpenses: [...selectedExpenses].sort((a, b) => b.amount - a.amount).slice(0, 5),
+    incomeSources: selectedIncome,
+    prevMonth: {
+      name: MONTH_NAMES[prevMonth - 1],
+      totalExpenses: prevTotalExpenses,
+      totalIncome: prevTotalIncome
+    },
+    // Debt data
     debt: {
       totalOwedToYou,
       totalYouOwe,
       totalSettled,
       settlementRate,
       netDebtPosition,
-      activeCount: activeDebts.length,
-      settledCount: settledDebts.length,
-      totalDebtCount: allDebts.length,
-      activeDebts,
-      settledDebts,
-      topDebtors: activeDebts
+      activeCount: activeDebtsThisMonth.length,
+      settledCount: settledDebtsThisMonth.length,
+      totalDebtCount: allRelevantDebts.length,
+      activeDebts: activeDebtsThisMonth,
+      settledDebts: settledDebtsThisMonth,
+      // Top debtors (people who owe you most)
+      topDebtors: activeDebtsThisMonth
         .filter(d => d.type === 'they-owe')
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5),
-      topCreditors: activeDebts
+      // Top creditors (people you owe most)
+      topCreditors: activeDebtsThisMonth
         .filter(d => d.type === 'i-owe')
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5)
@@ -287,96 +268,98 @@ function buildAnalysisPrompt(data) {
     .join('\n');
 
   const topExpenseList = data.topExpenses
-    .slice(0, 10)
     .map((e, i) => `  ${i + 1}. ${sym} ${e.amount.toFixed(2)} — ${e.category} (${e.description}) on ${e.date}`)
     .join('\n');
 
-  const monthlyText = Object.entries(data.monthlyBreakdown || {})
-    .map(([month, info]) => {
-      if (!info || (info.expenses === 0 && info.income === 0)) return null;
-      return `  - ${month}: Expenses ${sym} ${info.expenses.toFixed(2)} (${info.count || 0} txns) | Income ${sym} ${info.income.toFixed(2)}`;
-    })
-    .filter(Boolean)
-    .join('\n');
-
-  const system = `You are a personal finance analyst for SpendWise, an Indian expense tracking app. Analyze the user's financial data for the period "${data.period}" and provide personalized, actionable insights.
+  const system = `You are a personal finance analyst for SpendWise, an Indian expense tracking app. Analyze the user's financial data for ${data.month} ${data.year} and provide personalized, actionable insights.
 
 IMPORTANT RULES:
 1. Be specific — reference actual numbers, categories, and patterns from the data.
 2. Be actionable — give concrete suggestions (e.g., "You could save Rs X by reducing Y").
-3. Consider Indian spending context (UPI payments, typical Indian expenses, etc.).
-4. Return ONLY valid JSON, no markdown, no explanation.
-5. Amounts should include "Rs" prefix.
-6. Be encouraging but honest about overspending.
-7. Analyze debt patterns if debt data is present.
-8. Identify trends across months if multi-month data is available.
+3. Compare with previous month (${data.prevMonth.name}) when data is available.
+4. Consider Indian spending context (UPI payments, typical Indian expenses, etc.).
+5. Return ONLY valid JSON, no markdown, no explanation.
+6. Amounts should include "Rs" prefix.
+7. Be encouraging but honest about overspending.
+8. Analyze debt patterns if debt data is present — highlight risks, settlement progress, and recommendations.
 
 Return JSON in this EXACT format:
 {
   "summary": {
-    "headline": "<one-line summary>",
-    "healthScore": <1-100>,
+    "headline": "<one-line summary of financial health>",
+    "healthScore": <1-100 number based on spending patterns>,
     "highlights": ["<highlight 1>", "<highlight 2>", "<highlight 3>"]
   },
   "patterns": [
-    {"title": "<pattern title>", "description": "<detail>", "type": "info|warning|success"}
+    {"title": "<pattern title>", "description": "<pattern detail>", "type": "info|warning|success"}
   ],
   "recommendations": [
-    {"title": "<title>", "description": "<detail>", "priority": "high|medium|low", "savingsEstimate": "<estimate or empty>"}
+    {"title": "<recommendation title>", "description": "<actionable detail>", "priority": "high|medium|low", "savingsEstimate": "<estimated savings or empty string>"}
   ],
   "alerts": [
-    {"title": "<title>", "description": "<detail>", "severity": "critical|warning|info"}
+    {"title": "<alert title>", "description": "<alert detail>", "severity": "critical|warning|info"}
   ],
   "categoryAnalysis": [
-    {"category": "<name>", "amount": <number>, "percentage": <number>, "trend": "up|down|stable", "comment": "<analysis>"}
+    {"category": "<category name>", "amount": <number>, "percentage": <number>, "trend": "up|down|stable", "comment": "<brief analysis>"}
   ],
   "debtAnalysis": {
-    "summary": "<one-line summary>",
+    "summary": "<one-line summary of debt health>",
     "totalOwedToYou": <number>,
     "totalYouOwe": <number>,
-    "netPosition": <number>,
+    "netPosition": <number (positive means others owe you more)>,
     "settlementRate": <percentage 0-100>,
     "insights": [
-      {"title": "<title>", "description": "<detail>", "type": "info|warning|success"}
+      {"title": "<debt insight title>", "description": "<insight detail>", "type": "info|warning|success"}
     ],
-    "topDebtors": ["<name>", ...],
-    "topCreditors": ["<name>", ...]
+    "topDebtors": ["<person name>", ...],
+    "topCreditors": ["<person name>", ...]
   }
 }`;
 
-  const userPrompt = `Here is my financial data for the period: ${data.period}
+  const user = `Here is my financial data for ${data.month} ${data.year}:
 
 📊 OVERVIEW:
-- Total Expenses: ${sym} ${(data.totalExpenses || 0).toFixed(2)} (${data.transactionCount || 0} transactions)
-- Total Income: ${sym} ${(data.totalIncome || 0).toFixed(2)} (${data.incomeCount || 0} entries)
-- Net Savings: ${sym} ${(data.netSavings || 0).toFixed(2)}
-- Average Daily Spend: ${sym} ${(data.avgDailySpend || 0).toFixed(2)} (${data.daysInPeriod || 0} active days)
-
-📅 MONTHLY BREAKDOWN:
-${monthlyText || '  No monthly data available.'}
+- Total Expenses: ${sym} ${data.totalExpenses.toFixed(2)} (${data.transactionCount} transactions)
+- Total Income: ${sym} ${data.totalIncome.toFixed(2)} (${data.incomeCount} entries)
+- Net Savings: ${sym} ${data.netSavings.toFixed(2)}
+- Average Daily Spend: ${sym} ${data.avgDailySpend.toFixed(2)} (${data.daysElapsed} days elapsed of ${data.daysInMonth})
 
 📁 CATEGORY BREAKDOWN:
 ${categoryList || '  No expenses recorded.'}
 
 📅 SPENDING BY DAY OF WEEK:
-${dayOfWeekList || '  No spending data.'}
+${dayOfWeekList}
 
 💳 PAYMENT METHODS:
 ${paymentList || '  No payment data.'}
 
-🔝 TOP 10 EXPENSES:
+🔝 TOP 5 EXPENSES:
 ${topExpenseList || '  No expenses recorded.'}
 
 💰 DEBT OVERVIEW:
-- Total Owed to You: ${sym} ${((data.debt && data.debt.totalOwedToYou) || 0).toFixed(2)} (${(data.debt && data.debt.activeCount) || 0} active debts)
-- Total You Owe: ${sym} ${((data.debt && data.debt.totalYouOwe) || 0).toFixed(2)}
-- Total Settled: ${sym} ${((data.debt && data.debt.totalSettled) || 0).toFixed(2)}
-- Net Debt Position: ${sym} ${((data.debt && data.debt.netDebtPosition) || 0).toFixed(2)} (${(data.debt && data.debt.netDebtPosition) > 0 ? 'Others owe you more' : 'You owe more than others'})
-- Settlement Rate: ${((data.debt && data.debt.settlementRate) || 0).toFixed(1)}%
+- Total Owed to You: ${sym} ${data.debt.totalOwedToYou.toFixed(2)} (${data.debt.activeCount} active debts)
+- Total You Owe: ${sym} ${data.debt.totalYouOwe.toFixed(2)}
+- Total Settled This Month: ${sym} ${data.debt.totalSettled.toFixed(2)} (${data.debt.settledCount} debts)
+- Net Debt Position: ${sym} ${data.debt.netDebtPosition.toFixed(2)} (${data.debt.netDebtPosition > 0 ? 'Others owe you more' : 'You owe more than others'})
+- Settlement Rate: ${data.debt.settlementRate.toFixed(1)}%
 
-Please analyze my financial data and provide insights.`;
+👥 TOP DEBTORS (People who owe you):
+${data.debt.topDebtors.length > 0 
+  ? data.debt.topDebtors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}${d.notes ? ' (' + d.notes + ')' : ''}`).join('\n')
+  : '  No active debts to others.'}
 
-  return { system, user: userPrompt };
+🏦 TOP CREDITORS (People you owe):
+${data.debt.topCreditors.length > 0 
+  ? data.debt.topCreditors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}${d.notes ? ' (' + d.notes + ')' : ''}`).join('\n')
+  : '  No active debts owed to others.'}
+
+📈 PREVIOUS MONTH (${data.prevMonth.name}):
+- Total Expenses: ${sym} ${data.prevMonth.totalExpenses.toFixed(2)}
+- Total Income: ${sym} ${data.prevMonth.totalIncome.toFixed(2)}
+
+Please analyze my spending and provide insights.`;
+
+  return { system, user };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -429,24 +412,24 @@ async function callAnalysisAPI(data) {
 }
 
 // ── Cache helpers ────────────────────────────────────────────────────────────
-function getCacheKey(uid, period) {
-  return CACHE_KEY_PREFIX + uid + '_' + period;
+function getCacheKey(uid, month, year) {
+  return CACHE_KEY_PREFIX + uid + '_' + year + '_' + month;
 }
 
-function saveInsightsCache(uid, period, insights) {
+function saveInsightsCache(uid, month, year, insights) {
   try {
     const payload = JSON.stringify({ ts: Date.now(), data: insights });
-    localStorage.setItem(getCacheKey(uid, period), payload);
+    localStorage.setItem(getCacheKey(uid, month, year), payload);
   } catch (_) { /* quota exceeded */ }
 }
 
-function loadInsightsCache(uid, period) {
+function loadInsightsCache(uid, month, year) {
   try {
-    const raw = localStorage.getItem(getCacheKey(uid, period));
+    const raw = localStorage.getItem(getCacheKey(uid, month, year));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Date.now() - parsed.ts > CACHE_MAX_AGE_MS) {
-      localStorage.removeItem(getCacheKey(uid, period));
+      localStorage.removeItem(getCacheKey(uid, month, year));
       return null;
     }
     return parsed.data;
@@ -525,15 +508,19 @@ async function runAnalysis() {
     localStorage.setItem(consentKey, 'true');
   }
 
-  const periodSelect = document.getElementById('insights-period');
-  if (!periodSelect) return;
-  const period = periodSelect.value; // 'this-year' or 'all-time'
+  const monthSelect = document.getElementById('insights-month');
+  const yearSelect = document.getElementById('insights-year');
+  if (!monthSelect || !yearSelect) return;
 
-  // Check cache
-  const cached = loadInsightsCache(currentUser.uid, period);
+  const month = parseInt(monthSelect.value);
+  const year = parseInt(yearSelect.value);
+
+  // Check cache first
+  const cached = loadInsightsCache(currentUser.uid, month, year);
   if (cached) {
-    const financialData = await gatherFinancialData(period);
-    renderInsights(cached, period, financialData);
+    // For cached results, we don't have debt data, so fetch it
+    const financialData = await gatherFinancialData(month, year);
+    renderInsights(cached, month, year, financialData);
     showCachedBadge(true);
     return;
   }
@@ -543,31 +530,36 @@ async function runAnalysis() {
   showAnalyzingState();
 
   try {
+    // Step 1: Gather data
     updateAnalysisStep(1, 'Fetching your financial data…');
-    const financialData = await gatherFinancialData(period);
+    const financialData = await gatherFinancialData(month, year);
 
     if (financialData.transactionCount === 0 && financialData.incomeCount === 0) {
       hideAnalyzingState();
-      showEmptyDataState(period);
+      showEmptyDataState(month, year);
       isAnalyzing = false;
       return;
     }
 
-    updateAnalysisStep(2, 'AI is analyzing your data…');
+    // Step 2: Send to AI
+    updateAnalysisStep(2, 'AI is analyzing your spending patterns…');
     const insights = await callAnalysisAPI(financialData);
 
+    // Step 3: Render
     updateAnalysisStep(3, 'Preparing your insights…');
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise(r => setTimeout(r, 400)); // brief pause for UX
 
-    saveInsightsCache(currentUser.uid, period, insights);
+    // Cache the result
+    saveInsightsCache(currentUser.uid, month, year, insights);
+
     hideAnalyzingState();
-    renderInsights(insights, period, financialData);
+    renderInsights(insights, month, year, financialData);
   } catch (err) {
     hideAnalyzingState();
     if (err.message === 'HF_TOKEN_NOT_SET') {
-      showInsightError('⚠️ AI token not configured.');
+      showInsightError('⚠️ AI token not configured. Please set up your Hugging Face API token.');
     } else if (err.message === 'RATE_LIMITED') {
-      showInsightError('⏳ Rate limited. Please wait and try again.');
+      showInsightError('⏳ Rate limited. Please wait a moment and try again.');
     } else if (err.message === 'MODEL_LOADING') {
       showInsightError('⏳ AI model is loading. Please try again in 20-30 seconds.');
     } else if (err.message === 'NOT_AUTHENTICATED') {
@@ -643,7 +635,7 @@ function hideAnalyzingState() {
   // Will be replaced by renderInsights or error
 }
 
-function showEmptyDataState(period) {
+function showEmptyDataState(month, year) {
   const container = document.getElementById('insights-results');
   if (!container) return;
   container.innerHTML = `
@@ -651,7 +643,7 @@ function showEmptyDataState(period) {
       <div class="empty-data-icon">
         <i data-lucide="file-search"></i>
       </div>
-      <h3>No data for ${period}</h3>
+      <h3>No data for ${MONTH_NAMES[month - 1]} ${year}</h3>
       <p>Add some expenses or income entries first, then come back for AI analysis.</p>
     </div>`;
   container.classList.remove('hidden');
@@ -672,7 +664,7 @@ function showCachedBadge(show) {
   if (badge) badge.classList.toggle('hidden', !show);
 }
 
-function renderInsights(insights, period, data) {
+function renderInsights(insights, month, year, data) {
   const container = document.getElementById('insights-results');
   const emptyState = document.getElementById('insights-empty');
   const errorState = document.getElementById('insights-error');
@@ -715,7 +707,7 @@ function renderInsights(insights, period, data) {
         </div>
         <div class="insight-summary-info">
           <h3>${escapeHtml(s.headline || 'Your Financial Summary')}</h3>
-          <p class="insight-period">${escapeHtml(data.period || period)}</p>
+          <p class="insight-period">${MONTH_NAMES[month - 1]} ${year}</p>
           <div class="insight-highlights">
             ${(s.highlights || []).map(h => `<div class="highlight-item"><i data-lucide="sparkles"></i><span>${escapeHtml(h)}</span></div>`).join('')}
           </div>
@@ -954,11 +946,14 @@ function renderInsights(insights, period, data) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function refreshAnalysis() {
   if (!currentUser) return;
-  const periodSelect = document.getElementById('insights-period');
-  if (!periodSelect) return;
-  const period = periodSelect.value;
+  const monthSelect = document.getElementById('insights-month');
+  const yearSelect = document.getElementById('insights-year');
+  if (!monthSelect || !yearSelect) return;
+  const month = parseInt(monthSelect.value);
+  const year = parseInt(yearSelect.value);
+  // Clear cache for this month
   try {
-    localStorage.removeItem(getCacheKey(currentUser.uid, period));
+    localStorage.removeItem(getCacheKey(currentUser.uid, month, year));
   } catch (_) { }
   showCachedBadge(false);
   await runAnalysis();
@@ -968,6 +963,31 @@ async function refreshAnalysis() {
 //  INIT — Wire up events
 // ══════════════════════════════════════════════════════════════════════════════
 function initInsightsUI() {
+  // Populate month selector
+  const monthSelect = document.getElementById('insights-month');
+  if (monthSelect) {
+    MONTH_NAMES.forEach((name, i) => {
+      const opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = name;
+      monthSelect.appendChild(opt);
+    });
+    monthSelect.value = new Date().getMonth() + 1;
+  }
+
+  // Populate year selector
+  const yearSelect = document.getElementById('insights-year');
+  if (yearSelect) {
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+    yearSelect.value = currentYear;
+  }
+
   // Analyze button
   const analyzeBtn = document.getElementById('insights-analyze-btn');
   if (analyzeBtn) analyzeBtn.addEventListener('click', runAnalysis);
