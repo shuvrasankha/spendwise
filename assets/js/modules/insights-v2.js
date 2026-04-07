@@ -416,25 +416,26 @@ function loadInsightsCache(key) {
 async function showConsentDialog() {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.style.zIndex = '9999';
+    overlay.className = 'modal-overlay open';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);';
 
     const modal = document.createElement('div');
-    modal.className = 'modal-box';
-    modal.style.maxWidth = '480px';
+    modal.style.cssText = 'width:100%;max-width:420px;background:var(--surface);border-radius:16px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
     modal.innerHTML = `
-      <div class="modal-icon" style="background: var(--accent-bg); color: var(--accent);"><i data-lucide="brain"></i></div>
-      <h3>AI Analysis Consent</h3>
-      <p style="font-size: 0.875rem; color: var(--text2); margin-bottom: 16px; line-height: 1.5;">
+      <div style="width:48px;height:48px;border-radius:12px;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+        <i data-lucide="brain" style="width:24px;height:24px;"></i>
+      </div>
+      <h3 style="font-size:1.125rem;font-weight:600;margin:0 0 12px;color:var(--text);">AI Analysis Consent</h3>
+      <p style="font-size:0.875rem;color:var(--text2);margin:0 0 16px;line-height:1.5;">
         To provide personalized insights, your financial data will be sent to an AI service for analysis.
       </p>
-      <p style="font-size: 0.8125rem; color: var(--text3); margin-bottom: 20px; line-height: 1.4;">
+      <p style="font-size:0.8125rem;color:var(--text3);margin:0 0 20px;line-height:1.4;">
         <strong>Sent:</strong> Transaction amounts, categories, dates, payment methods.<br>
         <strong>Not sent:</strong> Your name, email, or any personal identifiers.
       </p>
-      <div class="modal-actions">
-        <button class="btn-secondary" id="consent-decline">Decline</button>
-        <button class="btn-primary" id="consent-accept">Continue</button>
+      <div style="display:flex;gap:12px;">
+        <button id="consent-decline" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-weight:500;cursor:pointer;">Decline</button>
+        <button id="consent-accept" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;">Continue</button>
       </div>
     `;
 
@@ -443,21 +444,19 @@ async function showConsentDialog() {
 
     if (window.lucide) lucide.createIcons();
 
-    document.getElementById('consent-accept').addEventListener('click', () => {
-      document.body.removeChild(overlay);
-      resolve(true);
-    });
-
-    document.getElementById('consent-decline').addEventListener('click', () => {
-      document.body.removeChild(overlay);
-      resolve(false);
-    });
-
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
+    const closeAndResolve = (result) => {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.2s';
+      setTimeout(() => {
         document.body.removeChild(overlay);
-        resolve(false);
-      }
+        resolve(result);
+      }, 200);
+    };
+
+    document.getElementById('consent-accept').addEventListener('click', () => closeAndResolve(true));
+    document.getElementById('consent-decline').addEventListener('click', () => closeAndResolve(false));
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeAndResolve(false);
     });
   });
 }
