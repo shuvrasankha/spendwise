@@ -80,17 +80,20 @@
   .modal-overlay {
     align-items: flex-end;
     padding: 0;
+    z-index: 1000;
   }
-  
+
   .modal,
   .modal-box {
     max-height: 85vh;
     border-radius: var(--modal-border-radius) var(--modal-border-radius) 0 0;
     transform: translateY(100%);
+    position: relative;
+    z-index: 1001;
   }
-  
-  .modal-overlay.open .modal,
-  .modal-overlay.open .modal-box {
+
+  .modal-overlay:not(.hidden) .modal,
+  .modal-overlay:not(.hidden) .modal-box {
     transform: translateY(0);
   }
   
@@ -526,15 +529,15 @@
   
   /* Disable specific animations */
   .modal,
-  .modal-overlay,
+  .modal-overlay:not(.hidden),
   .mobile-menu-panel,
   .mobile-menu-overlay,
   .profile-dropdown {
     transition: none !important;
   }
-  
-  .modal-overlay.open .modal,
-  .modal-overlay.open .modal-box {
+
+  .modal-overlay:not(.hidden) .modal,
+  .modal-overlay:not(.hidden) .modal-box {
     transform: none !important;
   }
   

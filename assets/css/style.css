@@ -1546,13 +1546,19 @@ button { cursor: pointer; border: none; outline: none; background: none; }
    MODALS
  ===================== */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex;
-  align-items: center; justify-content: center; z-index: 200; padding: 20px;
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex;
+  align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+.modal-overlay:not(.hidden) {
+  opacity: 1; visibility: visible;
 }
 .modal-box {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 24px; max-width: 360px; width: 100%; box-shadow: var(--shadow-lg);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative; z-index: 1001;
 }
 .modal-box h3 { font-size: 1.0625rem; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.02em; }
 .modal-box p { color: var(--text2); font-size: 0.875rem; margin-bottom: 20px; }
@@ -1573,7 +1579,8 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 /* Edit modal responsive for small screens */
 @media (max-width: 480px) {
   .edit-modal-box { max-width: 100%; max-height: 95vh; }
-  .modal-overlay { padding: 8px; align-items: flex-end; }
+  .modal-overlay { padding: 0; align-items: flex-end; z-index: 1000; }
+  .modal-overlay:not(.hidden) { pointer-events: auto; }
   /* Header tweaks */
   .edit-modal-box .modal-header { margin-bottom: 14px; padding-bottom: 10px; }
   .edit-modal-box .modal-header h3 { font-size: 1rem; }
@@ -1860,9 +1867,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .data-table tbody td.empty-row::before { display: none; }
   .data-table tbody tr:has(.empty-row) { padding: 20px 0; }
   /* Ensure action buttons are tappable on mobile */
-  .data-table tbody td.text-center { position: relative; z-index: 5; }
-  .data-table tbody td.text-center .action-buttons { pointer-events: auto; }
-  .data-table tbody td.text-center .btn-action { min-width: 36px; min-height: 36px; padding: 8px; }
+  .data-table tbody td.text-center { position: relative; z-index: 10; }
+  .data-table tbody td.text-center .action-buttons { pointer-events: auto; z-index: 11; position: relative; }
+  .data-table tbody td.text-center .btn-action { min-width: 36px; min-height: 36px; padding: 8px; position: relative; z-index: 12; }
   .table-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .table-header .table-tabs { width: 100%; }
   .table-header .btn-download { align-self: flex-end; }

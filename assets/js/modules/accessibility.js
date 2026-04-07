@@ -112,18 +112,17 @@
     if (e.key !== 'Escape') return;
 
     // Close any open modal
-    const openModal = document.querySelector('.modal-overlay.open');
+    const openModal = document.querySelector('.modal-overlay:not(.hidden)');
     if (openModal) {
       e.preventDefault();
       e.stopPropagation();
-      
+
       // Find and trigger close button
       const closeBtn = openModal.querySelector('.modal__close, .modal-close-btn, [data-action*="close"]');
       if (closeBtn) {
         closeBtn.click();
       } else {
         // Fallback: just close the modal
-        openModal.classList.remove('open');
         openModal.classList.add('hidden');
         restoreFocus();
       }

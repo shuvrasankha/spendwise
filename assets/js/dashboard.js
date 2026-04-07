@@ -2117,6 +2117,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const inp = document.getElementById('forgot-email');
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') handleForgotPassword(); });
 
+  // Expense delete modal cleanup
+  const expenseDelOverlay = document.getElementById('modal');
+  if (expenseDelOverlay) expenseDelOverlay.addEventListener('click', e => { if (e.target === expenseDelOverlay) closeModal(); });
+
   // Edit modal cleanup
   const editOverlay = document.getElementById('edit-modal');
   if (editOverlay) editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
