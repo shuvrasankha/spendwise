@@ -246,15 +246,19 @@ function buildAnalysisPrompt(data, analysisType, periodLabel) {
     .join('\n');
 
   const typeSpecificInstructions = {
-    overview: "Provide a comprehensive overview of financial health, spending habits, savings potential, and actionable recommendations.",
-    spending: "Focus deeply on expense analysis - identify biggest spending categories, unusual patterns, spending habits by day/time, and specific ways to reduce expenses.",
-    savings: "Concentrate on savings opportunities - identify areas where user can cut costs, suggest concrete savings targets, and provide a practical savings plan.",
-    trends: "Analyze spending trends over time - identify patterns by day of week, recurring expenses, seasonal variations, and predict future spending behavior.",
-    goals: "Help user set and track financial goals based on their income and spending patterns.",
-    debt: "Focus on debt analysis - track outstanding debts, settlement progress, suggest debt payoff strategies, and analyze debt sustainability."
+    overview: "Provide a comprehensive overview of financial health, spending habits, savings potential, and actionable recommendations. Include all sections.",
+    spending: "FOCUS: Expense deep-dive ONLY. Identify biggest spending categories, unusual patterns, spending habits by day/time, impulse purchases, and specific ways to reduce expenses. Heavy emphasis on spending analysis.",
+    savings: "FOCUS: Savings opportunities ONLY. Identify areas to cut costs, suggest concrete savings targets (monthly and yearly), and provide a practical savings plan with specific actionable steps.",
+    trends: "FOCUS: Spending patterns ONLY. Analyze trends by day of week, time of month, recurring expenses, seasonal variations, and predict future spending behavior. Focus on patterns.",
+    goals: "FOCUS: Financial goals ONLY. Help set SMART savings goals, track progress, suggest realistic targets based on income. Include milestone tracking.",
+    debt: "FOCUS: Debt management ONLY. Track outstanding debts, suggest payoff strategies (avalanche/snowball), analyze debt sustainability, and prioritize which debts to pay first."
   };
 
-  const systemPrompt = `You are a professional financial advisor for SpendWise, an Indian personal finance app. Analyze the user's financial data for ${periodLabel}.
+  const systemPrompt = `You are a professional financial advisor AI. Your analysis type is: **${analysisType.toUpperCase()}**
+
+CRITICAL: You MUST focus your ENTIRE response on ${analysisType.toUpperCase()} analysis. Do NOT provide equal weight to all topics.
+
+User's Period: ${periodLabel}
 
 IMPORTANT RULES:
 1. Be specific — reference actual numbers, categories, and patterns from the data.
@@ -298,7 +302,9 @@ Return JSON in this EXACT format:
   ]
 }`;
 
-  let userPrompt = `Financial Data for ${periodLabel}:
+  let userPrompt = `ANALYSIS REQUEST: **${analysisType.toUpperCase()}** analysis for ${periodLabel}
+
+FINANCIAL DATA:
 
 OVERVIEW:
 - Total Expenses: ${sym} ${data.totalExpenses.toFixed(2)} (${data.transactionCount} transactions)
@@ -323,7 +329,7 @@ DEBT STATUS:
 - Total You Owe: ${sym} ${data.debt.totalYouOwe.toFixed(2)}
 - Total Settled: ${sym} ${data.debt.totalSettled.toFixed(2)}
 
-Please analyze and provide insights based on the selected analysis type.`;
+IMPORTANT: Provide ${analysisType.toUpperCase()} analysis based on the above data. Focus specifically on ${analysisType}-related insights and recommendations.`;
 
   if (analysisType === 'debt' || analysisType === 'overview') {
     if (data.debt.topDebtors.length > 0) {
@@ -456,7 +462,7 @@ async function showConsentDialog() {
   });
 }
 
-async function runAnalysis() {
+async function runAnalysis(forceRefresh = false) {
   if (isAnalyzing) return;
   if (!currentUser) {
     showError('Please log in to use AI Insights.');
@@ -477,7 +483,9 @@ async function runAnalysis() {
   }
 
   const cacheKey = getCacheKey(currentUser.uid, selectedPeriod, selectedAnalysisType, startDate, endDate);
-  const cached = loadInsightsCache(cacheKey);
+  const cached = forceRefresh ? null : loadInsightsCache(cacheKey);
+
+  console.log('Running analysis:', { period: selectedPeriod, type: selectedAnalysisType, forceRefresh, cached: !!cached });
 
   if (cached) {
     renderInsights(cached, label);
@@ -622,10 +630,15 @@ function renderInsights(insights, periodLabel) {
           <span>${escapeHtml(periodLabel)}</span>
         </div>
       </div>
-      <button class="download-pdf-btn" id="download-pdf-btn" title="Download as PDF">
-        <i data-lucide="download"></i>
-        <span>Download PDF</span>
-      </button>
+      <div class="results-actions">
+        <button class="refresh-btn" id="refresh-btn" title="Refresh Analysis">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+        <button class="download-pdf-btn" id="download-pdf-btn" title="Download as PDF">
+          <i data-lucide="download"></i>
+          <span>Download PDF</span>
+        </button>
+      </div>
     </div>
 
     <div class="summary-section">
@@ -879,7 +892,7 @@ function initUI() {
   }
 
   if (analyzeBtn) {
-    analyzeBtn.addEventListener('click', runAnalysis);
+    analyzeBtn.addEventListener('click', () => runAnalysis(false));
   }
 
   const startDateInput = document.getElementById('insights-start-date');
@@ -891,6 +904,14 @@ function initUI() {
     endDateInput.value = today.toISOString().split('T')[0];
   }
 }
+
+document.addEventListener('click', (e) => {
+  const refreshBtn = e.target.closest('#refresh-btn');
+  if (refreshBtn) {
+    e.preventDefault();
+    runAnalysis(true);
+  }
+});
 
 function downloadPDF() {
   const resultsEl = document.getElementById('insights-results');

@@ -4862,6 +4862,12 @@ img {
   gap: 12px;
 }
 
+.results-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .period-badge {
   display: inline-flex;
   align-items: center;
@@ -4878,6 +4884,35 @@ img {
 .period-badge svg {
   width: 14px;
   height: 14px;
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  background: var(--warning-bg);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.refresh-btn:active {
+  transform: scale(0.95);
+}
+
+.refresh-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .download-pdf-btn {
@@ -5583,8 +5618,17 @@ img {
     justify-content: center;
   }
 
-  .download-pdf-btn {
+  .results-actions {
     width: 100%;
+    justify-content: center;
+  }
+
+  .refresh-btn {
+    padding: 10px;
+  }
+
+  .download-pdf-btn {
+    flex: 1;
     justify-content: center;
     padding: 10px 16px;
   }
