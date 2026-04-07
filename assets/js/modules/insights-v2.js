@@ -616,10 +616,16 @@ function renderInsights(insights, periodLabel) {
 
   html += `
     <div class="results-header">
-      <div class="period-badge">
-        <i data-lucide="calendar"></i>
-        <span>${escapeHtml(periodLabel)}</span>
+      <div class="results-header-left">
+        <div class="period-badge">
+          <i data-lucide="calendar"></i>
+          <span>${escapeHtml(periodLabel)}</span>
+        </div>
       </div>
+      <button class="download-pdf-btn" id="download-pdf-btn" title="Download as PDF">
+        <i data-lucide="download"></i>
+        <span>Download PDF</span>
+      </button>
     </div>
 
     <div class="summary-section">
@@ -885,6 +891,102 @@ function initUI() {
     endDateInput.value = today.toISOString().split('T')[0];
   }
 }
+
+function downloadPDF() {
+  const resultsEl = document.getElementById('insights-results');
+  if (!resultsEl) return;
+
+  const downloadBtn = document.getElementById('download-pdf-btn');
+  if (downloadBtn) {
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = '<span class="spinner"></span> Generating...';
+  }
+
+  const cur = getCurrencyInfo(getCurrency());
+  const sym = cur.symbol;
+
+  const { label } = getPeriodDates();
+
+  const pdfContent = document.createElement('div');
+  pdfContent.style.cssText = `
+    font-family: 'Inter', Arial, sans-serif;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    color: #1d1d1f;
+    background: #fff;
+  `;
+
+  const headerHTML = `
+    <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #0071e3;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px;">
+        <img src="assets/images/logo.png" width="40" height="40" style="border-radius: 8px;" onerror="this.style.display='none'" />
+        <h1 style="margin: 0; font-size: 24px; color: #1d1d1f;">SpendWise AI Insights</h1>
+      </div>
+      <p style="margin: 0; color: #6e6e73; font-size: 14px;">Financial Analysis Report - ${escapeHtml(label)}</p>
+      <p style="margin: 8px 0 0; color: #6e6e73; font-size: 12px;">Generated on ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+    </div>
+  `;
+
+  const resultsHTML = resultsEl.innerHTML;
+  pdfContent.innerHTML = headerHTML + '<div id="pdf-results">' + resultsHTML + '</div>';
+
+  const opt = {
+    margin: 10,
+    filename: `spendwise-insights-${label.replace(/\s+/g, '-').toLowerCase()}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  if (typeof html2pdf !== 'undefined') {
+    html2pdf().set(opt).from(pdfContent).save().then(() => {
+      if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '<i data-lucide="download"></i><span>Download PDF</span>';
+        if (window.lucide) lucide.createIcons();
+      }
+      showToast('PDF downloaded successfully!');
+    }).catch(err => {
+      console.error('PDF generation error:', err);
+      if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '<i data-lucide="download"></i><span>Download PDF</span>';
+        if (window.lucide) lucide.createIcons();
+      }
+      showToast('Failed to generate PDF. Please try again.');
+    });
+  } else {
+    if (downloadBtn) {
+      downloadBtn.disabled = false;
+      downloadBtn.innerHTML = '<i data-lucide="download"></i><span>Download PDF</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+    showToast('PDF library not loaded. Please refresh and try again.');
+  }
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 3000);
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#download-pdf-btn');
+  if (btn && !btn.disabled) {
+    e.preventDefault();
+    downloadPDF();
+  }
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initUI);
