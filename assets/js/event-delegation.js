@@ -117,6 +117,11 @@
     },
     'closeDebtSettleModal': function() { if (window.closeDebtSettleModal) window.closeDebtSettleModal(); },
     'confirmDebtSettle': function() { if (window.confirmDebtSettle) window.confirmDebtSettle(); },
+    'openDebtReactivateModal': function(id) {
+      if (window.openDebtReactivateModal) window.openDebtReactivateModal(id);
+    },
+    'closeDebtReactivateModal': function() { if (window.closeDebtReactivateModal) window.closeDebtReactivateModal(); },
+    'confirmDebtReactivate': function() { if (window.confirmDebtReactivate) window.confirmDebtReactivate(); },
 
     // Insights
     'runAnalysis': function() { if (window.runAnalysis) window.runAnalysis(); },
@@ -219,7 +224,7 @@
       if (handler) {
         e.preventDefault();
         // Pass debt ID for debt modal actions
-        if (action === 'openDebtDeleteModal' || action === 'openDebtSettleModal') {
+        if (action === 'openDebtDeleteModal' || action === 'openDebtSettleModal' || action === 'openDebtReactivateModal') {
           handler(target.dataset.debtId);
         } else {
           handler(e);

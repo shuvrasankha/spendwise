@@ -20,6 +20,7 @@ let currentUser = null;
 let allDebts = [];
 let deleteDebtTarget = null;
 let settleDebtTarget = null;
+let reactivateDebtTarget = null;
 let currentDebtType = 'they-owe';
 let editingDebtId = null;
 
@@ -317,7 +318,7 @@ function renderDebtHistory() {
   const settled = allDebts.filter(d => d.settled).sort((a, b) => (b.settledDate || '').localeCompare(a.settledDate || ''));
 
   if (!settled.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty-row">No settled debts yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">No settled debts yet.</td></tr>`;
     return;
   }
 
@@ -359,8 +360,23 @@ function renderDebtHistory() {
     tdAmt.textContent = fmt(d.amount);
     tr.appendChild(tdAmt);
 
+    // Actions
+    const tdAct = document.createElement('td');
+    tdAct.dataset.label = 'Actions';
+    tdAct.className = 'text-center';
+    tdAct.innerHTML = `
+      <div class="action-buttons">
+        <button class="btn-action reactivate" data-action="openDebtReactivateModal" data-debt-id="${d.id}" title="Reactivate">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+      </div>
+    `;
+    tr.appendChild(tdAct);
+
     tbody.appendChild(tr);
   });
+
+  if (window.lucide) lucide.createIcons();
 }
 
 // ── Add Debt ─────────────────────────────────────────────────────────────────
@@ -518,6 +534,70 @@ window.confirmDebtSettle = async () => {
   }
   closeDebtSettleModal();
 };
+
+// ── Reactivate Debt ──────────────────────────────────────────────────────────
+window.openDebtReactivateModal = (id) => {
+  reactivateDebtTarget = id;
+  const debt = allDebts.find(d => d.id === id);
+  if (debt) {
+    document.getElementById('debt-reactivate-msg').textContent = `Reactivate ${fmt(debt.amount)} with ${debt.person}?`;
+  }
+  document.getElementById('debt-reactivate-modal').classList.remove('hidden');
+};
+
+window.closeDebtReactivateModal = () => {
+  document.getElementById('debt-reactivate-modal').classList.add('hidden');
+  reactivateDebtTarget = null;
+};
+
+window.confirmDebtReactivate = async () => {
+  if (!reactivateDebtTarget) return;
+  try {
+    const debtRef = doc(db, 'debts', reactivateDebtTarget);
+    await updateDoc(debtRef, { settled: false, settledDate: '' });
+
+    const idx = allDebts.findIndex(d => d.id === reactivateDebtTarget);
+    if (idx >= 0) {
+      allDebts[idx].settled = false;
+      allDebts[idx].settledDate = '';
+    }
+
+    updateDebtSummary();
+    renderDebts();
+    renderDebtHistory();
+    showToast('Debt reactivated!', 'success');
+  } catch (e) {
+    showToast('Reactivation failed.', 'error');
+  }
+  closeDebtReactivateModal();
+};
+
+// ── Modal Click Outside to Close ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Delete modal
+  const deleteOverlay = document.getElementById('debt-delete-modal');
+  if (deleteOverlay) {
+    deleteOverlay.addEventListener('click', e => {
+      if (e.target === deleteOverlay) closeDebtDeleteModal();
+    });
+  }
+
+  // Settle modal
+  const settleOverlay = document.getElementById('debt-settle-modal');
+  if (settleOverlay) {
+    settleOverlay.addEventListener('click', e => {
+      if (e.target === settleOverlay) closeDebtSettleModal();
+    });
+  }
+
+  // Reactivate modal
+  const reactivateOverlay = document.getElementById('debt-reactivate-modal');
+  if (reactivateOverlay) {
+    reactivateOverlay.addEventListener('click', e => {
+      if (e.target === reactivateOverlay) closeDebtReactivateModal();
+    });
+  }
+});
 
 // ── Auth helpers from index.html ─────────────────────────────────────────────
 window.switchTab = (tab) => {

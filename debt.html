@@ -390,11 +390,12 @@
                 <th data-col="date">Date</th>
                 <th data-col="settled-date">Settled On</th>
                 <th class="text-right" data-col="amount">Amount</th>
+                <th class="text-center" data-col="actions">Actions</th>
               </tr>
             </thead>
             <tbody id="debt-history-body">
               <tr>
-                <td colspan="5" class="empty-row">No settled debts yet.</td>
+                <td colspan="6" class="empty-row">No settled debts yet.</td>
               </tr>
             </tbody>
           </table>
@@ -410,9 +411,11 @@
       <h3>Delete Debt Entry?</h3>
       <p>This action cannot be undone.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" data-action="closeDebtDeleteModal">Cancel</button>
-        <button class="btn-danger" data-action="confirmDebtDelete">
-          <i data-lucide="trash-2"></i> Delete
+        <button class="btn-cancel-icon" data-action="closeDebtDeleteModal" title="Cancel">
+          <i data-lucide="x-circle"></i>
+        </button>
+        <button class="btn-delete-icon" data-action="confirmDebtDelete" title="Delete">
+          <i data-lucide="trash-2"></i>
         </button>
       </div>
     </div>
@@ -425,9 +428,28 @@
       <h3>Mark as Settled?</h3>
       <p id="debt-settle-msg">This debt will be moved to settlement history.</p>
       <div class="modal-actions">
-        <button class="btn-secondary" data-action="closeDebtSettleModal">Cancel</button>
-        <button class="btn-debt-primary" data-action="confirmDebtSettle">
-          <i data-lucide="check-circle"></i> Confirm Settlement
+        <button class="btn-cancel-icon" data-action="closeDebtSettleModal" title="Cancel">
+          <i data-lucide="x-circle"></i>
+        </button>
+        <button class="btn-save-icon" data-action="confirmDebtSettle" title="Confirm Settlement">
+          <i data-lucide="check-circle"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reactivate Debt Modal -->
+  <div id="debt-reactivate-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-icon" style="background: var(--accent-bg); color: var(--accent);"><i data-lucide="refresh-cw"></i></div>
+      <h3>Reactivate Debt?</h3>
+      <p id="debt-reactivate-msg">This debt will be moved back to active debts.</p>
+      <div class="modal-actions">
+        <button class="btn-cancel-icon" data-action="closeDebtReactivateModal" title="Cancel">
+          <i data-lucide="x-circle"></i>
+        </button>
+        <button class="btn-save-icon" data-action="confirmDebtReactivate" title="Reactivate Debt">
+          <i data-lucide="refresh-cw"></i>
         </button>
       </div>
     </div>
