@@ -112,12 +112,6 @@ onAuthStateChanged(auth, user => {
     document.getElementById('app').classList.remove('hidden');
     updateUserAvatar(user);
 
-    // Set greeting
-    const h = new Date().getHours();
-    const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-    const n = user.displayName ? user.displayName.split(' ')[0] : '';
-    document.getElementById('income-greeting').textContent = g + (n ? ', ' + n : '') + '!';
-
     updateThemeIcon();
     initCurrencySelector();
 
