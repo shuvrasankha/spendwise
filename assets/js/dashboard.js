@@ -802,6 +802,24 @@ function updateCards() {
   
   document.getElementById("sum-monthly").textContent = fmt(monthTotal);
   document.getElementById("sum-monthly-count").textContent = monthlyExpenses.length + " transaction" + (monthlyExpenses.length !== 1 ? "s" : "") + " this month";
+
+  // Daily spending text
+  updateDailySpending();
+}
+
+function updateDailySpending() {
+  const el = document.getElementById("daily-spending-text");
+  if (!el) return;
+  
+  const today = todayStr();
+  const todayExpenses = allExpenses.filter(e => e.date === today);
+  const todayTotal = todayExpenses.reduce((s, e) => s + e.amount, 0);
+  
+  if (todayTotal === 0) {
+    el.innerHTML = `Today you have spend <span class="amount" style="color: var(--success); background: var(--success-bg);">Rs 0</span>`;
+  } else {
+    el.innerHTML = `Today you have spend <span class="amount">${fmt(todayTotal)}</span>`;
+  }
 }
 
 window.switchTableTab = (tab) => {
