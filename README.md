@@ -2,7 +2,7 @@
 
 A modern, full-featured expense tracking application built with vanilla JavaScript, Firebase, and Firestore. Track every rupee effortlessly with AI-powered insights, debt management, and comprehensive transaction history.
 
-🌐 **Live App:** https://spendwise-sp.netlify.app
+🌐 **Live App:** https://shuvrasankha.github.io/spendwise/
 
 ## ✨ Features
 
