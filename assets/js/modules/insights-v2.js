@@ -245,98 +245,72 @@ function buildAnalysisPrompt(data, analysisType, periodLabel) {
     .map((e, i) => `  ${i + 1}. ${sym} ${e.amount.toFixed(2)} — ${e.category} (${e.description}) on ${e.date}`)
     .join('\n');
 
-  const typeSpecificInstructions = {
-    overview: "Provide a comprehensive overview of financial health, spending habits, savings potential, and actionable recommendations. Include all sections.",
-    spending: "FOCUS: Expense deep-dive ONLY. Identify biggest spending categories, unusual patterns, spending habits by day/time, impulse purchases, and specific ways to reduce expenses. Heavy emphasis on spending analysis.",
-    savings: "FOCUS: Savings opportunities ONLY. Identify areas to cut costs, suggest concrete savings targets (monthly and yearly), and provide a practical savings plan with specific actionable steps.",
-    trends: "FOCUS: Spending patterns ONLY. Analyze trends by day of week, time of month, recurring expenses, seasonal variations, and predict future spending behavior. Focus on patterns.",
-    goals: "FOCUS: Financial goals ONLY. Help set SMART savings goals, track progress, suggest realistic targets based on income. Include milestone tracking.",
-    debt: "FOCUS: Debt management ONLY. Track outstanding debts, suggest payoff strategies (avalanche/snowball), analyze debt sustainability, and prioritize which debts to pay first."
+  const analysisPrompts = {
+    overview: `Generate a comprehensive overview of my current financial health based on the provided data. Focus on summarizing the key metrics from 'Overview,' including total income, total spending, savings rate, and debt management status. Highlight any immediate areas requiring attention.`,
+
+    spending: `Analyze the detailed 'Spending' data. Identify the top 5 expense categories by total amount spent in the ${periodLabel}. Calculate the average monthly spend for each category and pinpoint any spending that significantly exceeds the historical average.`,
+
+    savings: `Analyze the 'Savings' data in relation to my defined financial goals. Determine the current progress toward each goal. Calculate the required monthly savings rate needed to meet all goals, and identify which goals are currently at risk.`,
+
+    trends: `Analyze the spending and savings 'Trends' over the ${periodLabel}. Identify any significant upward or downward trends in overall expenditure, savings rate, and debt levels. Pinpoint the specific months or periods where these trends were most pronounced.`,
+
+    goals: `Based on my current financial position ('Goals' section), create a prioritized action plan. Determine the most critical steps I need to take this month to ensure I stay on track for my long-term goals, focusing specifically on optimizing spending and increasing savings.`,
+
+    debt: `Analyze the 'Debt Tracker' data. Calculate the total outstanding debt, the average interest rate across all debts, and determine the most efficient repayment strategy (e.g., Avalanche vs. Snowball method). Recommend a specific action plan to reduce the overall debt burden.`
   };
 
-  const systemPrompt = `You are a professional financial advisor AI. Your analysis type is: **${analysisType.toUpperCase()}**
-
-CRITICAL: You MUST focus your ENTIRE response on ${analysisType.toUpperCase()} analysis. Do NOT provide equal weight to all topics.
-
-User's Period: ${periodLabel}
+  const systemPrompt = `You are a professional financial advisor AI assistant. Your analysis type is: **${analysisType.toUpperCase()}**
 
 IMPORTANT RULES:
-1. Be specific — reference actual numbers, categories, and patterns from the data.
-2. Be actionable — give concrete suggestions with estimated savings when possible.
-3. Consider Indian spending context (UPI payments, typical Indian expenses, festivals).
-4. Return ONLY valid JSON, no markdown, no explanation.
-5. Use "${sym}" prefix for all amounts.
-6. Be encouraging but honest about areas needing improvement.
-7. Include emojis in title fields for better visual appeal.
+1. Provide a detailed, natural language response - no JSON, no markdown formatting
+2. Be specific — reference actual numbers, categories, and patterns from the data provided
+3. Be actionable — give concrete suggestions with estimated savings when possible
+4. Consider Indian spending context (UPI payments, typical Indian expenses, festivals, salary patterns)
+5. Use "${sym}" prefix for all currency amounts
+6. Be encouraging but honest about areas needing improvement
+7. Format your response with clear sections using **headers** for readability
+8. Keep your analysis focused on ${analysisType.toUpperCase()} topics only`;
 
-${typeSpecificInstructions[analysisType] || typeSpecificInstructions.overview}
+  let userPrompt = `**${analysisType.toUpperCase()}** ANALYSIS REQUEST for ${periodLabel}
 
-Return JSON in this EXACT format:
-{
-  "summary": {
-    "headline": "<one-line summary>",
-    "healthScore": <1-100>,
-    "totalSpent": <number>,
-    "totalEarned": <number>,
-    "netSavings": <number>,
-    "topCategory": "<category name>",
-    "keyTakeaway": "<one key thing to remember>"
-  },
-  "highlights": [
-    {"icon": "<emoji or icon name>", "text": "<highlight text>"}
-  ],
-  "categoryBreakdown": [
-    {"category": "<name>", "amount": <number>, "percentage": <number>, "icon": "<emoji>", "insight": "<brief insight>"}
-  ],
-  "patterns": [
-    {"type": "info|warning|success", "title": "<emoji> <title>", "description": "<detail>"}
-  ],
-  "recommendations": [
-    {"priority": "high|medium|low", "title": "<emoji> <title>", "description": "<detail>", "potentialSavings": "<amount or null>"}
-  ],
-  "spendingByDay": [
-    {"day": "<name>", "amount": <number>}
-  ],
-  "quickWins": [
-    {"action": "<specific action>", "savings": "<estimated savings>"}
-  ]
-}`;
+**ANALYSIS TASK:**
+${analysisPrompts[analysisType] || analysisPrompts.overview}
 
-  let userPrompt = `ANALYSIS REQUEST: **${analysisType.toUpperCase()}** analysis for ${periodLabel}
+---
 
-FINANCIAL DATA:
+**YOUR FINANCIAL DATA:**
 
-OVERVIEW:
+**OVERVIEW:**
 - Total Expenses: ${sym} ${data.totalExpenses.toFixed(2)} (${data.transactionCount} transactions)
 - Total Income: ${sym} ${data.totalIncome.toFixed(2)} (${data.incomeCount} entries)
 - Net Savings: ${sym} ${data.netSavings.toFixed(2)}
 - Average Daily Spend: ${sym} ${data.avgDailySpend.toFixed(2)}
 
-CATEGORY BREAKDOWN:
+**CATEGORY BREAKDOWN:**
 ${categoryList || 'No expenses recorded.'}
 
-SPENDING BY DAY OF WEEK:
+**SPENDING BY DAY OF WEEK:**
 ${dayOfWeekList}
 
-PAYMENT METHODS:
+**PAYMENT METHODS:**
 ${paymentList || 'No payment data.'}
 
-TOP EXPENSES:
+**TOP EXPENSES:**
 ${topExpenseList || 'No expenses recorded.'}
 
-DEBT STATUS:
+**DEBT STATUS:**
 - Total Owed to You: ${sym} ${data.debt.totalOwedToYou.toFixed(2)}
 - Total You Owe: ${sym} ${data.debt.totalYouOwe.toFixed(2)}
-- Total Settled: ${sym} ${data.debt.totalSettled.toFixed(2)}
-
-IMPORTANT: Provide ${analysisType.toUpperCase()} analysis based on the above data. Focus specifically on ${analysisType}-related insights and recommendations.`;
+- Total Settled: ${sym} ${data.debt.totalSettled.toFixed(2)}`;
 
   if (analysisType === 'debt' || analysisType === 'overview') {
     if (data.debt.topDebtors.length > 0) {
-      userPrompt += `\n\nTOP DEBTORS:\n${data.debt.topDebtors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}`).join('\n')}`;
+      userPrompt += `\n\n**TOP DEBTORS:**
+${data.debt.topDebtors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}`).join('\n')}`;
     }
     if (data.debt.topCreditors.length > 0) {
-      userPrompt += `\n\nTOP CREDITORS:\n${data.debt.topCreditors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}`).join('\n')}`;
+      userPrompt += `\n\n**TOP CREDITORS:**
+${data.debt.topCreditors.map(d => `  - ${d.person}: ${sym} ${d.amount.toFixed(2)}`).join('\n')}`;
     }
   }
 
@@ -380,13 +354,7 @@ async function callAnalysisAPI(data, analysisType, periodLabel) {
   const content = result.choices?.[0]?.message?.content;
   if (!content) throw new Error('EMPTY_RESPONSE');
 
-  let jsonStr = content.trim();
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (jsonMatch) jsonStr = jsonMatch[1].trim();
-  const objMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (objMatch) jsonStr = objMatch[0];
-
-  return JSON.parse(jsonStr);
+  return content.trim();
 }
 
 function getCacheKey(uid, period, type, start, end) {
@@ -641,7 +609,7 @@ function showCachedBadge(show) {
   if (badge) badge.classList.toggle('hidden', !show);
 }
 
-function renderInsights(insights, periodLabel) {
+function renderInsights(responseText, periodLabel) {
   const container = document.getElementById('insights-results');
   const empty = document.getElementById('insights-empty');
   const error = document.getElementById('insights-error');
@@ -650,32 +618,18 @@ function renderInsights(insights, periodLabel) {
   if (error) error.classList.add('hidden');
   if (!container) return;
 
-  const s = insights.summary || {};
-  const highlights = insights.highlights || [];
-  const categoryBreakdown = insights.categoryBreakdown || [];
-  const patterns = insights.patterns || [];
-  const recommendations = insights.recommendations || [];
-  const spendingByDay = insights.spendingByDay || [];
-  const quickWins = insights.quickWins || [];
+  const analysisTypeTitle = selectedAnalysisType.charAt(0).toUpperCase() + selectedAnalysisType.slice(1);
 
-  const score = s.healthScore || 50;
-  let scoreColor = '#10b981';
-  let scoreLabel = 'Excellent';
-  if (score < 40) { scoreColor = '#ef4444'; scoreLabel = 'Needs Work'; }
-  else if (score < 60) { scoreColor = '#f59e0b'; scoreLabel = 'Fair'; }
-  else if (score < 80) { scoreColor = '#06b6d4'; scoreLabel = 'Good'; }
-
-  const cur = getCurrencyInfo(getCurrency());
-  const sym = cur.symbol;
-
-  let html = '';
-
-  html += `
+  let html = `
     <div class="results-header">
       <div class="results-header-left">
         <div class="period-badge">
           <i data-lucide="calendar"></i>
           <span>${escapeHtml(periodLabel)}</span>
+        </div>
+        <div class="analysis-type-badge">
+          <i data-lucide="${getAnalysisIcon(selectedAnalysisType)}"></i>
+          <span>${analysisTypeTitle} Analysis</span>
         </div>
       </div>
       <div class="results-actions">
@@ -689,220 +643,79 @@ function renderInsights(insights, periodLabel) {
       </div>
     </div>
 
-    <div class="summary-section">
-      <div class="health-score-card">
-        <div class="score-ring-wrap">
-          <svg viewBox="0 0 120 120" class="score-ring">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="10"/>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="${scoreColor}" stroke-width="10"
-              stroke-dasharray="${(score / 100) * 327} 327"
-              stroke-linecap="round" transform="rotate(-90 60 60)"
-              class="score-progress"/>
-          </svg>
-          <div class="score-center">
-            <span class="score-value" style="color: ${scoreColor}">${score}</span>
-            <span class="score-max">/100</span>
-          </div>
+    <div class="ai-response-container">
+      <div class="ai-response-header">
+        <div class="ai-avatar">
+          <i data-lucide="bot"></i>
         </div>
-        <div class="score-info">
-          <h3 class="headline">${escapeHtml(s.headline || 'Financial Health')}</h3>
-          <span class="score-label-text" style="color: ${scoreColor}">${scoreLabel}</span>
+        <div class="ai-header-info">
+          <span class="ai-label">AI Financial Advisor</span>
+          <span class="ai-analysis-type">${analysisTypeTitle} Analysis</span>
         </div>
       </div>
-
-      <div class="stats-grid">
-        <div class="stat-card income">
-          <div class="stat-icon"><i data-lucide="trending-up"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Income</span>
-            <span class="stat-value">${sym} ${(s.totalEarned || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-          </div>
-        </div>
-        <div class="stat-card expense">
-          <div class="stat-icon"><i data-lucide="trending-down"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Expenses</span>
-            <span class="stat-value">${sym} ${(s.totalSpent || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-          </div>
-        </div>
-        <div class="stat-card savings ${(s.netSavings || 0) >= 0 ? 'positive' : 'negative'}">
-          <div class="stat-icon"><i data-lucide="wallet"></i></div>
-          <div class="stat-content">
-            <span class="stat-label">Net Savings</span>
-            <span class="stat-value">${sym} ${Math.abs(s.netSavings || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-          </div>
-        </div>
+      <div class="ai-response-content">
+        ${formatAIResponse(responseText)}
       </div>
-    </div>`;
-
-  if (highlights.length > 0) {
-    html += `
-      <div class="highlights-section">
-        <div class="section-title">
-          <i data-lucide="star"></i>
-          <h3>Key Highlights</h3>
-        </div>
-        <div class="highlights-list">`;
-    highlights.forEach((h, i) => {
-      html += `
-          <div class="highlight-item" style="animation-delay: ${i * 0.05}s">
-            <span class="highlight-icon">${escapeHtml(h.icon || '✨')}</span>
-            <span class="highlight-text">${escapeHtml(h.text)}</span>
-          </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  if (categoryBreakdown.length > 0) {
-    const maxAmount = Math.max(...categoryBreakdown.map(c => c.amount || 0), 1);
-    html += `
-      <div class="categories-section">
-        <div class="section-title">
-          <i data-lucide="pie-chart"></i>
-          <h3>Spending by Category</h3>
-        </div>
-        <div class="categories-grid">`;
-    categoryBreakdown.slice(0, 6).forEach((cat, i) => {
-      const pct = cat.percentage || ((cat.amount / maxAmount) * 100);
-      html += `
-          <div class="category-card" style="animation-delay: ${i * 0.05}s">
-            <div class="cat-header">
-              <span class="cat-icon">${escapeHtml(cat.icon || '📊')}</span>
-              <span class="cat-name">${escapeHtml(cat.category)}</span>
-            </div>
-            <div class="cat-amount">${sym} ${(cat.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-            <div class="cat-bar-bg">
-              <div class="cat-bar-fill" style="width: ${Math.min(pct, 100)}%"></div>
-            </div>
-            <div class="cat-pct">${pct.toFixed(1)}% of total</div>
-            ${cat.insight ? `<p class="cat-insight">${escapeHtml(cat.insight)}</p>` : ''}
-          </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  if (patterns.length > 0) {
-    html += `
-      <div class="patterns-section">
-        <div class="section-title">
-          <i data-lucide="scan-search"></i>
-          <h3>Patterns Detected</h3>
-        </div>
-        <div class="patterns-list">`;
-    patterns.forEach((p, i) => {
-      const typeClass = p.type || 'info';
-      const typeIcon = p.type === 'warning' ? 'alert-triangle' : p.type === 'success' ? 'check-circle' : 'info';
-      html += `
-          <div class="pattern-card ${typeClass}" style="animation-delay: ${i * 0.05}s">
-            <div class="pattern-icon"><i data-lucide="${typeIcon}"></i></div>
-            <div class="pattern-content">
-              <h4>${escapeHtml(p.title)}</h4>
-              <p>${escapeHtml(p.description)}</p>
-            </div>
-          </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  if (spendingByDay.length > 0) {
-    const maxDaySpend = Math.max(...spendingByDay.map(d => d.amount || 0), 1);
-    html += `
-      <div class="day-chart-section">
-        <div class="section-title">
-          <i data-lucide="bar-chart-2"></i>
-          <h3>Spending by Day</h3>
-        </div>
-        <div class="day-bars">`;
-    spendingByDay.forEach((d, i) => {
-      const pct = ((d.amount || 0) / maxDaySpend) * 100;
-      html += `
-          <div class="day-bar-item" style="animation-delay: ${i * 0.03}s">
-            <div class="day-bar-wrap">
-              <div class="day-bar" style="height: ${Math.max(pct, 2)}%"></div>
-            </div>
-            <span class="day-label">${escapeHtml(d.day)}</span>
-            <span class="day-amount">${sym} ${(d.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-          </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  if (quickWins.length > 0) {
-    html += `
-      <div class="quickwins-section">
-        <div class="section-title">
-          <i data-lucide="zap"></i>
-          <h3>Quick Wins</h3>
-        </div>
-        <div class="quickwins-list">`;
-    quickWins.forEach((qw, i) => {
-      html += `
-          <div class="quickwin-card" style="animation-delay: ${i * 0.05}s">
-            <div class="qw-icon"><i data-lucide="arrow-right-circle"></i></div>
-            <div class="qw-content">
-              <span class="qw-action">${escapeHtml(qw.action)}</span>
-              ${qw.savings ? `<span class="qw-savings">Save ${escapeHtml(qw.savings)}</span>` : ''}
-            </div>
-          </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  if (recommendations.length > 0) {
-    html += `
-      <div class="recommendations-section">
-        <div class="section-title">
-          <i data-lucide="lightbulb"></i>
-          <h3>Recommendations</h3>
-        </div>
-        <div class="recommendations-list">`;
-    recommendations.forEach((r, i) => {
-      const prioClass = r.priority || 'medium';
-      const prioColor = prioClass === 'high' ? 'var(--danger)' : prioClass === 'medium' ? 'var(--warning)' : 'var(--success)';
-      html += `
-          <div class="recommendation-card ${prioClass}" style="animation-delay: ${i * 0.05}s">
-            <div class="rec-priority-indicator" style="background: ${prioColor}"></div>
-            <div class="rec-content">
-              <h4>${escapeHtml(r.title)}</h4>
-              <p>${escapeHtml(r.description)}</p>
-              ${r.potentialSavings ? `<span class="rec-savings-tag">💰 Potential savings: ${escapeHtml(r.potentialSavings)}</span>` : ''}
-            </div>
-          </div>`;
-    });
-    html += `</div></div>`;
-  }
-
-  if (s.keyTakeaway) {
-    html += `
-      <div class="takeaway-section">
-        <div class="takeaway-card">
-          <div class="takeaway-icon"><i data-lucide="message-circle"></i></div>
-          <div class="takeaway-content">
-            <h4>Key Takeaway</h4>
-            <p>${escapeHtml(s.keyTakeaway)}</p>
-          </div>
-        </div>
-      </div>`;
-  }
+    </div>
+  `;
 
   container.innerHTML = html;
   container.classList.remove('hidden');
 
   requestAnimationFrame(() => {
     if (window.lucide) lucide.createIcons();
-
-    container.querySelectorAll('.cat-bar-fill').forEach((bar, i) => {
-      const width = bar.style.width;
-      bar.style.width = '0%';
-      setTimeout(() => { bar.style.width = width; }, 100 + i * 60);
-    });
-
-    container.querySelectorAll('.day-bar').forEach((bar, i) => {
-      const height = bar.style.height;
-      bar.style.height = '0%';
-      setTimeout(() => { bar.style.height = height; }, 100 + i * 40);
-    });
   });
+}
+
+function getAnalysisIcon(type) {
+  const icons = {
+    overview: 'layout-dashboard',
+    spending: 'trending-down',
+    savings: 'piggy-bank',
+    trends: 'line-chart',
+    goals: 'target',
+    debt: 'hand-coins'
+  };
+  return icons[type] || 'sparkles';
+}
+
+function formatAIResponse(text) {
+  if (!text) return '<p class="ai-empty">No response generated.</p>';
+
+  let formatted = escapeHtml(text);
+
+  formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  formatted = formatted.replace(/^### (.+)$/gm, '<h4 class="ai-section-title">$1</h4>');
+  formatted = formatted.replace(/^## (.+)$/gm, '<h3 class="ai-section-header">$1</h3>');
+  formatted = formatted.replace(/^# (.+)$/gm, '<h2 class="ai-section-main">$1</h2>');
+
+  formatted = formatted.replace(/^(\d+\.\s.+)$/gm, '<li class="ai-list-item">$1</li>');
+  formatted = formatted.replace(/^(\-\s.+)$/gm, '<li class="ai-list-item ai-list-bullet">$1</li>');
+
+  formatted = formatted.replace(/\n\n/g, '</p><p class="ai-paragraph">');
+  formatted = formatted.replace(/\n/g, '<br>');
+
+  formatted = formatted.replace(/(<li class="ai-list-item">[^<]+<\/li>)(?=\n?(?!<))/g, '$1');
+
+  const listPatterns = formatted.match(/(?:<li[^>]*>.*?<\/li>\s*)+/g);
+  if (listPatterns) {
+    listPatterns.forEach(list => {
+      if (!list.startsWith('<ul') && !list.startsWith('<ol')) {
+        formatted = formatted.replace(list, '<ul class="ai-list">' + list + '</ul>');
+      }
+    });
+  }
+
+  formatted = '<p class="ai-paragraph">' + formatted + '</p>';
+
+  formatted = formatted.replace(/<p class="ai-paragraph"><(ul class="ai-list|li class="ai-list-item|h[234] class="ai-section)/g, '<$1');
+  formatted = formatted.replace(/<\/(ul|li|h[234])><\/p>/g, '</$1>');
+  formatted = formatted.replace(/<p class="ai-paragraph"><br><\/p>/g, '');
+
+  return formatted;
 }
 
 function initUI() {
