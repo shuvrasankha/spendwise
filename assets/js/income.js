@@ -40,7 +40,8 @@ function showToast(msg, type) {
   t.textContent = msg;
   t.className = 'toast ' + (type || 'success');
   t.classList.remove('hidden');
-  setTimeout(() => t.classList.add('hidden'), 3000);
+  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
+  if (type !== 'error') setTimeout(() => t.classList.add('hidden'), 3000);
 }
 
 function showFormMsg(msg, type) {
@@ -78,26 +79,6 @@ function updateUserAvatar(user) {
   }
 }
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
-const savedTheme = localStorage.getItem('theme') ||
-  (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-document.documentElement.setAttribute('data-theme', savedTheme);
-
-window.toggleTheme = () => {
-  const html = document.documentElement;
-  const dark = html.getAttribute('data-theme') === 'dark';
-  html.setAttribute('data-theme', dark ? 'light' : 'dark');
-  localStorage.setItem('theme', dark ? 'light' : 'dark');
-  updateThemeIcon();
-};
-
-function updateThemeIcon() {
-  const icon = document.getElementById('theme-icon');
-  if (!icon) return;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-  if (window.lucide) lucide.createIcons();
-}
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, user => {
@@ -112,7 +93,6 @@ onAuthStateChanged(auth, user => {
     document.getElementById('app').classList.remove('hidden');
     updateUserAvatar(user);
 
-    updateThemeIcon();
     initCurrencySelector();
 
     // Init date

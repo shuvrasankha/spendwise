@@ -293,6 +293,12 @@
 
   function initAriaLiveRegions() {
     // Create toast live region if it doesn't exist
+    // Error toasts (#toast.error) don't auto-hide; tapping one dismisses it
+    document.addEventListener('click', (e) => {
+      const toast = e.target.closest('#toast.error');
+      if (toast) toast.classList.add('hidden');
+    });
+
     let toastRegion = document.getElementById('toast-live-region');
     if (!toastRegion) {
       toastRegion = document.createElement('div');

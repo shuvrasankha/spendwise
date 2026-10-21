@@ -139,10 +139,10 @@
       const toast = document.getElementById('toast');
       if (toast) {
         toast.textContent = message;
-        toast.className = 'toast';
-        if (type === 'error') toast.classList.add('toast-error');
+        toast.className = 'toast ' + type;
         toast.classList.remove('hidden');
-        setTimeout(() => toast.classList.add('hidden'), 3000);
+        // Errors stay until tapped (accessibility.js)
+        if (type !== 'error') setTimeout(() => toast.classList.add('hidden'), 3000);
       }
     }
   }

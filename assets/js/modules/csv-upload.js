@@ -52,7 +52,8 @@ function showToast(msg, type) {
   t.textContent = msg;
   t.className = 'toast ' + (type || 'success');
   t.classList.remove('hidden');
-  setTimeout(() => t.classList.add('hidden'), 3500);
+  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
+  if (type !== 'error') setTimeout(() => t.classList.add('hidden'), 3500);
 }
 
 
@@ -430,13 +431,13 @@ async function handleFileUpload() {
     const errorText = document.getElementById('csv-error-text');
     if (errorText) {
       const messages = {
-        'RATE_LIMITED': '⏳ Rate limited by AI Provider. Please wait and try again.',
-        'MODEL_LOADING': '⏳ AI model is loading. Please try again in 20-30 seconds.',
-        'CSV_TOO_SHORT': '📄 CSV file is too short. Need at least 2 rows (header + data).',
-        'CSV_TOO_MANY_ROWS': '📄 CSV is too large. Please limit to 200 rows at a time.',
-        'NO_DATA_EXTRACTED': '🔍 Could not extract any valid transactions from this CSV.',
-        'EMPTY_RESPONSE': '🤖 AI returned an empty response. Please try again.',
-        'INVALID_FORMAT': '🤖 AI returned data in unexpected format. Please try again.'
+        'RATE_LIMITED': 'Rate limited by AI Provider. Please wait and try again.',
+        'MODEL_LOADING': 'AI model is loading. Please try again in 20-30 seconds.',
+        'CSV_TOO_SHORT': 'CSV file is too short. Need at least 2 rows (header + data).',
+        'CSV_TOO_MANY_ROWS': 'CSV is too large. Please limit to 200 rows at a time.',
+        'NO_DATA_EXTRACTED': 'Could not extract any valid transactions from this CSV.',
+        'EMPTY_RESPONSE': 'AI returned an empty response. Please try again.',
+        'INVALID_FORMAT': 'AI returned data in unexpected format. Please try again.'
       };
       errorText.textContent = messages[err.message] || `Error: ${err.message}`;
     }

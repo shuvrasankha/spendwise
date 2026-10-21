@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize } from './utils/helpers.js';
+import { sanitize, friendlyErr } from './utils/helpers.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -290,11 +290,6 @@ function showAuthError(msg, isSuccess = false) {
   el.classList.remove("hidden");
   if (isSuccess) el.style.color = "#10b981";
   else el.style.removeProperty('color');
-}
-
-function friendlyErr(code) {
-  const m = { "auth/user-not-found": "No account with this email.", "auth/wrong-password": "Incorrect password.", "auth/email-already-in-use": "Email already registered.", "auth/invalid-email": "Invalid email.", "auth/weak-password": "Password too short.", "auth/popup-closed-by-user": "Sign-in cancelled.", "auth/invalid-credential": "Invalid email or password." };
-  return m[code] || "Something went wrong. Try again.";
 }
 
 window.showPage = (page) => {
@@ -599,7 +594,7 @@ window.addExpense = async () => {
       showFormMsg("Saved offline due to error. Will sync when online.", "success");
       showToast("Saved offline!", "success");
     } else {
-      showFormMsg("Failed to save. Check Firebase config.", "error"); 
+      showFormMsg("Couldn't save the expense. Check your connection and try again.", "error"); 
     }
     hideLoader(); 
   }
@@ -816,9 +811,9 @@ function updateDailySpending() {
   const todayTotal = todayExpenses.reduce((s, e) => s + e.amount, 0);
   
   if (todayTotal === 0) {
-    el.innerHTML = `Today you have spend <span class="amount" style="color: var(--success); background: var(--success-bg);">Rs 0</span>`;
+    el.textContent = "Nothing spent yet today";
   } else {
-    el.innerHTML = `Today you have spend <span class="amount">${fmt(todayTotal)}</span>`;
+    el.innerHTML = `Spent today <span class="amount">${fmt(todayTotal)}</span>`;
   }
 }
 
@@ -1430,26 +1425,19 @@ function exportCSV(rows, name) {
   a.click(); showToast("CSV downloaded!", "success");
 }
 
-window.toggleTheme = () => {
-  const html = document.documentElement;
-  const dark = html.getAttribute("data-theme") === "dark";
-  html.setAttribute("data-theme", dark ? "light" : "dark");
-  localStorage.setItem("theme", dark ? "light" : "dark");
-  updateThemeIcon();
+// Charts read theme colours when drawn, so redraw when theme.js switches appearance
+window.addEventListener("spendwise:themechange", () => {
+  if (!document.getElementById("sum-monthly")) return;
   renderPieChart();
   renderTrendChart();
-};
-
-// Auto-detect OS theme on first visit; honour saved preference on return visits
-const saved = localStorage.getItem("theme") ||
-  (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-document.documentElement.setAttribute("data-theme", saved);
+});
 
 function showToast(msg, type) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.className = "toast " + (type || "success");
   t.classList.remove("hidden");
-  setTimeout(() => t.classList.add("hidden"), 3000);
+  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
+  if (type !== "error") setTimeout(() => t.classList.add("hidden"), 3000);
 }
 
 // fmt() is now provided by currency.js — removed local override
@@ -1827,16 +1815,7 @@ function renderTrendChart() {
   });
 }
 
-function updateThemeIcon() {
-  const icon = document.getElementById("theme-icon");
-  if (!icon) return;
-  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-  icon.setAttribute("data-lucide", isDark ? "moon" : "sun");
-  if (window.lucide) lucide.createIcons();
-}
-
 document.addEventListener("DOMContentLoaded", () => {
-  updateThemeIcon();
   const d = document.getElementById("exp-date"); if (d) d.value = todayStr();
   initTagInput("exp");
   initTagInput("edit");
@@ -2123,7 +2102,7 @@ window.handleForgotPassword = async function () {
     if (window.lucide) lucide.createIcons();
   } catch (e2) {
     const msgs = { 'auth/user-not-found': 'No account found with this email.', 'auth/invalid-email': 'Invalid email address.', 'auth/too-many-requests': 'Too many attempts. Try again later.' };
-    errEl.textContent = msgs[e2.code] || 'Something went wrong. Try again.';
+    errEl.textContent = msgs[e2.code] || "Couldn't send the reset email. Check your connection and try again.";
     errEl.classList.remove('hidden');
     btn.disabled = false; btn.innerHTML = orig;
     if (window.lucide) lucide.createIcons();

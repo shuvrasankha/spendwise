@@ -8,11 +8,6 @@
    Small phones (iPhone SE, older devices)
 ===================== */
 @media (max-width: 480px) {
-  /* Typography */
-  :root {
-    font-size: 15px;
-  }
-  
   /* Page header */
   .page-header {
     padding: var(--space-4) var(--space-4);
@@ -38,7 +33,7 @@
   
   /* Navigation */
   .bottom-nav-btn {
-    font-size: 0.75rem;
+    font-size: 12px; /* chrome: fixed so 6 tabs still fit at large text sizes */
   }
   
   .bottom-nav-btn svg,
@@ -336,7 +331,7 @@
 ===================== */
 @media (min-width: 1920px) {
   :root {
-    font-size: 17px;
+    font-size: 106.25%; /* relative, so the reader's text size still applies */
   }
   
   .main-content {
@@ -593,7 +588,7 @@
   .sidebar-btn,
   .bottom-nav-btn,
   .mobile-menu-btn,
-  .table-actions .btn-action,
+  .action-buttons .btn-action,
   .theme-toggle,
   .menu-toggle {
     min-height: 44px;

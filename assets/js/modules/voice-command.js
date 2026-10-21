@@ -394,7 +394,7 @@ function validateEntries(dataArray) {
 async function parseVoiceCommand(text) {
   if (!text.trim()) return;
 
-  showVoiceStatus('🤖 AI is analyzing your command…', 'loading');
+  showVoiceStatus('AI is analyzing your command…', 'loading');
   showParsingSpinner(true);
 
   try {
@@ -412,17 +412,17 @@ async function parseVoiceCommand(text) {
     const count = validEntries.length;
     showVoiceStatus(
       count === 1
-        ? '✅ Parsed successfully! Review and confirm below.'
-        : `✅ ${count} entries parsed! Review and confirm below.`,
+        ? 'Parsed successfully! Review and confirm below.'
+        : `${count} entries parsed! Review and confirm below.`,
       'success'
     );
     showParsingSpinner(false);
   } catch (err) {
     showParsingSpinner(false);
     if (err.message === 'RATE_LIMITED') {
-      showVoiceStatus('⏳ Daily AI limit reached. Please try again later.', 'error');
+      showVoiceStatus('Daily AI limit reached. Please try again later.', 'error');
     } else if (err.message === 'MODEL_LOADING') {
-      showVoiceStatus('⏳ AI model is loading. Please try again in 20-30 seconds.', 'error');
+      showVoiceStatus('AI model is loading. Please try again in 20-30 seconds.', 'error');
     } else {
       console.error('Parse error:', err);
       showVoiceStatus('Failed to parse command. Please try again or rephrase.', 'error');
@@ -493,13 +493,13 @@ async function saveEntry() {
 
     let label;
     if (debtCount > 0 && otherCount === 0) {
-      label = `🎉 ${debtCount} debt${debtCount > 1 ? 's' : ''} of ${fmt(totalAmount)} saved!`;
+      label = `${debtCount} debt${debtCount > 1 ? 's' : ''} of ${fmt(totalAmount)} saved!`;
     } else if (debtCount > 0) {
-      label = `🎉 ${savedCount} entries saved (${debtCount} debt${debtCount > 1 ? 's' : ''})! Total: ${fmt(totalAmount)}`;
+      label = `${savedCount} entries saved (${debtCount} debt${debtCount > 1 ? 's' : ''})! Total: ${fmt(totalAmount)}`;
     } else {
       label = savedCount === 1
-        ? `🎉 ${parsedData[0].type === 'expense' ? 'Expense' : 'Income'} of ${fmt(totalAmount)} saved!`
-        : `🎉 ${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
+        ? `${parsedData[0].type === 'expense' ? 'Expense' : 'Income'} of ${fmt(totalAmount)} saved!`
+        : `${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
     }
     showVoiceStatus(label, 'success');
 
@@ -669,7 +669,7 @@ function showPreview(entries) {
         </div>`;
     } else {
       // Debt
-      const debtLabel = data.debtType === 'they-owe' ? 'They Owe Me' : 'I Owe Them';
+      const debtLabel = data.debtType === 'they-owe' ? 'They owe me' : 'I owe them';
       const debtClass = data.debtType === 'they-owe' ? 'income' : 'expense';
       html += `
         <div class="voice-preview-card">

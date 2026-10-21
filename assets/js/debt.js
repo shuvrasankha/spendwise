@@ -13,7 +13,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize } from './utils/helpers.js';
+import { sanitize, friendlyErr } from './utils/helpers.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
@@ -39,7 +39,8 @@ function showToast(msg, type) {
   t.textContent = msg;
   t.className = 'toast ' + (type || 'success');
   t.classList.remove('hidden');
-  setTimeout(() => t.classList.add('hidden'), 3000);
+  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
+  if (type !== 'error') setTimeout(() => t.classList.add('hidden'), 3000);
 }
 
 function showDebtFormMsg(msg, type) {
@@ -77,26 +78,6 @@ function updateUserAvatar(user) {
   }
 }
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
-const savedTheme = localStorage.getItem('theme') ||
-  (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-document.documentElement.setAttribute('data-theme', savedTheme);
-
-window.toggleTheme = () => {
-  const html = document.documentElement;
-  const dark = html.getAttribute('data-theme') === 'dark';
-  html.setAttribute('data-theme', dark ? 'light' : 'dark');
-  localStorage.setItem('theme', dark ? 'light' : 'dark');
-  updateThemeIcon();
-};
-
-function updateThemeIcon() {
-  const icon = document.getElementById('theme-icon');
-  if (!icon) return;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
-  if (window.lucide) lucide.createIcons();
-}
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, user => {
@@ -111,7 +92,6 @@ onAuthStateChanged(auth, user => {
     document.getElementById('app').classList.remove('hidden');
     updateUserAvatar(user);
 
-    updateThemeIcon();
     initCurrencySelector();
 
     // Init date
@@ -261,7 +241,7 @@ function renderDebts() {
     tdType.dataset.label = 'Type';
     const badge = document.createElement('span');
     badge.className = d.type === 'they-owe' ? 'debt-badge-green' : 'debt-badge-red';
-    badge.textContent = d.type === 'they-owe' ? 'They Owe Me' : 'I Owe Them';
+    badge.textContent = d.type === 'they-owe' ? 'They owe me' : 'I owe them';
     tdType.appendChild(badge);
     tr.appendChild(tdType);
 
@@ -331,7 +311,7 @@ function renderDebtHistory() {
     tdType.dataset.label = 'Type';
     const badge = document.createElement('span');
     badge.className = d.type === 'they-owe' ? 'debt-badge-green' : 'debt-badge-red';
-    badge.textContent = d.type === 'they-owe' ? 'They Owe Me' : 'I Owe Them';
+    badge.textContent = d.type === 'they-owe' ? 'They owe me' : 'I owe them';
     tdType.appendChild(badge);
     tr.appendChild(tdType);
 
@@ -648,19 +628,6 @@ function showAuthError(msg, isSuccess = false) {
   el.classList.remove('hidden');
   if (isSuccess) el.style.color = '#10b981';
   else el.style.removeProperty('color');
-}
-
-function friendlyErr(code) {
-  const m = {
-    'auth/user-not-found': 'No account with this email.',
-    'auth/wrong-password': 'Incorrect password.',
-    'auth/email-already-in-use': 'Email already registered.',
-    'auth/invalid-email': 'Invalid email.',
-    'auth/weak-password': 'Password too short.',
-    'auth/popup-closed-by-user': 'Sign-in cancelled.',
-    'auth/invalid-credential': 'Invalid email or password.'
-  };
-  return m[code] || 'Something went wrong. Try again.';
 }
 
 // Import auth functions

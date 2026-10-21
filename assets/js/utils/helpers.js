@@ -54,16 +54,19 @@ export function sanitize(str, maxLen = 500) {
   return clean.trim();
 }
 
-// Friendly error messages for Firebase auth codes
+// Friendly error messages for Firebase auth codes: say what happened and what to do next
 export function friendlyErr(code) {
   const m = {
-    "auth/user-not-found": "No account with this email.",
-    "auth/wrong-password": "Incorrect password.",
-    "auth/email-already-in-use": "Email already registered.",
-    "auth/invalid-email": "Invalid email.",
-    "auth/weak-password": "Password too short.",
-    "auth/popup-closed-by-user": "Sign-in cancelled.",
-    "auth/invalid-credential": "Invalid email or password."
+    "auth/user-not-found": "No account uses this email. Check it, or sign up.",
+    "auth/wrong-password": "That password isn't right. Try again, or reset it.",
+    "auth/invalid-credential": "Email or password isn't right. Try again, or reset your password.",
+    "auth/email-already-in-use": "This email already has an account. Log in instead.",
+    "auth/invalid-email": "Enter an email like name@example.com.",
+    "auth/weak-password": "Choose a password with at least 8 characters.",
+    "auth/popup-closed-by-user": "Google sign-in was closed before it finished.",
+    "auth/network-request-failed": "No connection. Check your internet and try again.",
+    "auth/too-many-requests": "Too many attempts. Wait a minute, then try again.",
+    "auth/user-disabled": "This account has been disabled."
   };
-  return m[code] || "Something went wrong. Try again.";
+  return m[code] || "That didn't work. Check your connection and try again.";
 }

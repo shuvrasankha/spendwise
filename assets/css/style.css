@@ -9,7 +9,13 @@
    RESET & BASE
 ===================== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+/* 100%, not 16px: follow the reader's browser text-size setting */
+html { font-size: 100%; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+/* iOS only (touch-callout): take the root size from Dynamic Type (Settings > Display & Text Size).
+   Not on Mac Safari, where -apple-system-body is 13px. Body keeps Inter; only the size comes from here. */
+@supports (font: -apple-system-body) and (-webkit-touch-callout: none) {
+  html { font: -apple-system-body; }
+}
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   background: var(--bg); color: var(--text); min-height: 100vh;
@@ -424,7 +430,7 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 }
 .bottom-nav-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; color: var(--text3); font-size: 0.75rem; font-weight: 500; transition: all var(--transition);
+  gap: 3px; color: var(--text3); font-size: 12px; font-weight: 500; transition: all var(--transition);
 }
 .bottom-nav-btn svg { width: 20px; height: 20px; stroke-width: 1.8px; transition: all var(--transition); }
 .bottom-nav-btn.active { color: var(--accent); }
@@ -534,8 +540,10 @@ button { cursor: pointer; border: none; outline: none; background: none; }
    SUMMARY CARDS
 ===================== */
 .summary-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
-@media (max-width: 900px) { .summary-cards { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 480px) { .summary-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+@media (max-width: 900px) { .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } }
+/* Large text: long words like TRANSACTIONS wrap instead of pushing cards off-screen */
+.summary-card, .period-summary-item { min-width: 0; overflow-wrap: anywhere; }
 .summary-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 16px; box-shadow: var(--shadow-xs); transition: all var(--transition);
@@ -740,7 +748,7 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   margin-left: auto;
   margin-right: auto;
 }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; gap: 12px; } .form-card { padding: 20px 16px; } }
 .full-width { grid-column: 1 / -1; }
 .form-actions {
@@ -1464,7 +1472,7 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 ===================== */
 .btn-delete { padding: 5px 10px; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text3); font-size: 0.75rem; transition: all var(--transition); }
 .btn-delete:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
-.action-buttons { display: flex; gap: 6px; justify-content: center; position: relative; z-index: 10; }
+.action-buttons { display: flex; gap: 12px; justify-content: center; position: relative; z-index: 10; }
 .btn-action {
   padding: 8px 10px; background: var(--accent-bg); border: 1px solid transparent; border-radius: 6px;
   color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition);
@@ -1482,10 +1490,13 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xs);
   padding: 10px 18px; font-size: 0.875rem; font-weight: 500; box-shadow: var(--shadow-lg);
-  z-index: 999; animation: slideUp 0.3s ease; white-space: nowrap;
+  z-index: 999; animation: slideUp 0.3s ease;
+  width: max-content; max-width: calc(100vw - 32px); /* long messages wrap instead of being clipped */
 }
 .toast.success { border-color: rgba(52, 199, 89, 0.3); color: var(--success); }
-.toast.error { border-color: rgba(255, 59, 48, 0.3); color: var(--danger); }
+.toast.error { border-color: rgba(255, 59, 48, 0.3); color: var(--danger); cursor: pointer; }
+/* Error toasts stay until tapped; the ✕ shows how (alt text '' keeps screen readers quiet) */
+.toast.error::after { content: '✕' / ''; margin-left: 10px; opacity: 0.7; }
 @media (min-width: 768px) { .toast { bottom: 24px; } }
 
 /* =====================
@@ -1677,10 +1688,12 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: var(--accent);
 }
 .auth-logo-icon i { width: 24px; height: 24px; }
-.auth-logo-image { height: 56px; width: auto; object-fit: contain; margin: 0 auto 10px; display: block; }
+.auth-logo-image { height: 72px; width: 72px; object-fit: contain; margin: 0 auto 8px; display: block; }
+.auth-logo-text { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text); margin-bottom: 4px; }
 .nav-logo-link {
   display: flex;
   align-items: center;
+  gap: 8px;
   text-decoration: none;
   transition: opacity var(--transition);
 }
@@ -1689,7 +1702,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 0.8;
 }
 
-.nav-logo-image { height: 36px; width: auto; object-fit: contain; }
+.nav-logo-image { height: 32px; width: 32px; object-fit: contain; }
+.nav-logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
 
 /* =====================
    MISC COMPONENTS
@@ -1727,10 +1741,11 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* =====================
    CATEGORY PICKER
 ===================== */
-.category-picker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 6px; }
-@media (max-width: 768px) { .category-picker { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 560px) { .category-picker { grid-template-columns: repeat(3, 1fr); gap: 8px; } }
-@media (max-width: 380px) { .category-picker { grid-template-columns: repeat(2, 1fr); } }
+.category-picker { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 768px) { .category-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .category-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } }
+@media (max-width: 380px) { .category-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cat-tile { min-width: 0; } .cat-tile span { overflow-wrap: anywhere; }
 .cat-tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; padding: 12px 6px 10px; background: var(--surface2); border: 1px solid var(--border);
@@ -1791,7 +1806,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   border-radius: var(--radius); padding: 10px 0; margin-bottom: 16px; box-shadow: var(--shadow-xs);
 }
 @media (max-width: 640px) {
-  .period-summary-bar { display: grid; grid-template-columns: 1fr 1fr; }
+  .period-summary-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .period-summary-item { border-bottom: 1px solid var(--border); padding: 8px 12px; }
   .period-summary-divider { display: none; }
   .period-picker-card { flex-direction: column; align-items: flex-start; }
@@ -2601,7 +2616,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .insight-score-ring { margin-bottom: 6px; }
   .insight-highlights { align-items: center; }
   .insight-card, .insight-section { padding: 14px; }
-  .bottom-nav-btn { font-size: 0.75rem; }
+  .bottom-nav-btn { font-size: 12px; }
   
   /* Debt analysis mobile */
   .debt-summary-cards { grid-template-columns: 1fr; gap: 10px; }
@@ -2682,7 +2697,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   font-size: var(--text-md);
   font-weight: var(--font-semibold);
   color: var(--text);
-  white-space: nowrap;
+  overflow-wrap: anywhere; /* wrap at large text sizes instead of widening the page */
 }
 .csv-import-card-text span {
   font-size: var(--text-sm);
@@ -3068,7 +3083,7 @@ button:focus-visible {
    ULTRAWIDE SCREEN
 ===================== */
 @media (min-width: 1920px) {
-  html { font-size: 17px; }
+  html { font-size: 106.25%; }
 
   .main-content {
     max-width: 1440px;

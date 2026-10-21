@@ -20,7 +20,8 @@ function showToast(msg, type) {
   t.textContent = msg;
   t.className = 'toast ' + (type || 'success');
   t.classList.remove('hidden');
-  setTimeout(() => t.classList.add('hidden'), 3000);
+  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
+  if (type !== 'error') setTimeout(() => t.classList.add('hidden'), 3000);
 }
 
 function showBackupStatus(msg, type) {
@@ -91,12 +92,12 @@ async function exportData() {
     URL.revokeObjectURL(url);
 
     const totalItems = data.expenses.length + data.income.length + data.debts.length;
-    showBackupStatus(`✅ Exported ${totalItems} items successfully!`, 'success');
+    showBackupStatus(`Exported ${totalItems} items successfully!`, 'success');
     showToast('Backup exported!', 'success');
 
   } catch (err) {
     console.error('Export error:', err);
-    showBackupStatus('❌ Export failed. Please try again.', 'error');
+    showBackupStatus('Export failed. Please try again.', 'error');
     showToast('Export failed.', 'error');
   } finally {
     if (btn) {
@@ -176,7 +177,7 @@ async function importData(file) {
     }
 
     if (writes.length === 0) {
-      showBackupStatus('⚠️ No items found for your account in this backup.', 'warning');
+      showBackupStatus('No items found for your account in this backup.', 'warning');
       showToast('No items to import.', 'error');
       return;
     }
@@ -194,7 +195,7 @@ async function importData(file) {
     }
     const importedCount = writes.length;
 
-    showBackupStatus(`✅ Imported ${importedCount} items successfully!`, 'success');
+    showBackupStatus(`Imported ${importedCount} items successfully!`, 'success');
     showToast(`Backup restored! ${importedCount} items imported.`, 'success');
 
     // Reload page to refresh data
@@ -203,8 +204,8 @@ async function importData(file) {
   } catch (err) {
     console.error('Import error:', err);
     const msg = err.message === 'Invalid backup file structure.'
-      ? '❌ Invalid backup file. Please use a valid SpendWise backup.'
-      : '❌ Import failed. Please try again.';
+      ? 'Invalid backup file. Please use a valid SpendWise backup.'
+      : 'Import failed. Please try again.';
     showBackupStatus(msg, 'error');
     showToast('Import failed.', 'error');
   } finally {
@@ -283,7 +284,7 @@ function handleImportClick() {
   if (fileInput && fileInput.files[0]) {
     return importData(fileInput.files[0]);
   } else {
-    showBackupStatus('⚠️ Please select a backup file first.', 'warning');
+    showBackupStatus('Please select a backup file first.', 'warning');
   }
 }
 
