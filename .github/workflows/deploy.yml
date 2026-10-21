@@ -1,5 +1,5 @@
 # Deploy SpendWise to GitHub Pages
-# Injects the HF_TOKEN secret at build time (replacing the placeholder in voice-command.js)
+# The Hugging Face token lives in the Cloudflare Worker (worker/), never in these static files
 name: Deploy to GitHub Pages
 
 on:
@@ -25,19 +25,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Inject HF Token
-        env:
-          HF_TOKEN_VALUE: ${{ secrets.HF_TOKEN }}
-        run: |
-          if [ -z "$HF_TOKEN_VALUE" ]; then
-            echo "::warning::HF_TOKEN secret is not set!"
-          else
-            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/voice-command.js
-            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/insights-v2.js
-            sed -i "s|__HF_TOKEN_PLACEHOLDER__|${HF_TOKEN_VALUE}|g" assets/js/modules/csv-upload.js
-            echo "Token injected successfully (length: ${#HF_TOKEN_VALUE})"
-          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

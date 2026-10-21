@@ -2,6 +2,7 @@
 // Uses Web Speech API (speech→text) + Hugging Face Inference API (text→structured data)
 
 import { app } from '../config/firebase.js';
+import { callAI } from '../config/ai.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -11,20 +12,8 @@ const db = getFirestore(app);
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  🔑  HUGGING FACE API TOKEN
-//  On GitHub Pages: injected by GitHub Actions (sed replaces the placeholder
-//  with the HF_TOKEN repository secret during deploy).
-//  Locally: loaded from voice-config.js (gitignored).
-//  Get one free at: https://huggingface.co/settings/tokens
-// ══════════════════════════════════════════════════════════════════════════════
-let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
-try {
-  const config = await import('../../voice-config.js');
-  if (config.HF_TOKEN) HF_TOKEN = config.HF_TOKEN;
-} catch (_) { /* voice-config.js not present — use embedded token */ }
+// Hugging Face is called through the AI proxy (config/ai.js), which holds the token
 const HF_MODEL = 'Qwen/Qwen2.5-Coder-32B-Instruct:fastest';
-const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 
 // ── Categories (must match the app's category list) ──────────────────────────
 const EXPENSE_CATEGORIES = [
@@ -307,27 +296,16 @@ Example output: [{"type":"debt","amount":500,"debtType":"they-owe","person":"Fri
 }
 
 async function callHuggingFaceAPI(text) {
-  if (!HF_TOKEN || HF_TOKEN.length < 10 || HF_TOKEN.includes('PLACEHOLDER')) {
-    throw new Error('HF_TOKEN_NOT_SET');
-  }
-
   const prompt = buildPrompt(text);
-  const response = await fetch(HF_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${HF_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: HF_MODEL,
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      max_tokens: 1500,
-      temperature: 0.1,
-      top_p: 0.95
-    })
+  const response = await callAI({
+    model: HF_MODEL,
+    messages: [
+      { role: 'system', content: prompt.system },
+      { role: 'user', content: prompt.user }
+    ],
+    max_tokens: 1500,
+    temperature: 0.1,
+    top_p: 0.95
   });
 
   if (response.status === 429) {
@@ -441,8 +419,8 @@ async function parseVoiceCommand(text) {
     showParsingSpinner(false);
   } catch (err) {
     showParsingSpinner(false);
-    if (err.message === 'HF_TOKEN_NOT_SET') {
-      showVoiceStatus('⚠️ Hugging Face API token not configured. Please set HF_TOKEN in voice-command.js', 'error');
+    if (err.message === 'AI_NOT_CONFIGURED') {
+      showVoiceStatus('⚠️ AI service not configured. Set AI_PROXY_URL in config/ai.js.', 'error');
     } else if (err.message === 'RATE_LIMITED') {
       showVoiceStatus('⏳ Rate limited by Hugging Face. Please wait a moment and try again.', 'error');
     } else if (err.message === 'MODEL_LOADING') {

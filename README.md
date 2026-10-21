@@ -109,6 +109,20 @@ spendwise/
 └── README.md               # This file
 ```
 
+## 🤖 AI Proxy Setup
+
+Voice entry, CSV import and AI Insights call Hugging Face through a Cloudflare Worker in `worker/`. The Worker keeps the token secret and only answers signed-in users.
+
+```bash
+cd worker
+npm install
+npx wrangler login
+npx wrangler secret put HF_TOKEN   # paste your Hugging Face token
+npx wrangler deploy                # prints https://spendwise-ai.<you>.workers.dev
+```
+
+Put the printed URL into `AI_PROXY_URL` in `assets/js/config/ai.js`.
+
 ## 🔒 Security
 
 - ✅ User data isolated by authentication (uid-based access)
