@@ -128,12 +128,12 @@
     <!-- Bottom nav (mobile) -->
     <div class="bottom-nav">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
-        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+        <i data-lucide="layout-dashboard"></i><span>Home</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToExpense" id="bnav-add">
         <i data-lucide="wallet"></i><span>Expense</span>
       </button>
-      <button class="bottom-nav-btn active" id="bnav-income">
+      <button class="bottom-nav-btn active" aria-current="page" id="bnav-income">
         <i data-lucide="trending-up"></i><span>Income</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
@@ -143,7 +143,7 @@
         <i data-lucide="hand-coins"></i><span>Debt</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
-        <i data-lucide="sparkles"></i><span>AI</span>
+        <i data-lucide="sparkles"></i><span>Insights</span>
       </button>
     </div>
 
@@ -279,7 +279,7 @@
           <button class="btn-secondary" data-action="resetIncomeForm">
             <i data-lucide="rotate-ccw"></i> Clear
           </button>
-          <button class="btn-income-primary" id="btn-add-income" data-action="addIncome">
+          <button class="btn-income-primary btn-add" id="btn-add-income" data-action="addIncome">
             <i data-lucide="plus-circle"></i> <span id="income-btn-label">Add Income</span>
           </button>
         </div>

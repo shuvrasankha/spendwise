@@ -21,8 +21,8 @@
   
   /* Text Colors (WCAG AA compliant) */
   --text: #1d1d1f;          /* Primary text - 15.4:1 on white */
-  --text2: #6e6e73;         /* Secondary text - 5.7:1 on white */
-  --text3: #86868b;         /* Tertiary text - 4.6:1 on white (improved from #aeaeb2) */
+  --text2: #6e6e73;         /* Secondary text - 5.07:1 on white, 4.66:1 on --bg */
+  --text3: #6e6e73;         /* Tertiary text - same as text2: lighter greys fail 4.5:1 (#86868b is 3.62:1) */
   --text-inverse: #ffffff;  /* Text on dark backgrounds */
   
   /* Semantic Colors */
@@ -32,23 +32,28 @@
   --accent-bg: rgba(0, 113, 227, 0.06);
   --accent-bg-hover: rgba(0, 113, 227, 0.10);
   
-  --success: #28a745;       /* Improved from #34c759 for better contrast */
-  --success-hover: #218838;
+  --success: #1e7e34;       /* 5.14:1 on white; #28a745 was 3.13:1 */
+  --success-hover: #18692b;
   --success-bg: rgba(40, 167, 69, 0.08);
   
-  --danger: #dc3545;        /* Improved from #ff3b30 for better contrast */
-  --danger-hover: #c82333;
+  --danger: #c62828;        /* 5.62:1 on white */
+  --danger-hover: #a91f1f;
   --danger-bg: rgba(220, 53, 69, 0.08);
   
-  --warning: #e67e22;       /* Improved from #ff9500 for better contrast */
-  --warning-hover: #d35400;
+  --warning: #b25900;       /* 4.86:1 on white; #e67e22 was 2.85:1 */
+  --warning-hover: #8f4700;
   --warning-bg: rgba(230, 126, 34, 0.08);
   
   --info: #0071e3;
   --info-bg: rgba(0, 113, 227, 0.08);
   
-  --cyan: #17a2b8;
+  --cyan: #0b7285;          /* 5.59:1 on white; used for savings amounts */
   --pink: #e83e8c;
+
+  /* Brand gold (from the coin logo): only the daily total and the primary Add buttons */
+  --gold: #8a6508;          /* 5.32:1 on white; white text on it 5.32:1 */
+  --gold-on: #ffffff;
+  --gold-bg: rgba(138, 101, 8, 0.10);
   
   /* Shadow System */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -101,6 +106,10 @@
   --info: #0a84ff;
   --cyan: #64d2ff;
   --pink: #ff375f;
+
+  --gold: #e8b84a;          /* 9.23:1 on --surface */
+  --gold-on: #1c1c1e;       /* 9.23:1 on --gold */
+  --gold-bg: rgba(232, 184, 74, 0.14);
   
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.3);

@@ -38,7 +38,7 @@
   
   /* Navigation */
   .bottom-nav-btn {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
   }
   
   .bottom-nav-btn svg,
@@ -622,5 +622,24 @@
   .mobile-menu-nav,
   .sidebar {
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* =====================
+   KEYBOARD FOCUS (all users, not just high contrast)
+   Many rules set outline: none; this restores a visible ring for keyboard focus only.
+===================== */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* =====================
+   NO ZOOM ON INPUT FOCUS (iOS Safari zooms any field under 16px)
+   !important: many field rules set 0.9375rem with class selectors
+===================== */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }

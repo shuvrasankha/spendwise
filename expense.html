@@ -209,9 +209,9 @@
     <!-- Bottom nav (mobile) -->
     <div class="bottom-nav">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
-        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+        <i data-lucide="layout-dashboard"></i><span>Home</span>
       </button>
-      <button class="bottom-nav-btn active" id="bnav-add">
+      <button class="bottom-nav-btn active" aria-current="page" id="bnav-add">
         <i data-lucide="wallet"></i><span>Expense</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
@@ -224,7 +224,7 @@
         <i data-lucide="hand-coins"></i><span>Debt</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
-        <i data-lucide="sparkles"></i><span>AI</span>
+        <i data-lucide="sparkles"></i><span>Insights</span>
       </button>
     </div>
 
@@ -434,7 +434,7 @@
           <button class="btn-secondary" data-action="resetForm">
             <i data-lucide="rotate-ccw"></i> Clear
           </button>
-          <button class="btn-primary" id="btn-add-transaction" data-action="addExpense">
+          <button class="btn-primary btn-add" id="btn-add-transaction" data-action="addExpense">
             <i data-lucide="plus-circle"></i> Add Expense
           </button>
         </div>

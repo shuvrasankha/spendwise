@@ -301,10 +301,10 @@ window.showPage = (page) => {
   const pageEl = document.getElementById("page-" + page);
   if (!pageEl) return; // Page doesn't exist on this HTML file
   document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
-  document.querySelectorAll(".sidebar-btn, .bottom-nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".sidebar-btn, .bottom-nav-btn").forEach(b => { b.classList.remove("active"); b.removeAttribute("aria-current"); });
   pageEl.classList.remove("hidden");
-  const sBtn = document.getElementById("snav-" + page); if (sBtn) sBtn.classList.add("active");
-  const bBtn = document.getElementById("bnav-" + page); if (bBtn) bBtn.classList.add("active");
+  const sBtn = document.getElementById("snav-" + page); if (sBtn) { sBtn.classList.add("active"); sBtn.setAttribute("aria-current", "page"); }
+  const bBtn = document.getElementById("bnav-" + page); if (bBtn) { bBtn.classList.add("active"); bBtn.setAttribute("aria-current", "page"); }
 
   // Voice FAB: only visible on the "add expense" page
   const voiceFab = document.getElementById('voice-fab');
