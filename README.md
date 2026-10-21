@@ -56,7 +56,7 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 | **Authentication** | Firebase Auth (Email/Password, Google OAuth) |
 | **Charts** | Chart.js for data visualization |
 | **Icons** | Lucide Icons |
-| **AI/ML** | Hugging Face Inference API |
+| **AI/ML** | Cloudflare Workers AI (via `worker/`) |
 | **Deployment** | Netlify |
 | **PWA** | Service Worker for offline support |
 
@@ -111,17 +111,16 @@ spendwise/
 
 ## 🤖 AI Proxy Setup
 
-Voice entry, CSV import and AI Insights call Hugging Face through a Cloudflare Worker in `worker/`. The Worker keeps the token secret and only answers signed-in users.
+Voice entry, CSV import and AI Insights call a Cloudflare Worker in `worker/`. The Worker checks the user is signed in, then runs the model on Cloudflare Workers AI. Workers AI has a free daily allowance (10,000 neurons, resets 00:00 UTC) and needs no API key.
 
 ```bash
 cd worker
 npm install
 npx wrangler login
-npx wrangler secret put HF_TOKEN   # paste your Hugging Face token
 npx wrangler deploy                # prints https://spendwise-ai.<you>.workers.dev
 ```
 
-Put the printed URL into `AI_PROXY_URL` in `assets/js/config/ai.js`.
+Put the printed URL into `AI_PROXY_URL` in `assets/js/config/ai.js`. When the daily allowance runs out, the app shows "Daily AI limit reached" until the reset.
 
 ## 🔒 Security
 

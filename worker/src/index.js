@@ -1,17 +1,15 @@
-// worker/src/index.js — Holds the Hugging Face token server-side and forwards
-// chat requests only for signed-in SpendWise users (verified Firebase ID token).
+// worker/src/index.js — Runs SpendWise's AI requests on Cloudflare Workers AI
+// (free daily allowance, no API key) for signed-in users only (verified Firebase ID token).
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 const GOOGLE_JWKS = createRemoteJWKSet(new URL(
   'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
 ));
-// Only the models the app uses, so a stolen session can't run anything pricier
+// Only the models the app uses, so a signed-in user can't run anything pricier
 const ALLOWED_MODELS = new Set([
-  'Qwen/Qwen2.5-Coder-32B-Instruct:fastest', // voice-command.js
-  'Qwen/Qwen2.5-7B-Instruct',                // csv-upload.js
-  'Qwen/Qwen2.5-72B-Instruct',               // insights-v2.js
+  '@cf/qwen/qwen2.5-coder-32b-instruct',      // voice-command.js, csv-upload.js
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast', // insights-v2.js
 ]);
 const MAX_TOKENS = 4096;
 
@@ -55,17 +53,24 @@ export default {
     if (!body || !ALLOWED_MODELS.has(body.model) || !Array.isArray(body.messages)) {
       return json(400, { error: 'Model or messages not allowed' }, cors);
     }
-    body.max_tokens = Math.min(Number(body.max_tokens) || 1024, MAX_TOKENS);
-    body.stream = false;
 
-    const upstream = await fetch(HF_API_URL, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${env.HF_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    return new Response(upstream.body, {
-      status: upstream.status,
-      headers: { ...cors, 'Content-Type': upstream.headers.get('Content-Type') || 'application/json' },
-    });
+    let out;
+    try {
+      out = await env.AI.run(body.model, {
+        messages: body.messages,
+        max_tokens: Math.min(Number(body.max_tokens) || 1024, MAX_TOKENS),
+        temperature: body.temperature,
+        top_p: body.top_p,
+      });
+    } catch (err) {
+      // 4006 = free daily neuron allowance used up (resets 00:00 UTC)
+      const msg = String(err?.message || err);
+      const limited = msg.includes('4006') || /allocation|rate limit/i.test(msg);
+      return json(limited ? 429 : 502, { error: msg }, cors);
+    }
+
+    // Keep the OpenAI-style shape the app already reads (choices[0].message.content)
+    const content = typeof out?.response === 'string' ? out.response : JSON.stringify(out?.response ?? '');
+    return json(200, { choices: [{ message: { role: 'assistant', content } }] }, cors);
   },
 };

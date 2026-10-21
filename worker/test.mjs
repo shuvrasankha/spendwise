@@ -1,4 +1,4 @@
-// Run: npm test — checks the worker never forwards to Hugging Face without a valid sign-in
+// Run: npm test — checks the worker never runs the AI model without a valid sign-in
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import worker from './src/index.js';
@@ -6,17 +6,10 @@ import worker from './src/index.js';
 const env = {
   FIREBASE_PROJECT_ID: 'spendwise-app-f7227',
   ALLOWED_ORIGINS: 'https://shuvrasankha.github.io',
-  HF_TOKEN: 'hf_secret',
+  AI: { run: () => { throw new Error('AI model was called'); } },
 };
 const URL_ = 'https://spendwise-ai.example.workers.dev';
-const body = JSON.stringify({ model: 'Qwen/Qwen2.5-7B-Instruct', messages: [] });
-
-// Fail loudly if anything tries to reach Hugging Face
-const realFetch = globalThis.fetch;
-globalThis.fetch = (url, ...rest) => {
-  if (String(url).includes('huggingface')) throw new Error('forwarded to Hugging Face');
-  return realFetch(url, ...rest);
-};
+const body = JSON.stringify({ model: '@cf/qwen/qwen2.5-coder-32b-instruct', messages: [] });
 
 test('preflight answers with CORS for the app origin', async () => {
   const res = await worker.fetch(new Request(URL_, { method: 'OPTIONS', headers: { Origin: 'https://shuvrasankha.github.io' } }), env);

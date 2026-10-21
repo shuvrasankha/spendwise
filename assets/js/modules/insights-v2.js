@@ -13,8 +13,8 @@ const fmt = window.fmt;
 const getCurrency = window.getCurrency;
 const getCurrencyInfo = window.getCurrencyInfo;
 
-// Hugging Face is called through the AI proxy (config/ai.js), which holds the token
-const HF_MODEL = 'Qwen/Qwen2.5-72B-Instruct';
+// AI runs on Cloudflare Workers AI via our proxy (config/ai.js)
+const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 const CACHE_KEY_PREFIX = 'spendwise_insights_v2_';
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000;
@@ -365,7 +365,7 @@ function buildInitialQuestion(analysisType, data, periodLabel) {
 
 async function sendToAI(messages) {
   const response = await callAI({
-    model: HF_MODEL,
+    model: AI_MODEL,
     messages: messages,
     max_tokens: 2000,
     temperature: 0.7,
@@ -376,7 +376,7 @@ async function sendToAI(messages) {
   if (response.status === 503) throw new Error('MODEL_LOADING');
   if (!response.ok) {
     const errBody = await response.text();
-    console.error('HF API error:', response.status, errBody);
+    console.error('AI API error:', response.status, errBody);
     throw new Error('API_ERROR');
   }
 

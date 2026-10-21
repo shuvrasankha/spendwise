@@ -1,4 +1,4 @@
-// csv-upload.js — SpendWise CSV Import via NVIDIA NIM API
+// csv-upload.js — SpendWise CSV Import via Cloudflare Workers AI
 // Reads a user-uploaded CSV, sends it to an LLM for structured extraction,
 // previews the result, and batch-saves to Firestore.
 
@@ -13,8 +13,8 @@ const db = getFirestore(app);
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
 
-// Hugging Face is called through the AI proxy (config/ai.js), which holds the token
-const HF_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Lightweight, very fast model
+// AI runs on Cloudflare Workers AI via our proxy (config/ai.js)
+const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const VALID_CATEGORIES = [
@@ -108,13 +108,13 @@ Example output:
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  HUGGING FACE API CALL
+//  AI MODEL CALL
 // ══════════════════════════════════════════════════════════════════════════════
-async function callHuggingFaceAPI(csvText) {
+async function callAIModel(csvText) {
   const prompt = buildCSVPrompt(csvText);
 
   const response = await callAI({
-    model: HF_MODEL,
+    model: AI_MODEL,
     messages: [
       { role: 'system', content: prompt.system },
       { role: 'user', content: prompt.user }
@@ -240,7 +240,7 @@ function showCSVConsentDialog() {
       <div class="modal-icon" style="background: var(--accent-bg); color: var(--accent);"><i data-lucide="file-spreadsheet"></i></div>
       <h3>CSV Upload Consent</h3>
       <p style="font-size: 0.875rem; color: var(--text2); margin-bottom: 16px; line-height: 1.5;">
-        Your CSV file will be sent to an AI service (Hugging Face) for automatic column detection and transaction extraction.
+        Your CSV file will be sent to an AI service (Cloudflare Workers AI) for automatic column detection and transaction extraction.
       </p>
       <p style="font-size: 0.8125rem; color: var(--text3); margin-bottom: 16px; line-height: 1.4;">
         <strong>What is sent:</strong> The raw CSV content including all columns and rows (max 200 rows).<br>
@@ -412,7 +412,7 @@ async function handleFileUpload() {
 
     // Step 2: AI parsing
     updateProcessingStep(2, 'AI is analyzing your data…');
-    const transactions = await callHuggingFaceAPI(csvText);
+    const transactions = await callAIModel(csvText);
 
     if (!transactions.length) {
       throw new Error('NO_DATA_EXTRACTED');

@@ -1,5 +1,5 @@
 // config/ai.js — AI requests go through our Cloudflare Worker (see worker/),
-// which keeps the Hugging Face token off the client and checks the user is signed in.
+// which runs them on Workers AI and checks the user is signed in.
 import { auth } from './firebase.js';
 
 // URL printed by `npx wrangler deploy` in worker/
