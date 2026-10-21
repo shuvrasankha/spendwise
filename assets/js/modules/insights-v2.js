@@ -577,11 +577,7 @@ function handleError(err) {
   let errorMsg = 'Unable to get response. Please try again.';
   let errorType = 'error';
 
-  if (err.message === 'AI_NOT_CONFIGURED') {
-    errorTitle = 'API Not Configured';
-    errorMsg = 'AI service is not set up. Set AI_PROXY_URL in config/ai.js.';
-    errorType = 'warning';
-  } else if (err.message === 'RATE_LIMITED') {
+  if (err.message === 'RATE_LIMITED') {
     errorTitle = 'Too Many Requests';
     errorMsg = 'Please wait a moment before sending another message.';
     errorType = 'warning';

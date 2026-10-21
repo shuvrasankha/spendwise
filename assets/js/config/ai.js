@@ -2,11 +2,10 @@
 // which keeps the Hugging Face token off the client and checks the user is signed in.
 import { auth } from './firebase.js';
 
-// Set this to the URL printed by `npx wrangler deploy` in worker/
-export const AI_PROXY_URL = 'https://spendwise-ai.YOUR_SUBDOMAIN.workers.dev';
+// URL printed by `npx wrangler deploy` in worker/
+export const AI_PROXY_URL = 'https://spendwise-ai.spendwise-ai.workers.dev';
 
 export async function callAI(body) {
-  if (AI_PROXY_URL.includes('YOUR_SUBDOMAIN')) throw new Error('AI_NOT_CONFIGURED');
   const user = auth.currentUser;
   if (!user) throw new Error('NOT_AUTHENTICATED');
   return fetch(AI_PROXY_URL, {

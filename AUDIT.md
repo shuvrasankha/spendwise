@@ -18,14 +18,13 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
   - **Status (2026-10-21, branch `fix/hf-token-proxy`):** Fixed in code.
     - New Cloudflare Worker `worker/src/index.js` holds the token, checks the Firebase ID token, allows only the 3 models the app uses, and caps `max_tokens` at 4096.
     - New `assets/js/config/ai.js` (`callAI`) is used by `voice-command.js`, `csv-upload.js` and `insights-v2.js`.
-    - Removed: the `sed` injection step in `deploy.yml`, `voice-config.example.js`, and all `HF_TOKEN` placeholders. CSP `connect-src` now allows `https://*.workers.dev` instead of the Hugging Face hosts.
+    - Removed: the `sed` injection step in `deploy.yml`, `voice-config.example.js`, and all `HF_TOKEN` placeholders. CSP `connect-src` now allows only the Worker host instead of the Hugging Face hosts.
     - Test: `cd worker && npm test` (5 passing: requests with no token, a forged token, or GET are rejected; CORS only echoes the app origin).
     - **Still to do by hand:**
       1. Revoke the old token on huggingface.co.
-      2. `npx wrangler secret put HF_TOKEN` and `npx wrangler deploy` (see README "AI Proxy Setup").
-      3. Put the Worker URL in `AI_PROXY_URL`. Until then the AI features show "AI service not configured".
+      2. ~~`npx wrangler secret put HF_TOKEN` and `npx wrangler deploy`~~ Done 2026-10-21: the Worker is live at `https://spendwise-ai.spendwise-ai.workers.dev` with the `HF_TOKEN` secret set.
+      3. ~~Put the Worker URL in `AI_PROXY_URL`~~ Done. CSP narrowed to the exact Worker host.
       4. Delete the unused `HF_TOKEN` GitHub secret.
-      5. Optional: narrow the CSP from `*.workers.dev` to your exact Worker host.
 
 - [ ] **2. Offline saves never sync and are silently deleted** (`assets/js/modules/offline-queue.js:150-188, 104-121`)
   - **What this is:** When the user is offline, expenses, income and debts go into a queue in `localStorage`. When the connection returns, `syncOfflineQueue` uploads them.

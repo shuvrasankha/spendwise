@@ -429,7 +429,6 @@ async function handleFileUpload() {
     const errorText = document.getElementById('csv-error-text');
     if (errorText) {
       const messages = {
-        'AI_NOT_CONFIGURED': '⚠️ AI service not configured. Set AI_PROXY_URL in config/ai.js.',
         'RATE_LIMITED': '⏳ Rate limited by AI Provider. Please wait and try again.',
         'MODEL_LOADING': '⏳ AI model is loading. Please try again in 20-30 seconds.',
         'CSV_TOO_SHORT': '📄 CSV file is too short. Need at least 2 rows (header + data).',

@@ -419,9 +419,7 @@ async function parseVoiceCommand(text) {
     showParsingSpinner(false);
   } catch (err) {
     showParsingSpinner(false);
-    if (err.message === 'AI_NOT_CONFIGURED') {
-      showVoiceStatus('⚠️ AI service not configured. Set AI_PROXY_URL in config/ai.js.', 'error');
-    } else if (err.message === 'RATE_LIMITED') {
+    if (err.message === 'RATE_LIMITED') {
       showVoiceStatus('⏳ Rate limited by Hugging Face. Please wait a moment and try again.', 'error');
     } else if (err.message === 'MODEL_LOADING') {
       showVoiceStatus('⏳ AI model is loading. Please try again in 20-30 seconds.', 'error');
