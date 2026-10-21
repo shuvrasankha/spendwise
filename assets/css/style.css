@@ -2162,7 +2162,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
    AI INSIGHTS PAGE
 ===================== */
 .insights-hero {
-  position: relative; background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 50%, var(--pink) 100%);
+  position: relative; background: var(--accent);
   border-radius: var(--radius); padding: 24px 20px; margin-bottom: 16px; overflow: hidden;
 }
 .insights-hero-glow {
@@ -2207,7 +2207,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .insights-action-btns { display: flex; gap: 6px; align-items: center; }
 .insights-analyze-btn {
   display: flex; align-items: center; gap: 7px; padding: 9px 18px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; border: none;
+  background: var(--accent); color: #fff; border: none;
   border-radius: var(--radius-xs); font-size: 0.8125rem; font-weight: 500; cursor: pointer;
   transition: all var(--transition); white-space: nowrap;
 }
@@ -2233,7 +2233,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 .insights-analyzing-orb { position: relative; width: 90px; height: 90px; margin: 0 auto 28px; }
 .orb-core {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  width: 44px; height: 44px; border-radius: 50%; background: var(--accent);
   display: flex; align-items: center; justify-content: center; box-shadow: 0 0 24px rgba(0, 113, 227, 0.3);
 }
 .orb-icon { width: 20px; height: 20px; color: #fff; }
@@ -4561,7 +4561,7 @@ img {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4792,7 +4792,7 @@ img {
   justify-content: center;
   gap: 10px;
   padding: 14px 32px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   border-radius: 14px;
   color: #fff;
   font-size: 0.9375rem;
@@ -5087,7 +5087,7 @@ img {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5237,7 +5237,7 @@ img {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5298,7 +5298,7 @@ img {
   content: '';
   width: 4px;
   height: 18px;
-  background: linear-gradient(180deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   border-radius: 2px;
 }
 
@@ -5349,7 +5349,7 @@ img {
   top: 14px;
   width: 8px;
   height: 8px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   border-radius: 50%;
 }
 
@@ -5411,7 +5411,7 @@ img {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5525,7 +5525,7 @@ img {
 }
 
 .message-user .message-content {
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
@@ -5558,7 +5558,7 @@ img {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5686,7 +5686,7 @@ img {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   border: none;
   display: flex;
   align-items: center;
@@ -6230,7 +6230,7 @@ img {
 .day-bar {
   width: 70%;
   max-width: 32px;
-  background: linear-gradient(180deg, var(--accent), #8b5cf6);
+  background: var(--accent);
   border-radius: 4px 4px 0 0;
   transition: height 0.6s ease;
   min-height: 4px;
@@ -6650,3 +6650,62 @@ img {
   #add-expense-section .btn-clear { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; }
   #add-expense-section .btn-clear .btn-label { display: none; }
 }
+
+/* =====================
+   INSIGHTS: at a glance (numbers worked out on the device)
+===================== */
+.insights-glance {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-xs);
+}
+.glance-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 14px; }
+.glance-none { color: var(--text2); }
+.glance-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 480px) { .glance-stats { grid-template-columns: 1fr; } }
+.glance-stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--radius-sm); background: var(--surface2); min-width: 0; }
+.glance-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text2); }
+.glance-value { font-size: 1.375rem; font-weight: 700; overflow-wrap: anywhere; }
+.glance-sub { font-size: 0.8125rem; color: var(--text2); }
+.glance-change { font-size: 0.8125rem; font-weight: 500; }
+.glance-change.up { color: var(--danger); }
+.glance-change.down { color: var(--success); }
+.glance-pace { margin-top: 12px; color: var(--text2); }
+.glance-pace strong { color: var(--gold); }
+.glance-h { font-size: 0.9375rem; font-weight: 600; margin: 18px 0 8px; }
+.glance-cats, .glance-biggest { list-style: none; }
+.glance-cat { padding: 8px 0; }
+.glance-cat-row, .glance-biggest li { display: flex; justify-content: space-between; gap: 12px; }
+.glance-cat-name { font-weight: 500; overflow-wrap: anywhere; }
+.glance-cat-amount, .glance-biggest li span:last-child { font-weight: 600; white-space: nowrap; }
+.glance-bar { height: 6px; border-radius: 3px; background: var(--bg2); margin: 6px 0 4px; overflow: hidden; }
+.glance-bar span { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.glance-cat-meta { font-size: 0.75rem; color: var(--text2); }
+.glance-biggest li { padding: 8px 0; border-top: 1px solid var(--border-light); }
+.glance-biggest li:first-child { border-top: none; }
+.glance-debts { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--text2); }
+.glance-debts strong { color: var(--text); }
+
+/* AI answers: markdown lists and headings from insights-data.js renderMarkdown */
+.ai-answer p { margin: 0 0 8px; }
+.ai-answer p:last-child, .ai-answer ul:last-child, .ai-answer ol:last-child { margin-bottom: 0; }
+.ai-answer ul, .ai-answer ol { margin: 0 0 8px; padding-left: 20px; }
+.ai-answer li { margin: 4px 0; }
+.ai-answer h4 { font-size: 0.9375rem; font-weight: 600; margin: 10px 0 6px; }
+
+/* Errors stay inside the chat (with Retry) instead of replacing it */
+.chat-error {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 8px 0;
+  padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--danger);
+  background: var(--danger-bg); color: var(--danger); font-size: 0.875rem;
+}
+.chat-retry { min-height: 36px; padding: 0 12px; border-radius: var(--radius-xs); background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+.analyze-btn:disabled, .chat-send-btn:disabled, .suggested-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Consent dialog */
+.insights-consent { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, 0.55); }
+.insights-consent-box { width: 100%; max-width: 420px; background: var(--surface); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-xl); }
+.insights-consent-box h3 { font-size: 1.125rem; margin-bottom: 10px; }
+.insights-consent-box p { color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+.insights-consent-note { font-size: 0.875rem; }
+.insights-consent-actions { display: flex; gap: 12px; margin-top: 16px; }
+.insights-consent-actions button { flex: 1; min-height: 44px; justify-content: center; }
