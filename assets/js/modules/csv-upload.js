@@ -4,6 +4,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
+import { todayStr } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -153,7 +154,7 @@ async function callAIModel(csvText) {
     category: VALID_CATEGORIES.includes(entry.category) ? entry.category : 'Other',
     description: String(entry.description || '-').slice(0, 200),
     payment: VALID_PAYMENTS.includes(entry.payment) ? entry.payment : 'UPI',
-    date: /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date : new Date().toISOString().slice(0, 10),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date : todayStr(),
     notes: String(entry.notes || '').slice(0, 500),
     type: entry.type === 'income' ? 'income' : 'expense'
   })).filter(e => e.amount > 0);

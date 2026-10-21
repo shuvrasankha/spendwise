@@ -3,6 +3,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
+import { todayStr } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -87,8 +88,9 @@ function getPeriodDates() {
     case 'custom':
       startDate = document.getElementById('insights-start-date')?.value || '';
       endDate = document.getElementById('insights-end-date')?.value || '';
-      const s = new Date(startDate);
-      const e = new Date(endDate);
+      // 'T00:00:00' parses as local time; a bare 'YYYY-MM-DD' parses as UTC
+      const s = new Date(startDate + 'T00:00:00');
+      const e = new Date(endDate + 'T00:00:00');
       label = `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${e.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
       break;
   }
@@ -939,8 +941,8 @@ function initUI() {
   if (startDateInput) {
     const today = new Date();
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    startDateInput.value = monthStart.toISOString().split('T')[0];
-    endDateInput.value = today.toISOString().split('T')[0];
+    startDateInput.value = todayStr(monthStart);
+    endDateInput.value = todayStr(today);
   }
 }
 

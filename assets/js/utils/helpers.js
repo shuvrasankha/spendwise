@@ -2,8 +2,9 @@
 
 export function pad(n) { return String(n).padStart(2, '0'); }
 
-export function todayStr() {
-  const d = new Date();
+// Local-calendar YYYY-MM-DD. Never use toISOString() for this: it is UTC,
+// so in India (UTC+5:30) local midnight becomes the previous day.
+export function todayStr(d = new Date()) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 

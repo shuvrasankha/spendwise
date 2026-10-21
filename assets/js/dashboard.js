@@ -1454,7 +1454,7 @@ function showToast(msg, type) {
 
 // fmt() is now provided by currency.js — removed local override
 function pad(n) { return String(n).padStart(2, "0"); }
-function todayStr() { const d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function todayStr(d = new Date()) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
 function getWeekStart() { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(d.setDate(diff)); return m.getFullYear() + "-" + pad(m.getMonth() + 1) + "-" + pad(m.getDate()); }
 function formatDate(ds) { return new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; const el = document.getElementById("dashboard-greeting") || document.getElementById("income-greeting") || document.getElementById("expense-greeting"); if (el) el.textContent = g + (n ? ", " + n : "") + "!"; }
@@ -1668,8 +1668,8 @@ function getTrendData() {
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekEnd.getDate() + 6);
 
-      const wStartStr = weekStart.toISOString().split('T')[0];
-      const wEndStr   = weekEnd.toISOString().split('T')[0];
+      const wStartStr = todayStr(weekStart);
+      const wEndStr   = todayStr(weekEnd);
       // Compact label e.g. "9–15 Mar" or "28 Mar–3 Apr" for cross-month
       const startMonth = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][weekStart.getMonth()];
       const endMonth   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][weekEnd.getMonth()];

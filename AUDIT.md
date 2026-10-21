@@ -56,11 +56,17 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
     - Non-GET requests (AI proxy, Firestore writes) are no longer routed through the service worker.
     - Checked: the deploy replacement, simulated locally. Not checked: a real browser install. To check after merge: DevTools → Application → Service Workers should show `sw.js` active for `/spendwise/`.
 
-- [ ] **4. Dates shift by a day because local time is converted to UTC** (`assets/js/modules/insights-v2.js:962-963`, `assets/js/dashboard.js:1671-1672`, `assets/js/modules/csv-upload.js:176`)
+- [x] **4. Dates shift by a day because local time is converted to UTC** (`assets/js/modules/insights-v2.js:962-963`, `assets/js/dashboard.js:1671-1672`, `assets/js/modules/csv-upload.js:176`)
   - **What this is:** These places turn a date into `YYYY-MM-DD` with `toISOString()`, which always uses UTC.
   - **Problem:** In India, midnight on 1 October local time is 18:30 on 30 September in UTC. So the Insights "this month" start date always shows the last day of the previous month. Between 00:00 and 05:30 IST the "end" date is yesterday, and the dashboard's weekly chart puts each week one day early.
   - **Fix:** Use the local-date formatter that `helpers.js` already has. Change `todayStr()` to `todayStr(d = new Date())` and call `todayStr(monthStart)`, `todayStr(weekStart)` and so on instead of `toISOString().split('T')[0]`.
   - **If we skip it:** Insights include an extra day from last month, and weekly totals are wrong for late-night users.
+  - **Status (2026-10-21, branch `fix/local-dates`):** Fixed.
+    - `todayStr(d = new Date())` in `utils/helpers.js` (and the copy in `dashboard.js`) now takes a date.
+    - It replaces `toISOString()` in the Insights default range, the dashboard weekly chart, the CSV import date fallback, and the backup filename.
+    - Insights custom-range labels parse dates as local time (`+ 'T00:00:00'`), so users west of UTC no longer see the day before.
+    - `backup.js` `exportDate` stays a full UTC timestamp, which is correct.
+    - Test: `node --test tests/dates.test.mjs` (3 passing, run in Asia/Kolkata).
 
 - [ ] **5. Restoring a backup with more than 500 items always fails** (`assets/js/modules/backup.js:162-204`)
   - **What this is:** Import puts every expense, income and debt into one Firestore `writeBatch` (a group of writes applied together).
