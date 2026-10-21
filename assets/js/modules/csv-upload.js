@@ -471,6 +471,7 @@ async function handleConfirmImport() {
 
   try {
     const result = await saveToFirestore(selected);
+    window.markLoggedToday?.(); // skips today's reminder (reminders.js)
     showModalPhase('done');
     const doneText = document.getElementById('csv-done-text');
     if (doneText) {

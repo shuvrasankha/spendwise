@@ -1,7 +1,9 @@
-// worker/src/index.js — Runs SpendWise's AI requests on Cloudflare Workers AI
-// (free daily allowance, no API key) for signed-in users only (verified Firebase ID token).
+// worker/src/index.js — SpendWise backend for signed-in users (verified Firebase ID token):
+//   POST /         AI requests on Cloudflare Workers AI (free daily allowance, no API key)
+//   POST /push/*   daily reminder subscriptions (see push.js); the cron sends them
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { handlePushRoute, sendDueReminders } from './push.js';
 
 const GOOGLE_JWKS = createRemoteJWKSet(new URL(
   'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
@@ -38,18 +40,26 @@ export default {
     if (req.method !== 'POST') return json(405, { error: 'Method not allowed' }, cors);
 
     const idToken = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    let uid;
     try {
       const { payload } = await jwtVerify(idToken, GOOGLE_JWKS, {
         issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`,
         audience: env.FIREBASE_PROJECT_ID,
       });
       if (!payload.sub) throw new Error('no subject');
+      uid = payload.sub;
     } catch {
       return json(401, { error: 'Not signed in' }, cors);
     }
 
     let body;
     try { body = await req.json(); } catch { return json(400, { error: 'Invalid JSON' }, cors); }
+
+    const path = new URL(req.url).pathname;
+    if (path.startsWith('/push/')) {
+      const [status, result] = await handlePushRoute(path, body, uid, env);
+      return json(status, result, cors);
+    }
     if (!body || !ALLOWED_MODELS.has(body.model) || !Array.isArray(body.messages)) {
       return json(400, { error: 'Model or messages not allowed' }, cors);
     }
@@ -72,5 +82,10 @@ export default {
     // Keep the OpenAI-style shape the app already reads (choices[0].message.content)
     const content = typeof out?.response === 'string' ? out.response : JSON.stringify(out?.response ?? '');
     return json(200, { choices: [{ message: { role: 'assistant', content } }] }, cors);
+  },
+
+  // Cron trigger (wrangler.toml): every 15 minutes, send reminders that are due
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendDueReminders(env).then(c => console.log('reminders', JSON.stringify(c))));
   },
 };

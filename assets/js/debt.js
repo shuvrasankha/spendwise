@@ -411,6 +411,7 @@ window.addDebt = async () => {
     resetDebtForm();
     showDebtFormMsg('Debt added successfully!', 'success');
     showToast('Debt added!', 'success');
+    window.markLoggedToday?.(); // skips today's reminder (reminders.js)
   } catch (e) {
     console.error(e);
     if (window.addToOfflineQueue && navigator.onLine === false) {

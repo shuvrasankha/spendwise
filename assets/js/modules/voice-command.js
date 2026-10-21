@@ -502,6 +502,7 @@ async function saveEntry() {
         : `${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
     }
     showVoiceStatus(label, 'success');
+    window.markLoggedToday?.(); // skips today's reminder (reminders.js)
 
     // Show toast on the page
     showPageToast(

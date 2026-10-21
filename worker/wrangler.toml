@@ -10,3 +10,17 @@ binding = "AI"
 FIREBASE_PROJECT_ID = "spendwise-app-f7227"
 # First entry is the fallback origin; add http://localhost:<port> for local dev
 ALLOWED_ORIGINS = "https://shuvrasankha.github.io"
+# Daily reminders: public VAPID key (also in assets/js/config/ai.js); the private key is a secret:
+#   npx wrangler secret put VAPID_PRIVATE_JWK
+VAPID_PUBLIC_KEY = "BKCNrZarOI82d2swFOI1qMD6FgS15PcD8L66FymoziBQPbOKzvv8QYX8PocmeOIzpY_QPDl5YTUC6OkFIEyK07w"
+VAPID_SUBJECT = "https://shuvrasankha.github.io/spendwise/"
+
+# Push subscriptions; schema in schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "spendwise-push"
+database_id = "4f806c90-1b39-4304-be47-ceec421c94cf"
+
+# Send due daily reminders
+[triggers]
+crons = ["*/15 * * * *"]

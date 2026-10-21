@@ -271,6 +271,7 @@ window.addIncome = async () => {
     resetIncomeForm();
     showFormMsg('Income added successfully!', 'success');
     showToast('Income added!', 'success');
+    window.markLoggedToday?.(); // skips today's reminder (reminders.js)
   } catch (e) {
     console.error(e);
     if (window.addToOfflineQueue && navigator.onLine === false) {

@@ -122,6 +122,23 @@ npx wrangler deploy                # prints https://spendwise-ai.<you>.workers.d
 
 Put the printed URL into `AI_PROXY_URL` in `assets/js/config/ai.js`. When the daily allowance runs out, the app shows "Daily AI limit reached" until the reset.
 
+## 🔔 Daily Reminders
+
+Users can turn on a daily "Log today's spending" reminder in the profile menu (default 9:00 PM, their own time zone). It is skipped on days they have already added an entry. On iPhone it works only when SpendWise is added to the Home Screen (iOS 16.4+).
+
+How it works: the browser's push subscription is stored by the Worker in a Cloudflare D1 database (`spendwise-push`, schema in `worker/schema.sql`). A cron trigger runs every 15 minutes and sends an empty, VAPID-signed push. `sw.js` shows the notification and opens Add Expense when tapped.
+
+One-time setup (already done for the live app):
+
+```bash
+cd worker
+npx wrangler d1 create spendwise-push          # put the id in wrangler.toml
+npx wrangler d1 execute spendwise-push --remote --file schema.sql
+# VAPID key pair: public key -> wrangler.toml VAPID_PUBLIC_KEY and assets/js/config/ai.js
+npx wrangler secret put VAPID_PRIVATE_JWK       # private key as a JWK
+npx wrangler deploy
+```
+
 ## 🔒 Security
 
 - ✅ User data isolated by authentication (uid-based access)
