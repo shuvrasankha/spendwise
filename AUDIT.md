@@ -68,11 +68,16 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
     - `backup.js` `exportDate` stays a full UTC timestamp, which is correct.
     - Test: `node --test tests/dates.test.mjs` (3 passing, run in Asia/Kolkata).
 
-- [ ] **5. Restoring a backup with more than 500 items always fails** (`assets/js/modules/backup.js:162-204`)
+- [x] **5. Restoring a backup with more than 500 items always fails** (`assets/js/modules/backup.js:162-204`)
   - **What this is:** Import puts every expense, income and debt into one Firestore `writeBatch` (a group of writes applied together).
   - **Problem:** Firestore allows at most 500 writes per batch. A user with 600 entries, about 1–2 years of daily use, gets "Import failed" and nothing is restored.
   - **Fix:** Commit in chunks: when the count reaches 500, `await batch.commit()` and start a new `writeBatch(db)`.
   - **If we skip it:** The backup feature fails for exactly the users who need it most, those with lots of data.
+  - **Status (2026-10-21, branch `fix/backup-restore-batches`):** Fixed.
+    - The import commits in chunks of 500 and shows "Importing N of M items…".
+    - Each record is written to its exported document id (when it is a valid id), so restoring twice, or retrying after a chunk failed, overwrites the same documents instead of duplicating them. Records without a usable id get a new one.
+    - Behaviour change: restoring now overwrites matching documents with the backup's version (that is what "restore" means). Before, it added copies next to them.
+    - Test: `node --test tests/backup.test.mjs` (4 passing: 1,201 items → batches of 500/500/201, same ids on re-import, retry after a failed chunk leaves 600 distinct docs, bad or missing ids and other accounts handled).
 
 ---
 
