@@ -25,6 +25,7 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
       2. ~~`npx wrangler secret put HF_TOKEN` and `npx wrangler deploy`~~ Done 2026-10-21: the Worker is live at `https://spendwise-ai.spendwise-ai.workers.dev` with the `HF_TOKEN` secret set.
       3. ~~Put the Worker URL in `AI_PROXY_URL`~~ Done. CSP narrowed to the exact Worker host.
       4. Delete the unused `HF_TOKEN` GitHub secret.
+    - **Update (2026-10-21, branch `feat/workers-ai`):** The Hugging Face account ran out of credits (402). The Worker now runs Cloudflare Workers AI instead: free daily allowance, no API key at all. Models: `@cf/qwen/qwen2.5-coder-32b-instruct` (voice, CSV) and `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (insights). The `HF_TOKEN` Worker secret was deleted. Revoke all Hugging Face tokens.
 
 - [ ] **2. Offline saves never sync and are silently deleted** (`assets/js/modules/offline-queue.js:150-188, 104-121`)
   - **What this is:** When the user is offline, expenses, income and debts go into a queue in `localStorage`. When the connection returns, `syncOfflineQueue` uploads them.

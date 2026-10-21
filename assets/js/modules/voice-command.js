@@ -1,5 +1,5 @@
 // voice-command.js — SpendWise Voice Command Module
-// Uses Web Speech API (speech→text) + Hugging Face Inference API (text→structured data)
+// Uses Web Speech API (speech→text) + Cloudflare Workers AI (text→structured data)
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
@@ -12,8 +12,8 @@ const db = getFirestore(app);
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
 
-// Hugging Face is called through the AI proxy (config/ai.js), which holds the token
-const HF_MODEL = 'Qwen/Qwen2.5-Coder-32B-Instruct:fastest';
+// AI runs on Cloudflare Workers AI via our proxy (config/ai.js)
+const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 
 // ── Categories (must match the app's category list) ──────────────────────────
 const EXPENSE_CATEGORIES = [
@@ -210,7 +210,7 @@ function stopListening() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  AI PARSING (Hugging Face Inference API)
+//  AI PARSING (Cloudflare Workers AI)
 // ══════════════════════════════════════════════════════════════════════════════
 function buildPrompt(text) {
   const today = todayStr();
@@ -295,10 +295,10 @@ Example output: [{"type":"debt","amount":500,"debtType":"they-owe","person":"Fri
   };
 }
 
-async function callHuggingFaceAPI(text) {
+async function callAIModel(text) {
   const prompt = buildPrompt(text);
   const response = await callAI({
-    model: HF_MODEL,
+    model: AI_MODEL,
     messages: [
       { role: 'system', content: prompt.system },
       { role: 'user', content: prompt.user }
@@ -316,7 +316,7 @@ async function callHuggingFaceAPI(text) {
   }
   if (!response.ok) {
     const errBody = await response.text();
-    console.error('HF API error:', response.status, errBody);
+    console.error('AI API error:', response.status, errBody);
     throw new Error('API_ERROR');
   }
 
@@ -398,7 +398,7 @@ async function parseVoiceCommand(text) {
   showParsingSpinner(true);
 
   try {
-    const rawEntries = await callHuggingFaceAPI(text);
+    const rawEntries = await callAIModel(text);
     const validEntries = validateEntries(rawEntries);
 
     if (!validEntries.length) {
@@ -420,7 +420,7 @@ async function parseVoiceCommand(text) {
   } catch (err) {
     showParsingSpinner(false);
     if (err.message === 'RATE_LIMITED') {
-      showVoiceStatus('⏳ Rate limited by Hugging Face. Please wait a moment and try again.', 'error');
+      showVoiceStatus('⏳ Daily AI limit reached. Please try again later.', 'error');
     } else if (err.message === 'MODEL_LOADING') {
       showVoiceStatus('⏳ AI model is loading. Please try again in 20-30 seconds.', 'error');
     } else {
