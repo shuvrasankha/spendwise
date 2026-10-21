@@ -168,13 +168,15 @@
     if (tiles.length === 0) return;
 
     // Set up each tile
-    tiles.forEach((tile, index) => {
+    tiles.forEach((tile) => {
       tile.setAttribute('tabindex', '0');
       tile.setAttribute('role', 'radio');
       tile.setAttribute('aria-checked', tile.classList.contains('active') ? 'true' : 'false');
 
-      // Handle keyboard events
+      // Handle keyboard events (read the current order: dashboard.js puts frequent categories first)
       tile.addEventListener('keydown', function(e) {
+        const tiles = [...categoryPicker.querySelectorAll('.cat-tile, [role="radio"]')];
+        const index = tiles.indexOf(tile);
         let newIndex = index;
 
         switch (e.key) {
