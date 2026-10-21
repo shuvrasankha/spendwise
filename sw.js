@@ -13,6 +13,7 @@ const STATIC_ASSETS = [
   './assets/js/utils/currency.js',
   './assets/js/utils/helpers.js',
   './assets/js/config/firebase.js',
+  './assets/js/config/ai.js',
   './assets/js/dashboard.js',
   './assets/js/income.js',
   './assets/js/debt.js',

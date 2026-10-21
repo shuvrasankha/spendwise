@@ -2,6 +2,7 @@
 // Conversational AI that provides personalized financial advice
 
 import { app } from '../config/firebase.js';
+import { callAI } from '../config/ai.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -12,14 +13,8 @@ const fmt = window.fmt;
 const getCurrency = window.getCurrency;
 const getCurrencyInfo = window.getCurrencyInfo;
 
-let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
-try {
-  const config = await import('../../voice-config.js');
-  if (config.HF_TOKEN) HF_TOKEN = config.HF_TOKEN;
-} catch (_) { /* voice-config.js not present */ }
-
+// Hugging Face is called through the AI proxy (config/ai.js), which holds the token
 const HF_MODEL = 'Qwen/Qwen2.5-72B-Instruct';
-const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
 
 const CACHE_KEY_PREFIX = 'spendwise_insights_v2_';
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000;
@@ -369,23 +364,12 @@ function buildInitialQuestion(analysisType, data, periodLabel) {
 }
 
 async function sendToAI(messages) {
-  if (!HF_TOKEN || HF_TOKEN.length < 10 || HF_TOKEN.includes('PLACEHOLDER')) {
-    throw new Error('HF_TOKEN_NOT_SET');
-  }
-
-  const response = await fetch(HF_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${HF_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: HF_MODEL,
-      messages: messages,
-      max_tokens: 2000,
-      temperature: 0.7,
-      top_p: 0.95
-    })
+  const response = await callAI({
+    model: HF_MODEL,
+    messages: messages,
+    max_tokens: 2000,
+    temperature: 0.7,
+    top_p: 0.95
   });
 
   if (response.status === 429) throw new Error('RATE_LIMITED');
@@ -593,11 +577,7 @@ function handleError(err) {
   let errorMsg = 'Unable to get response. Please try again.';
   let errorType = 'error';
 
-  if (err.message === 'HF_TOKEN_NOT_SET') {
-    errorTitle = 'API Not Configured';
-    errorMsg = 'Hugging Face API token is not set up. Please check your voice-config.js file.';
-    errorType = 'warning';
-  } else if (err.message === 'RATE_LIMITED') {
+  if (err.message === 'RATE_LIMITED') {
     errorTitle = 'Too Many Requests';
     errorMsg = 'Please wait a moment before sending another message.';
     errorType = 'warning';

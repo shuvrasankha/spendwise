@@ -3,6 +3,7 @@
 // previews the result, and batch-saves to Firestore.
 
 import { app } from '../config/firebase.js';
+import { callAI } from '../config/ai.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -12,18 +13,8 @@ const db = getFirestore(app);
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  🔑  HUGGING FACE API CONFIG
-//  Since Netlify is removed, we use Hugging Face router which supports CORS natively.
-// ══════════════════════════════════════════════════════════════════════════════
-const HF_API_URL = 'https://router.huggingface.co/v1/chat/completions';
+// Hugging Face is called through the AI proxy (config/ai.js), which holds the token
 const HF_MODEL = 'Qwen/Qwen2.5-7B-Instruct'; // Lightweight, very fast model
-
-let HF_TOKEN = '__HF_TOKEN_PLACEHOLDER__';
-try {
-  const cfg = await import('../../voice-config.js'); // Reuse HF token from voice-config if present
-  if (cfg.HF_TOKEN) HF_TOKEN = cfg.HF_TOKEN;
-} catch (_) { /* not present */ }
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const VALID_CATEGORIES = [
@@ -120,28 +111,17 @@ Example output:
 //  HUGGING FACE API CALL
 // ══════════════════════════════════════════════════════════════════════════════
 async function callHuggingFaceAPI(csvText) {
-  if (!HF_TOKEN || HF_TOKEN.includes('PLACEHOLDER') || HF_TOKEN.length < 10) {
-    throw new Error('HF_TOKEN_NOT_SET');
-  }
-
   const prompt = buildCSVPrompt(csvText);
 
-  const response = await fetch(HF_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${HF_TOKEN}`
-    },
-    body: JSON.stringify({
-      model: HF_MODEL,
-      messages: [
-        { role: 'system', content: prompt.system },
-        { role: 'user', content: prompt.user }
-      ],
-      max_tokens: 4096,
-      temperature: 0.1,
-      top_p: 0.9
-    })
+  const response = await callAI({
+    model: HF_MODEL,
+    messages: [
+      { role: 'system', content: prompt.system },
+      { role: 'user', content: prompt.user }
+    ],
+    max_tokens: 4096,
+    temperature: 0.1,
+    top_p: 0.9
   });
 
   if (response.status === 429) throw new Error('RATE_LIMITED');
@@ -449,7 +429,6 @@ async function handleFileUpload() {
     const errorText = document.getElementById('csv-error-text');
     if (errorText) {
       const messages = {
-        'HF_TOKEN_NOT_SET': '⚠️ Hugging Face Token not configured. Please set up your token.',
         'RATE_LIMITED': '⏳ Rate limited by AI Provider. Please wait and try again.',
         'MODEL_LOADING': '⏳ AI model is loading. Please try again in 20-30 seconds.',
         'CSV_TOO_SHORT': '📄 CSV file is too short. Need at least 2 rows (header + data).',
