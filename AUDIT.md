@@ -43,11 +43,18 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
     - Test: `node --test tests/offline-queue.test.mjs` (5 passing).
     - **Not done:** the queue is still one `localStorage` key for every account on the device. That is safe now (foreign items are skipped), but the pending badge counts them.
 
-- [ ] **3. The service worker never installs on the live site, and if it did it would serve old code forever** (`index.html:931`, `expense.html:854`, `income.html:474`, `history.html:789`, `insights.html:442`, `sw.js:3, 79-93`)
+- [x] **3. The service worker never installs on the live site, and if it did it would serve old code forever** (`index.html:931`, `expense.html:854`, `income.html:474`, `history.html:789`, `insights.html:442`, `sw.js:3, 79-93`)
   - **What this is:** The service worker (a background script that caches files so the app works offline) is registered with `navigator.serviceWorker.register('/sw.js')`.
   - **Problem:** The site lives at `shuvrasankha.github.io/spendwise/`, so `/sw.js` points at `shuvrasankha.github.io/sw.js`, which does not exist. Offline mode and the PWA cache never start. `debt.html` does not register it at all. Once the path is fixed there is a second problem: JS and CSS are served "cache-first" under a fixed name, `spendwise-v2`. After each deploy, users get new HTML with old JS until someone edits that name by hand.
   - **Fix:** Use `register('./sw.js')` on every page, including `debt.html`. In the deploy workflow, add a step like `sed -i "s/spendwise-v2/spendwise-${GITHUB_SHA::7}/" sw.js` so each deploy gets a new cache name.
   - **If we skip it:** No offline support today. After you fix the path, every deploy can break the app for returning users until they clear their cache.
+  - **Status (2026-10-21, branch `fix/service-worker`):** Fixed.
+    - All 6 pages register `./sw.js`. Correction to the finding above: `debt.html` did register, but with the same broken path.
+    - `sw.js` uses `CACHE_NAME = 'spendwise-dev'`. The new deploy step "Version service worker cache" replaces it with the commit id (e.g. `spendwise-e981bea`), so each deploy installs a fresh cache and deletes the old one. The step fails if the replacement doesn't match.
+    - Precache uses `cache: 'reload'` (skips the browser's HTTP cache). It now includes `tokens.css`, `responsive.css`, `event-delegation.js` and `accessibility.js`.
+    - Static lookups use `ignoreSearch`, so `style.css?v=4` is served offline.
+    - Non-GET requests (AI proxy, Firestore writes) are no longer routed through the service worker.
+    - Checked: the deploy replacement, simulated locally. Not checked: a real browser install. To check after merge: DevTools → Application → Service Workers should show `sw.js` active for `/spendwise/`.
 
 - [ ] **4. Dates shift by a day because local time is converted to UTC** (`assets/js/modules/insights-v2.js:962-963`, `assets/js/dashboard.js:1671-1672`, `assets/js/modules/csv-upload.js:176`)
   - **What this is:** These places turn a date into `YYYY-MM-DD` with `toISOString()`, which always uses UTC.
