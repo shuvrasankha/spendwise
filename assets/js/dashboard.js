@@ -423,10 +423,12 @@ function updateDebtCards() {
   }
 
   const activeDebts = allDebts.filter(d => !d.settled);
-  const totalDebt = activeDebts.reduce((s, d) => s + d.amount, 0);
-  
-  document.getElementById("sum-debt").textContent = fmt(totalDebt);
-  document.getElementById("sum-debt-count").textContent = activeDebts.length + " active debt" + (activeDebts.length !== 1 ? "s" : "");
+  // Owe and owed are opposite directions; adding them gave a meaningless total
+  const youOwe = activeDebts.filter(d => d.type === 'i-owe').reduce((s, d) => s + d.amount, 0);
+  const owedToYou = activeDebts.filter(d => d.type === 'they-owe').reduce((s, d) => s + d.amount, 0);
+
+  document.getElementById("sum-debt").textContent = fmt(youOwe);
+  document.getElementById("sum-debt-count").textContent = "You owe · owed to you " + fmt(owedToYou);
 }
 
 function updateIncomeCards() {
@@ -452,7 +454,7 @@ function updateIncomeCards() {
 
   incomeEl.textContent = fmt(monthlyIncome);
   document.getElementById("sum-income-sub").textContent = monthlyIncome > 0 
-    ? allIncome.filter(i => i.date >= ms && i.date <= today).length + " entries this month"
+    ? (n => n + (n === 1 ? " entry" : " entries") + " this month")(allIncome.filter(i => i.date >= ms && i.date <= today).length)
     : "0 entries this month";
 
   savingsEl.textContent = fmt(Math.abs(netSavings));
@@ -955,6 +957,7 @@ function updateCards() {
 
   // Daily spending text
   updateDailySpending();
+  updateIncomeCards(); // savings depends on this month's expenses as well
 }
 
 function updateDailySpending() {
@@ -1884,17 +1887,16 @@ function renderTrendChart() {
   }
 
   trendChartInstance = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
       labels: labels,
       datasets: [{
         label: 'Spending',
         data: data,
         borderColor: '#4a9eff',
-        backgroundColor: 'rgba(74, 158, 255, 0.08)',
-        borderWidth: isMobile ? 2.5 : 3,
-        fill: true,
-        tension: 0.4,
+        backgroundColor: '#4a9eff',
+        borderRadius: 4,
+        borderWidth: 0,
         pointRadius: isMobile ? 4 : 5,
         pointHoverRadius: isMobile ? 6 : 7,
         pointBackgroundColor: '#4a9eff',
