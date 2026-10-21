@@ -434,3 +434,6 @@ window.deleteFromIncomeEdit = async () => {
 };
 
 
+
+// Refresh after offline-queue.js writes queued items
+window.addEventListener('spendwise:synced', () => loadIncome());

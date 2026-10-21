@@ -4,7 +4,7 @@
   'use strict';
 
   const QUEUE_KEY = 'spendwise_offline_queue';
-  const MAX_RETRIES = 3;
+  const COLLECTIONS = { expense: 'expenses', income: 'income', debt: 'debts' };
 
   function getQueue() {
     try {
@@ -88,103 +88,48 @@
 
   window.updatePendingBadge = updatePendingBadge;
 
+  // Writes each queued item for the signed-in user. Items are never dropped:
+  // a failed write stays queued and retries on the next sync.
   window.syncOfflineQueue = async function() {
-    const queue = getQueue();
-    if (queue.length === 0) {
-      console.log('Offline queue is empty, nothing to sync');
-      return { synced: 0, failed: 0 };
-    }
+    if (getQueue().length === 0) return { synced: 0, failed: 0 };
 
-    console.log(`Syncing ${queue.length} offline transactions...`);
-    
-    let synced = 0;
-    let failed = 0;
-    const remaining = [];
+    // This is a classic script, so load Firebase the same way the pages do
+    const { db, auth } = await import('../config/firebase.js');
+    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    await auth.authStateReady();
+    const uid = auth.currentUser?.uid;
+    if (!uid) return { synced: 0, failed: 0 }; // keep everything until someone signs in
 
-    for (const item of queue) {
+    const synced = new Set();
+    const failed = new Set();
+    for (const item of getQueue()) {
+      if (item.data?.uid !== uid) continue; // another account's item: leave it for them
       try {
-        await syncItem(item);
-        removeFromQueue(item.id);
-        synced++;
-        console.log(`Synced: ${item.type} (${item.id})`);
+        const coll = COLLECTIONS[item.type];
+        if (!coll) throw new Error(`Unknown transaction type: ${item.type}`);
+        // Doc id = queue id, so a retry after a lost response overwrites instead of duplicating.
+        // createdAt is set here: serverTimestamp() does not survive JSON in localStorage.
+        await setDoc(doc(db, coll, item.id), { ...item.data, createdAt: serverTimestamp() });
+        synced.add(item.id);
       } catch (e) {
         console.error(`Failed to sync ${item.type} (${item.id}):`, e);
-        item.retries++;
-        
-        if (item.retries >= MAX_RETRIES) {
-          console.error(`Max retries reached for ${item.id}, removing from queue`);
-          failed++;
-        } else {
-          remaining.push(item);
-        }
+        failed.add(item.id);
       }
     }
 
-    if (remaining.length > 0) {
-      saveQueue(remaining);
+    // Re-read so items queued while we were syncing are kept
+    saveQueue(getQueue()
+      .filter(item => !synced.has(item.id))
+      .map(item => failed.has(item.id) ? { ...item, retries: (item.retries || 0) + 1 } : item));
+
+    if (synced.size > 0) {
+      showToast(`${synced.size} offline transaction${synced.size > 1 ? 's' : ''} synced!`);
+      window.dispatchEvent(new CustomEvent('spendwise:synced'));
     }
-
-    if (synced > 0) {
-      const queue2 = getQueue();
-      if (queue2.length === 0) {
-        showToast(`All ${synced} offline transactions synced successfully!`);
-      } else {
-        showToast(`Synced ${synced} transactions. ${queue2.length} failed.`);
-      }
+    if (failed.size > 0) {
+      showToast(`${failed.size} transaction${failed.size > 1 ? 's' : ''} could not sync. Kept and will retry.`, 'error');
     }
-
-    if (failed > 0) {
-      showToast(`${failed} transactions failed to sync. Please try again later.`, 'error');
-    }
-
-    return { synced, failed };
-  };
-
-  async function syncItem(item) {
-    if (typeof window.firebaseSyncItem === 'function') {
-      return window.firebaseSyncItem(item);
-    }
-    throw new Error('Firebase sync not available');
-  }
-
-  window.firebaseSyncItem = async function(item) {
-    const { doc, addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    
-    switch (item.type) {
-      case 'expense':
-        const expRef = await addDoc(collection(db, 'expenses'), item.data);
-        if (window.allExpenses && item.data.uid === currentUser?.uid) {
-          window.allExpenses.unshift({ id: expRef.id, ...item.data });
-          window.allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-          if (typeof updateCards === 'function') updateCards();
-          if (typeof renderDashboardTable === 'function') renderDashboardTable();
-          if (typeof renderPieChart === 'function') renderPieChart();
-          if (typeof renderTrendChart === 'function') renderTrendChart();
-        }
-        break;
-
-      case 'income':
-        const incRef = await addDoc(collection(db, 'income'), item.data);
-        if (window.allIncome && item.data.uid === currentUser?.uid) {
-          window.allIncome.unshift({ id: incRef.id, ...item.data });
-          window.allIncome.sort((a, b) => b.date.localeCompare(a.date));
-          if (typeof updateIncomeSummaryCards === 'function') updateIncomeSummaryCards();
-        }
-        break;
-
-      case 'debt':
-        const debtRef = await addDoc(collection(db, 'debts'), item.data);
-        if (window.allDebts && item.data.uid === currentUser?.uid) {
-          window.allDebts.unshift({ id: debtRef.id, ...item.data });
-          window.allDebts.sort((a, b) => b.date.localeCompare(a.date));
-          if (typeof updateDebtSummary === 'function') updateDebtSummary();
-          if (typeof renderDebts === 'function') renderDebts();
-        }
-        break;
-
-      default:
-        throw new Error(`Unknown transaction type: ${item.type}`);
-    }
+    return { synced: synced.size, failed: failed.size };
   };
 
   function showToast(message, type = 'success') {
@@ -202,9 +147,15 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', updatePendingBadge);
-  } else {
+  // Also sync on page load: the 'online' event never fires if the app was closed while offline
+  function init() {
     updatePendingBadge();
+    if (navigator.onLine && getQueueCount() > 0 && window.triggerSync) window.triggerSync();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();

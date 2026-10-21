@@ -2513,3 +2513,6 @@ window.downloadIncomeHistoryCSV = () => {
   a.click();
   showToast('CSV downloaded!', 'success');
 };
+
+// Refresh after offline-queue.js writes queued items (replaces the "pending" placeholders)
+window.addEventListener('spendwise:synced', () => { loadExpenses(true); loadIncome(); loadDebts(); });

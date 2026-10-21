@@ -27,11 +27,21 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
       4. Delete the unused `HF_TOKEN` GitHub secret.
     - **Update (2026-10-21, branch `feat/workers-ai`):** The Hugging Face account ran out of credits (402). The Worker now runs Cloudflare Workers AI instead: free daily allowance, no API key at all. Models: `@cf/qwen/qwen2.5-coder-32b-instruct` (voice, CSV) and `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (insights). The `HF_TOKEN` Worker secret was deleted. Revoke all Hugging Face tokens.
 
-- [ ] **2. Offline saves never sync and are silently deleted** (`assets/js/modules/offline-queue.js:150-188, 104-121`)
+- [x] **2. Offline saves never sync and are silently deleted** (`assets/js/modules/offline-queue.js:150-188, 104-121`)
   - **What this is:** When the user is offline, expenses, income and debts go into a queue in `localStorage`. When the connection returns, `syncOfflineQueue` uploads them.
   - **Problem:** `offline-queue.js` is a plain script, not a module, but it uses `db` and `currentUser`. Those names exist only inside other modules, so every sync throws `ReferenceError: db is not defined`. After 3 tries (line 114) the item is thrown away. Two smaller issues: `createdAt: serverTimestamp()` does not survive `JSON.stringify` into `localStorage`, and the queue key is shared by every account on the device.
   - **Fix:** Have `dashboard.js`, `income.js` and `debt.js`, which already have `db`, set `window.firebaseSyncItem` to a function that uses their own `db` and `currentUser`. Set `createdAt: serverTimestamp()` at sync time, not when the item is queued. Name the queue key `spendwise_offline_queue_<uid>`. Never drop an item after max retries; keep it and show it as "failed".
   - **If we skip it:** Every expense saved offline vanishes after the user comes back online, even though the app said "Saved offline!".
+  - **Status (2026-10-21, branch `fix/offline-sync`):** Fixed.
+    - `syncOfflineQueue` now loads Firebase itself with `import('../config/firebase.js')`, waits for sign-in (`auth.authStateReady()`), and writes with `setDoc` using the queue id as the document id. A retry after a lost response overwrites instead of creating a duplicate.
+    - `createdAt: serverTimestamp()` is set at sync time.
+    - Only the signed-in user's items are synced; other accounts' items stay queued.
+    - Failed items are never dropped: they stay queued with a retry count.
+    - Items added during a sync are kept (the queue is re-read before saving).
+    - The queue also syncs on page load when online, not only on the `online` event.
+    - Pages reload their data on the new `spendwise:synced` event, which replaces the dead `window.allExpenses` refresh code.
+    - Test: `node --test tests/offline-queue.test.mjs` (5 passing).
+    - **Not done:** the queue is still one `localStorage` key for every account on the device. That is safe now (foreign items are skipped), but the pending badge counts them.
 
 - [ ] **3. The service worker never installs on the live site, and if it did it would serve old code forever** (`index.html:931`, `expense.html:854`, `income.html:474`, `history.html:789`, `insights.html:442`, `sw.js:3, 79-93`)
   - **What this is:** The service worker (a background script that caches files so the app works offline) is registered with `navigator.serviceWorker.register('/sw.js')`.
