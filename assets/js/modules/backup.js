@@ -109,6 +109,9 @@ async function exportData() {
 
 // ── Import Data ──────────────────────────────────────────────────────────────
 
+const BATCH_LIMIT = 500;
+const DOC_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
 // Validate a single record before importing
 function validateRecord(record, type) {
   if (!record || typeof record !== 'object') return false;
@@ -160,49 +163,36 @@ async function importData(file) {
     }
 
     const uid = currentUser.uid;
-    const batch = writeBatch(db);
-    let importedCount = 0;
+    const writes = [];
 
     showBackupStatus('Preparing import…', 'loading');
 
-    // Import expenses
-    for (const exp of data.expenses) {
-      if (exp.uid !== uid) continue;
-      if (!validateRecord(exp, 'expense')) continue;
-      const ref = doc(collection(db, 'expenses'));
-      const { id, ...rest } = exp;
-      batch.set(ref, { ...rest, createdAt: serverTimestamp() });
-      importedCount++;
+    for (const [type, coll, records] of [['expense', 'expenses', data.expenses], ['income', 'income', data.income], ['debt', 'debts', data.debts]]) {
+      for (const record of records) {
+        if (record.uid !== uid) continue;
+        if (!validateRecord(record, type)) continue;
+        writes.push([coll, record]);
+      }
     }
 
-    // Import income
-    for (const inc of data.income) {
-      if (inc.uid !== uid) continue;
-      if (!validateRecord(inc, 'income')) continue;
-      const ref = doc(collection(db, 'income'));
-      const { id, ...rest } = inc;
-      batch.set(ref, { ...rest, createdAt: serverTimestamp() });
-      importedCount++;
-    }
-
-    // Import debts
-    for (const debt of data.debts) {
-      if (debt.uid !== uid) continue;
-      if (!validateRecord(debt, 'debt')) continue;
-      const ref = doc(collection(db, 'debts'));
-      const { id, ...rest } = debt;
-      batch.set(ref, { ...rest, createdAt: serverTimestamp() });
-      importedCount++;
-    }
-
-    if (importedCount === 0) {
+    if (writes.length === 0) {
       showBackupStatus('⚠️ No items found for your account in this backup.', 'warning');
       showToast('No items to import.', 'error');
       return;
     }
 
-    showBackupStatus(`Importing ${importedCount} items…`, 'loading');
-    await batch.commit();
+    // Firestore allows at most 500 writes per batch. Reusing the exported id means a
+    // retry after a failed chunk (or restoring twice) overwrites instead of duplicating.
+    for (let i = 0; i < writes.length; i += BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      for (const [coll, { id, ...rest }] of writes.slice(i, i + BATCH_LIMIT)) {
+        const ref = typeof id === 'string' && DOC_ID.test(id) ? doc(db, coll, id) : doc(collection(db, coll));
+        batch.set(ref, { ...rest, createdAt: serverTimestamp() });
+      }
+      showBackupStatus(`Importing ${Math.min(i + BATCH_LIMIT, writes.length)} of ${writes.length} items…`, 'loading');
+      await batch.commit();
+    }
+    const importedCount = writes.length;
 
     showBackupStatus(`✅ Imported ${importedCount} items successfully!`, 'success');
     showToast(`Backup restored! ${importedCount} items imported.`, 'success');
@@ -291,7 +281,7 @@ function handleDragLeave(event) {
 function handleImportClick() {
   const fileInput = document.getElementById('backup-file-input');
   if (fileInput && fileInput.files[0]) {
-    importData(fileInput.files[0]);
+    return importData(fileInput.files[0]);
   } else {
     showBackupStatus('⚠️ Please select a backup file first.', 'warning');
   }
