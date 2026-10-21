@@ -26,6 +26,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Version service worker cache
+        run: |
+          sed -i "s/'spendwise-dev'/'spendwise-${GITHUB_SHA::7}'/" sw.js
+          grep -q "spendwise-${GITHUB_SHA::7}" sw.js
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

@@ -1,6 +1,7 @@
 // sw.js — SpendWise Service Worker with caching strategy
 
-const CACHE_NAME = 'spendwise-v2';
+// The deploy workflow replaces 'spendwise-dev' with the commit id, so every deploy gets a fresh cache
+const CACHE_NAME = 'spendwise-dev';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -10,11 +11,14 @@ const STATIC_ASSETS = [
   './debt.html',
   './insights.html',
   './assets/css/style.css',
+  './assets/css/tokens.css',
+  './assets/css/responsive.css',
   './assets/js/utils/currency.js',
   './assets/js/utils/helpers.js',
   './assets/js/config/firebase.js',
   './assets/js/config/ai.js',
   './assets/js/dashboard.js',
+  './assets/js/event-delegation.js',
   './assets/js/income.js',
   './assets/js/debt.js',
   './assets/js/modules/auth.js',
@@ -24,6 +28,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/offline-queue.js',
   './assets/js/modules/csv-upload.js',
   './assets/js/modules/backup.js',
+  './assets/js/modules/accessibility.js',
   './assets/images/logo.png',
   './assets/images/logo2.png',
   './manifest.json',
@@ -36,7 +41,8 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
+      // 'reload' skips the browser's HTTP cache so a new deploy never precaches old files
+      return cache.addAll(STATIC_ASSETS.map((url) => new Request(url, { cache: 'reload' }))).catch((err) => {
         // Some assets may fail (e.g., fonts) — don't block install
         console.warn('SW: Failed to cache some assets:', err);
       });
@@ -59,8 +65,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // Skip non-http/https requests (chrome-extension:, blob:, etc.)
-  if (!url.protocol.startsWith('http')) return;
+  // Skip non-http/https requests (chrome-extension:, blob:, etc.) and writes (AI proxy, Firestore)
+  if (!url.protocol.startsWith('http') || e.request.method !== 'GET') return;
 
   // HTML pages: network-first (always get latest)
   if (e.request.destination === 'document' || url.pathname.endsWith('.html')) {
@@ -79,7 +85,8 @@ self.addEventListener('fetch', (e) => {
   // Static assets (CSS, JS, images, fonts): cache-first
   if (['style', 'script', 'image', 'font'].includes(e.request.destination)) {
     e.respondWith(
-      caches.match(e.request).then((cached) => {
+      // ignoreSearch: style.css?v=4 is served from the precached style.css
+      caches.match(e.request, { ignoreSearch: true }).then((cached) => {
         if (cached) return cached;
         return fetch(e.request).then((response) => {
           if (response.ok) {
