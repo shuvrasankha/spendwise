@@ -3,6 +3,7 @@
 import { auth, db } from '../config/firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, getDocs, query, where, addDoc, writeBatch, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { todayStr } from '../utils/helpers.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
@@ -81,7 +82,7 @@ async function exportData() {
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const date = new Date().toISOString().split('T')[0];
+    const date = todayStr();
     a.href = url;
     a.download = `spendwise-backup-${date}.json`;
     document.body.appendChild(a);
