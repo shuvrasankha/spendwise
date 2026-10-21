@@ -6580,3 +6580,73 @@ img {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* =====================
+   EXPENSE PAGE: quick entry
+===================== */
+.date-chips { display: flex; gap: 8px; margin-top: 8px; }
+.date-chip {
+  min-height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text2); font-size: 0.8125rem; font-weight: 500;
+}
+.date-chip.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+
+/* Optional fields live behind "More details" */
+.form-more { border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--surface2); }
+.form-more > summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); list-style: none;
+}
+.form-more > summary::-webkit-details-marker { display: none; }
+.form-more > summary::before { content: '›'; font-size: 1.1rem; color: var(--text3); transition: transform var(--transition); }
+.form-more[open] > summary::before { transform: rotate(90deg); }
+.form-more-hint { margin-left: auto; color: var(--text2); font-weight: 400; }
+.form-more-grid { padding: 4px 14px 14px; }
+
+/* Today's entries */
+.recent-expenses {
+  max-width: 680px; margin: 16px auto 0; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px;
+}
+.recent-expenses-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.recent-expenses-head h3 { font-size: 1rem; font-weight: 600; }
+.recent-expenses-total { font-weight: 600; color: var(--gold); }
+.recent-expenses-list { list-style: none; }
+.recent-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border-light); }
+.recent-item:first-child { border-top: none; }
+.recent-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.recent-title { font-weight: 500; overflow-wrap: anywhere; }
+.recent-meta { font-size: 0.75rem; color: var(--text2); }
+.recent-amount { font-weight: 600; white-space: nowrap; }
+.recent-empty { color: var(--text2); font-size: 0.875rem; padding: 6px 0; }
+/* Summary cards follow the form's width on the expense page */
+.recent-expenses + .summary-cards { max-width: 680px; margin: 16px auto 20px; }
+
+/* Undo inside the toast */
+.toast-undo {
+  margin-left: 12px; min-height: 32px; padding: 0 10px; border-radius: var(--radius-xs);
+  color: var(--accent); font-weight: 600; background: var(--accent-bg);
+}
+
+/* Inline mic: on phones it replaces the floating button, which covered category tiles */
+#add-expense-section .btn-voice-inline { display: none; } /* beats .form-actions .btn-secondary */
+@media (max-width: 767px) {
+  #add-expense-section .btn-voice-inline {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-xs);
+  }
+  body:has(#btn-voice-inline) .voice-fab { display: none !important; }
+  /* Toasts sit above the pinned action bar, never over the Add button */
+  body:has(#btn-voice-inline) .toast { bottom: calc(var(--bottom-nav-h) + 80px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Add stays reachable: the action row sticks above the tab bar while the form is on screen */
+  #add-expense-section .form-actions {
+    position: sticky; bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px)); z-index: 5;
+    flex-direction: row; gap: 8px; margin: 16px -16px -20px; padding: 12px 16px;
+    background: var(--surface); border-radius: 0 0 var(--radius) var(--radius);
+  }
+  #add-expense-section .form-actions .btn-add { flex: 1; white-space: nowrap; }
+  /* Icon-only Clear (aria-label="Clear form") leaves room for a one-line Add Expense */
+  #add-expense-section .btn-clear { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+  #add-expense-section .btn-clear .btn-label { display: none; }
+}

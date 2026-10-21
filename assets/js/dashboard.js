@@ -471,6 +471,8 @@ function updateIncomeCards() {
 
 // ── Update Expense Summary Cards (expense page) ─────────────────────────────
 function updateExpenseCards() {
+  renderRecentExpenses();
+  orderCategoryTiles();
   const monthlyEl = document.getElementById("exp-monthly");
   const yearlyEl = document.getElementById("exp-yearly");
   const totalEl = document.getElementById("exp-total");
@@ -515,6 +517,141 @@ function updateExpenseCards() {
   if (dailySubEl) dailySubEl.textContent = `avg / day this month`;
 }
 
+// ── Expense page: quick entry helpers ───────────────────────────────────────
+const LAST_PAYMENT_KEY = "spendwise_last_payment";
+let lastAdded = null;       // { key, at } of the last saved expense, for the double-tap check
+let confirmedDupKey = null; // set when the user taps Add again after the duplicate warning
+let categoriesOrdered = false;
+
+function lastPayment() {
+  try { return localStorage.getItem(LAST_PAYMENT_KEY) || "UPI"; } catch { return "UPI"; }
+}
+
+function updatePaymentHint() {
+  const sel = document.getElementById("exp-payment");
+  const hint = document.getElementById("exp-more-hint");
+  if (sel && hint) hint.textContent = sel.value;
+}
+
+function applyLastPayment() {
+  const sel = document.getElementById("exp-payment");
+  if (!sel) return;
+  sel.value = lastPayment();
+  toggleCardName("exp-card-name-wrap", sel.value);
+  updatePaymentHint();
+}
+
+function rememberAdd(key, payment) {
+  lastAdded = { key, at: Date.now() };
+  confirmedDupKey = null;
+  try { localStorage.setItem(LAST_PAYMENT_KEY, payment); } catch { /* ignore */ }
+}
+
+function syncDateChips() {
+  const value = document.getElementById("exp-date")?.value;
+  document.querySelectorAll("[data-date-offset]").forEach(chip => {
+    const d = new Date(); d.setDate(d.getDate() - Number(chip.dataset.dateOffset));
+    const on = value === todayStr(d);
+    chip.classList.toggle("active", on);
+    chip.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
+// Most-used categories (last 60 days) first; done once per visit so tiles don't move under a finger
+function orderCategoryTiles() {
+  const picker = document.getElementById("category-picker");
+  if (!picker || categoriesOrdered || !allExpenses.length) return;
+  categoriesOrdered = true;
+  const since = todayStr(new Date(Date.now() - 60 * 864e5));
+  const counts = {};
+  allExpenses.forEach(e => { if (e.date >= since) counts[e.category] = (counts[e.category] || 0) + 1; });
+  [...picker.querySelectorAll(".cat-tile")]
+    .map((tile, i) => ({ tile, i, n: counts[tile.dataset.value] || 0 }))
+    .sort((a, b) => b.n - a.n || a.i - b.i)
+    .forEach(({ tile }) => picker.appendChild(tile));
+}
+
+// Today's entries under the form: confirms a save and lets mistakes be fixed without leaving the page
+function renderRecentExpenses() {
+  const list = document.getElementById("recent-expenses-list");
+  if (!list) return;
+  const today = todayStr();
+  const items = allExpenses.filter(e => e.date === today);
+  const totalEl = document.getElementById("recent-expenses-total");
+  if (totalEl) totalEl.textContent = items.length ? fmt(items.reduce((sum, e) => sum + e.amount, 0)) : "";
+  if (!items.length) {
+    const li = document.createElement("li");
+    li.className = "recent-empty";
+    li.textContent = "Nothing added today yet.";
+    list.replaceChildren(li);
+    return;
+  }
+  list.replaceChildren(...items.map(e => {
+    const li = document.createElement("li");
+    li.className = "recent-item";
+    const main = document.createElement("div");
+    main.className = "recent-main";
+    const title = document.createElement("span");
+    title.className = "recent-title";
+    title.textContent = e.description && e.description !== "-" ? e.description : e.category;
+    const meta = document.createElement("span");
+    meta.className = "recent-meta";
+    meta.textContent = [e.category, e.payment].filter(Boolean).join(" · ") + (e.pending ? " · waiting to sync" : "");
+    main.append(title, meta);
+    const amount = document.createElement("span");
+    amount.className = "recent-amount";
+    amount.textContent = fmt(e.amount);
+    li.append(main, amount);
+    if (!e.pending) { // queued offline entries have no document to edit yet
+      const actions = document.createElement("div");
+      actions.className = "action-buttons";
+      actions.innerHTML = `<button class="btn-action edit" data-edit-expense="${e.id}" aria-label="Edit"><i data-lucide="pencil"></i></button><button class="btn-action delete" data-delete-expense="${e.id}" aria-label="Delete"><i data-lucide="trash-2"></i></button>`;
+      li.append(actions);
+    }
+    return li;
+  }));
+  if (window.lucide) lucide.createIcons();
+}
+
+function refreshExpenseViews() {
+  dashboardPage = 1;
+  updateCards();
+  renderDashboardTable();
+  renderHistory();
+  updateExpenseCards();
+  requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+  saveToCache(currentUser.uid, allExpenses);
+}
+
+// "Expense added. Undo" for a few seconds after saving (undo beats a confirmation dialog)
+let undoTimer = null;
+function showUndoToast(msg, onUndo) {
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.className = "toast success";
+  t.replaceChildren(document.createTextNode(msg));
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "toast-undo";
+  btn.textContent = "Undo";
+  btn.addEventListener("click", async (ev) => {
+    ev.stopPropagation();
+    clearTimeout(undoTimer);
+    t.classList.add("hidden");
+    try { await onUndo(); showToast("Expense removed.", "success"); }
+    catch { showToast("Couldn't undo. Delete it from Today's list instead.", "error"); }
+  });
+  t.append(btn);
+  t.classList.remove("hidden");
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => t.classList.add("hidden"), 6000);
+}
+
+function removeLocalExpense(id) {
+  allExpenses = allExpenses.filter(e => e.id !== id);
+  refreshExpenseViews();
+}
+
 window.addExpense = async () => {
   const amount = parseFloat(document.getElementById("exp-amount").value);
   const category = document.getElementById("exp-category").value;
@@ -526,14 +663,22 @@ window.addExpense = async () => {
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
+  // The same amount + category + date again within 2 minutes is usually a double tap: ask once
+  const dupKey = `${amount}|${category}|${date}`;
+  if (lastAdded && lastAdded.key === dupKey && Date.now() - lastAdded.at < 120000 && confirmedDupKey !== dupKey) {
+    confirmedDupKey = dupKey;
+    showFormMsg(`You added ${fmt(amount)} for ${category} a moment ago. Tap Add Expense again to save it twice.`, "error");
+    return;
+  }
   try {
     const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
     const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
     
     if (window.isOffline && window.isOffline()) {
       if (typeof window.addToOfflineQueue === 'function') {
-        window.addToOfflineQueue('expense', expenseData);
-        allExpenses.unshift({ id: 'offline-' + Date.now(), amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
+        const queueId = window.addToOfflineQueue('expense', expenseData);
+        const tempId = 'offline-' + Date.now();
+        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
         dashboardPage = 1;
         updateCards();
@@ -547,7 +692,8 @@ window.addExpense = async () => {
         saveToCache(currentUser.uid, allExpenses);
         resetForm();
         showFormMsg("Expense saved offline. Will sync when online.", "success");
-        showToast("Saved offline!", "success");
+        rememberAdd(dupKey, payment);
+        showUndoToast("Saved offline.", () => { window.removeFromOfflineQueue(queueId); removeLocalExpense(tempId); });
       } else {
         showFormMsg("Cannot save offline. Please check your connection.", "error");
       }
@@ -571,15 +717,20 @@ window.addExpense = async () => {
     saveToCache(currentUser.uid, allExpenses);
     resetForm();
     showFormMsg("Expense added successfully!", "success");
-    showToast("Expense added!", "success");
+    rememberAdd(dupKey, payment);
+    showUndoToast("Expense added.", async () => {
+      await deleteDoc(doc(db, "expenses", ref.id));
+      removeLocalExpense(ref.id);
+    });
     window.markLoggedToday?.(); // skips today's reminder (reminders.js)
   } catch (e) { 
     console.error(e);
     if (window.addToOfflineQueue && navigator.onLine === false) {
       const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
       const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
-      window.addToOfflineQueue('expense', expenseData);
-      allExpenses.unshift({ id: 'offline-' + Date.now(), amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
+      const queueId = window.addToOfflineQueue('expense', expenseData);
+      const tempId = 'offline-' + Date.now();
+      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
       dashboardPage = 1;
       updateCards();
@@ -593,7 +744,8 @@ window.addExpense = async () => {
       saveToCache(currentUser.uid, allExpenses);
       resetForm();
       showFormMsg("Saved offline due to error. Will sync when online.", "success");
-      showToast("Saved offline!", "success");
+      rememberAdd(dupKey, payment);
+      showUndoToast("Saved offline.", () => { window.removeFromOfflineQueue(queueId); removeLocalExpense(tempId); });
     } else {
       showFormMsg("Couldn't save the expense. Check your connection and try again.", "error"); 
     }
@@ -638,6 +790,7 @@ window.confirmDelete = async () => {
     updateCards();
     renderDashboardTable();
     renderHistory();
+    updateExpenseCards();
     // Defer chart rendering
     requestAnimationFrame(() => {
       renderPieChart();
@@ -758,6 +911,7 @@ window.saveEditExpense = async () => {
     updateCards();
     renderDashboardTable();
     renderHistory();
+    updateExpenseCards();
     // Defer chart rendering
     requestAnimationFrame(() => {
       renderPieChart();
@@ -1889,6 +2043,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Re-init Lucide icons after module loads
   if (window.lucide) lucide.createIcons();
 
+  // Expense page: Today/Yesterday, Enter to save, remembered payment method
+  document.querySelectorAll("[data-date-offset]").forEach(chip => chip.addEventListener("click", () => {
+    const d = new Date(); d.setDate(d.getDate() - Number(chip.dataset.dateOffset));
+    document.getElementById("exp-date").value = todayStr(d);
+    syncDateChips();
+  }));
+  document.getElementById("exp-date")?.addEventListener("change", syncDateChips);
+  ["exp-amount", "exp-description"].forEach(id => document.getElementById(id)?.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); window.addExpense(); }
+  }));
+  document.getElementById("exp-payment")?.addEventListener("change", updatePaymentHint);
+  applyLastPayment();
+  syncDateChips();
+
   document.querySelectorAll('.cat-tile').forEach(tile => {
     tile.addEventListener('click', () => {
       // Determine which picker this tile belongs to
@@ -1914,8 +2082,10 @@ document.addEventListener('DOMContentLoaded', () => {
 const _baseReset = window.resetForm;
 window.resetForm = () => {
   _baseReset();
-  document.querySelectorAll('#category-picker .cat-tile').forEach(t => t.classList.remove('selected'));
+  document.querySelectorAll('#category-picker .cat-tile').forEach(t => { t.classList.remove('selected'); t.setAttribute('aria-checked', 'false'); });
   document.getElementById('exp-category').value = '';
+  applyLastPayment();
+  syncDateChips();
 };
 
 // PERIOD PICKER

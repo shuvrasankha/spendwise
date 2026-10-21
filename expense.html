@@ -224,41 +224,6 @@
       </div>
 
       <!-- Expense Summary Cards -->
-      <div class="summary-cards">
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">This Month</span>
-            <div class="summary-icon"><i data-lucide="calendar"></i></div>
-          </div>
-          <div class="summary-amount" id="exp-monthly"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="exp-monthly-count">0 entries</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">This Year</span>
-            <div class="summary-icon"><i data-lucide="calendar-range"></i></div>
-          </div>
-          <div class="summary-amount" id="exp-yearly"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="exp-yearly-count">0 entries</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Total Expenses</span>
-            <div class="summary-icon"><i data-lucide="trending-down"></i></div>
-          </div>
-          <div class="summary-amount" id="exp-total"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="exp-total-count">0 entries</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Daily Average</span>
-            <div class="summary-icon"><i data-lucide="bar-chart-3"></i></div>
-          </div>
-          <div class="summary-amount" id="exp-daily-avg"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="exp-daily-sub">per day</div>
-        </div>
-      </div>
-
       <!-- Expense Form Card -->
       <div class="form-card" id="add-expense-section">
         <div class="expense-form-header">
@@ -274,24 +239,28 @@
         <div class="form-grid">
           <input type="hidden" id="exp-type" value="expense" />
           <div class="form-group">
-            <label>Amount (<span class="currency-symbol">₹</span>) *</label>
+            <label for="exp-amount">Amount (<span class="currency-symbol">₹</span>) *</label>
             <div class="input-icon-wrap">
               <i data-lucide="banknote"></i>
-              <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01" />
+              <input type="number" id="exp-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal" enterkeyhint="done" />
             </div>
           </div>
           <div class="form-group">
-            <label>Date *</label>
+            <label for="exp-date">Date *</label>
             <div class="input-icon-wrap">
               <i data-lucide="calendar"></i>
               <input type="date" id="exp-date" />
             </div>
+            <div class="date-chips" role="group" aria-label="Quick date">
+              <button type="button" class="date-chip" data-date-offset="0">Today</button>
+              <button type="button" class="date-chip" data-date-offset="1">Yesterday</button>
+            </div>
           </div>
 
           <div class="form-group full-width" id="add-expense-categories">
-            <label>Category *</label>
+            <label id="exp-category-label">Category *</label>
             <input type="hidden" id="exp-category" />
-            <div class="category-picker" id="category-picker">
+            <div class="category-picker" id="category-picker" aria-labelledby="exp-category-label">
               <button type="button" class="cat-tile" data-value="Food &amp; Dining">
                 <div class="cat-icon"><i data-lucide="utensils"></i></div>
                 <span>Food</span>
@@ -355,55 +324,107 @@
             </div>
           </div>
 
-          <div class="form-group" id="add-payment-group">
-            <label>Payment Method</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="credit-card"></i>
-              <select id="exp-payment" data-change="toggleCardNameExp">
-                <option value="UPI">UPI</option>
-                <option value="Cash">Cash</option>
-                <option value="Credit Card">Credit Card</option>
-                <option value="Debit Card">Debit Card</option>
-                <option value="Net Banking">Net Banking</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group" id="exp-card-name-wrap" style="display:none">
-            <label>Card Name <span class="optional-tag">optional</span></label>
-            <div class="input-icon-wrap">
-              <i data-lucide="credit-card"></i>
-              <input type="text" id="exp-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK" />
-            </div>
-          </div>
           <div class="form-group">
-            <label>Description</label>
+            <label for="exp-description">Description</label>
             <div class="input-icon-wrap">
               <i data-lucide="pencil-line"></i>
-              <input type="text" id="exp-description" placeholder="What did you spend on?" />
+              <input type="text" id="exp-description" placeholder="What did you spend on?" enterkeyhint="done" />
             </div>
           </div>
-          <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="exp-notes" rows="2" placeholder="Any additional notes..."></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
-            <div class="tag-input-wrap">
-              <div id="exp-tags-display" class="tags-display"></div>
-              <input type="text" id="exp-tags" placeholder="e.g. vacation, work, urgent" />
+          <details class="form-more full-width" id="exp-more">
+            <summary>More details <span class="form-more-hint" id="exp-more-hint">UPI</span></summary>
+            <div class="form-grid form-more-grid">
+              <div class="form-group" id="add-payment-group">
+                <label for="exp-payment">Payment Method</label>
+                <div class="input-icon-wrap">
+                  <i data-lucide="credit-card"></i>
+                  <select id="exp-payment" data-change="toggleCardNameExp">
+                    <option value="UPI">UPI</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Credit Card">Credit Card</option>
+                    <option value="Debit Card">Debit Card</option>
+                    <option value="Net Banking">Net Banking</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" id="exp-card-name-wrap" style="display:none">
+                <label for="exp-card-name">Card Name <span class="optional-tag">optional</span></label>
+                <div class="input-icon-wrap">
+                  <i data-lucide="credit-card"></i>
+                  <input type="text" id="exp-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK" />
+                </div>
+              </div>
+              <div class="form-group full-width">
+                <label for="exp-notes">Notes <span class="optional-tag">optional</span></label>
+                <textarea id="exp-notes" rows="2" placeholder="Any additional notes..."></textarea>
+              </div>
+              <div class="form-group full-width">
+                <label for="exp-tags">Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
+                <div class="tag-input-wrap">
+                  <div id="exp-tags-display" class="tags-display"></div>
+                  <input type="text" id="exp-tags" placeholder="e.g. vacation, work, urgent" />
+                </div>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
         <div class="form-actions">
-          <button class="btn-secondary" data-action="resetForm">
-            <i data-lucide="rotate-ccw"></i> Clear
+          <button class="btn-secondary btn-clear" data-action="resetForm" aria-label="Clear form">
+            <i data-lucide="rotate-ccw"></i> <span class="btn-label">Clear</span>
+          </button>
+          <button type="button" class="btn-secondary btn-voice-inline" id="btn-voice-inline" data-action="openVoiceModal" aria-label="Add by voice" title="Add by voice">
+            <i data-lucide="mic"></i>
           </button>
           <button class="btn-primary btn-add" id="btn-add-transaction" data-action="addExpense">
             <i data-lucide="plus-circle"></i> Add Expense
           </button>
         </div>
         <div id="form-msg" class="form-msg hidden"></div>
+      </div>
+
+      <!-- Today's entries: confirms saves and lets mistakes be fixed here -->
+      <section class="recent-expenses" aria-labelledby="recent-expenses-title">
+        <div class="recent-expenses-head">
+          <h3 id="recent-expenses-title">Today</h3>
+          <span class="recent-expenses-total" id="recent-expenses-total"></span>
+        </div>
+        <ul class="recent-expenses-list" id="recent-expenses-list"></ul>
+      </section>
+
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">This Month</span>
+            <div class="summary-icon"><i data-lucide="calendar"></i></div>
+          </div>
+          <div class="summary-amount" id="exp-monthly"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="exp-monthly-count">0 entries</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">This Year</span>
+            <div class="summary-icon"><i data-lucide="calendar-range"></i></div>
+          </div>
+          <div class="summary-amount" id="exp-yearly"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="exp-yearly-count">0 entries</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Total Expenses</span>
+            <div class="summary-icon"><i data-lucide="trending-down"></i></div>
+          </div>
+          <div class="summary-amount" id="exp-total"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="exp-total-count">0 entries</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-top">
+            <span class="summary-label">Daily Average</span>
+            <div class="summary-icon"><i data-lucide="bar-chart-3"></i></div>
+          </div>
+          <div class="summary-amount" id="exp-daily-avg"><span class="currency-symbol">₹</span> 0.00</div>
+          <div class="summary-sub" id="exp-daily-sub">per day</div>
+        </div>
       </div>
 
       <!-- CSV Bulk Import Card -->
