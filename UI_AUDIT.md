@@ -69,17 +69,19 @@ Tick a box when fixed. Findings are numbered so you can say "fix 3".
   - **Fix:** `input, select, textarea { font-size: max(1rem, 16px); }` at `max-width: 767px`. Don't use `maximum-scale=1` (it blocks pinch-zoom, which people with low vision need).
 
   - **Status (2026-10-21, branch `fix/ui-critical-high`):** Fixed: inputs, selects and textareas are 16px at ≤767px.
-- [ ] **7. Body text is 14 px and ignores the reader's text-size setting** — Medium (`style.css:85` `html { font-size: 16px; }`; `tokens.css:152` `--text-base: 0.875rem`)
+- [x] **7. Body text is 14 px and ignores the reader's text-size setting** — Medium (`style.css:85` `html { font-size: 16px; }`; `tokens.css:152` `--text-base: 0.875rem`)
   - **What:** body and table text is 14 px, against a 17 pt default. Fixing the root size in px also overrides the browser's default font-size setting, and on iOS nothing follows Dynamic Type.
   - **Why:** `typography.md › Supporting Dynamic Type`: "Make sure your app's layout adapts to all font sizes." `accessibility.md › Vision`: "give people the option to enlarge text by at least 200 percent."
   - **Fix:** remove `font-size: 16px` from `html` (or set `100%`). On iOS, opt in with `html { font: -apple-system-body; }` and keep sizes in `rem` so text follows Settings › Display & Text Size. Raise `--text-base` to `1rem`. Test at 200 %; summary cards and table rows must wrap, not clip.
 
-- [ ] **8. Row edit and delete buttons are small and 6 px apart** — Medium (`style.css:1535-1544`; touch rule at `responsive.css:597` targets `.table-actions .btn-action`, a class no markup uses)
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: root `font-size: 100%`, with Dynamic Type on iOS only (`font: -apple-system-body`, gated by `-webkit-touch-callout` because Mac Safari's value is 13px). Also removed two more fixed roots the audit missed: phones forced to 15px (`responsive.css`) and 17px at ≥1920px (now 106.25%). `--text-base` is 1rem. At 200% text no page scrolls sideways: summary, period, form and category grids use `minmax(0, 1fr)`, and the CSV card title and toasts wrap. The header wordmark and tab labels stay fixed px, since `typography.md` says tab titles needn't grow.
+- [x] **8. Row edit and delete buttons are small and 6 px apart** — Medium (`style.css:1535-1544`; touch rule at `responsive.css:597` targets `.table-actions .btn-action`, a class no markup uses)
   - **What:** the rows render `.action-buttons`, so the 44 px touch rule never applies. Edit and delete are about 30×30 px with a 6 px gap, so a mis-tap on Delete is easy. The confirmation modal limits the damage.
   - **Why:** `accessibility.md › Mobility`: "iOS 44x44 pt default… it works well to add about 12 points of padding around elements that include a bezel."
   - **Fix:** change the selector to `.action-buttons .btn-action` and set `gap: 12px`. On phones, consider putting both actions in a swipe or a single row menu (`designing-for-ios.md › Best practices`: "let people swipe to navigate back or initiate actions in a list row").
 
-- [ ] **9. The app has its own light/dark switch, starts dark, and doesn't follow the system** — Medium (`index.html:2` `data-theme="dark"`; `dashboard.js:1444`, `income.js:82`, `debt.js:81`; `<meta name="theme-color" content="#121212">` on all pages)
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: the touch rule now targets `.action-buttons .btn-action` (44px), and the gap is 12px.
+- [x] **9. The app has its own light/dark switch, starts dark, and doesn't follow the system** — Medium (`index.html:2` `data-theme="dark"`; `dashboard.js:1444`, `income.js:82`, `debt.js:81`; `<meta name="theme-color" content="#121212">` on all pages)
   - **What:**
     - Every page loads dark, then JS may switch it to light, which causes a dark flash for light-mode users.
     - The system preference is read once and never watched, and after one tap on the sun/moon button the system setting is ignored forever.
@@ -87,29 +89,35 @@ Tick a box when fixed. Findings are numbered so you can say "fix 3".
   - **Why:** `dark-mode.md › Best practices`: "Avoid offering an app-specific appearance setting… they may think your app is broken because it doesn't respond to their systemwide appearance choice."
   - **Fix:** remove the toggle (or make it "System / Light / Dark" with System as default). Drive colours with `@media (prefers-color-scheme: dark)` in CSS, so there is no JS and no flash. Use two theme-color metas: `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f5f7">` and the dark one.
 
-- [ ] **10. Dashboard headline has a grammar error and ignores the currency setting** — Medium (`assets/js/dashboard.js:819-821`)
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed, as System / Light / Dark (your choice). New `assets/js/theme.js` loads in `<head>`, so there is no flash. System is the default and follows OS changes live. The button cycles System → Light → Dark with an aria-label. It replaces 3 copies of the theme code, so the dashboard and income pages no longer disagree about the icon. The hard-coded `data-theme="dark"` is gone, and there are two `theme-color` metas.
+- [x] **10. Dashboard headline has a grammar error and ignores the currency setting** — Medium (`assets/js/dashboard.js:819-821`)
   - **What:** "Today you have spend …", and the zero state hard-codes "Rs 0" even when the user picked USD or EUR.
   - **Why:** `writing.md › Getting started`: "Be clear. Choose words that are easily understood." `branding.md`: use your voice "in all the written communication you display".
   - **Fix:** "Spent today: {fmt(total)}" and use `fmt(0)` for the zero state. If you want warmth, try "Nothing spent yet today" for zero.
 
-- [ ] **11. Error messages talk about the system, not the person** — Medium (`dashboard.js:602` "Failed to save. Check Firebase config."; generic "Something went wrong. Try again." in 3 places)
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: "Spent today ₹…" / "Nothing spent yet today". The static "Rs 0.00" placeholders use `.currency-symbol`, so they show the chosen currency.
+- [x] **11. Error messages talk about the system, not the person** — Medium (`dashboard.js:602` "Failed to save. Check Firebase config."; generic "Something went wrong. Try again." in 3 places)
   - **Why:** `writing.md › Best practices`: "be clear about what someone can do to fix it… Avoid robotic error messages with no helpful information."
   - **Fix:** "Couldn't save. Check your connection — it'll be saved offline if you're not connected." Map Firebase codes to specific advice.
 
-- [ ] **12. Errors in toasts disappear after 3 seconds** — Low (`backup.js:22`, `offline-queue.js` showToast, `dashboard.js` showToast)
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: one `friendlyErr` in `helpers.js` (was 3 copies) with actionable messages, plus network and too-many-requests codes. "Check Firebase config" became "Couldn't save the expense. Check your connection and try again."
+- [x] **12. Errors in toasts disappear after 3 seconds** — Low (`backup.js:22`, `offline-queue.js` showToast, `dashboard.js` showToast)
   - **Why:** `accessibility.md › Cognitive`: "Minimize use of time-boxed interface elements… Prefer dismissing views with an explicit action."
   - **Fix:** keep success toasts at 3 s. Make error toasts stay until dismissed (add a close button), or show them inline next to the field, as `showFormMsg` already does.
 
-- [ ] **13. Mixed capitalisation and emoji in status text** — Low
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: error toasts stay until tapped (✕ shown; the handler is in `accessibility.js`). Success toasts still hide after 3s. The offline-queue fallback toast used an unstyled `toast-error` class; it now uses `toast error`.
+- [x] **13. Mixed capitalisation and emoji in status text** — Low
   - **What:**
     - Badges use title case ("They Owe Me", "I Owe Them"); most buttons and messages use sentence case.
     - Status lines start with emoji ("✅ Imported…", "❌ Import failed", "⏳ …"), which VoiceOver reads aloud as "check mark button" and so on.
   - **Why:** `writing.md › Best practices`: "Choose a style for each UI element type and use it consistently."
   - **Fix:** sentence case everywhere ("They owe me"). Put the status meaning in an icon with `aria-hidden="true"` plus text, not an emoji inside the string.
 
-- [ ] **14. Insights error close button has no name** — Low (`insights.html:366` `.error-dismiss`)
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: sentence case "They owe me / I owe them" (debt page, badges, voice preview). 23 leading emoji removed from status strings in `backup.js`, `csv-upload.js` and `voice-command.js`.
+- [x] **14. Insights error close button has no name** — Low (`insights.html:366` `.error-dismiss`)
   - **Fix:** `aria-label="Dismiss"`. All other icon buttons have a `title` or get an `aria-label` from `accessibility.js`.
 
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: `aria-label="Dismiss error"`.
 ---
 
 ## Craft notes
@@ -123,11 +131,12 @@ Tick a box when fixed. Findings are numbered so you can say "fix 3".
     - Remove the rainbow gradient.
 
   - **Status (2026-10-21, branch `fix/ui-critical-high`):** Fixed: gold `--gold` (#8a6508 light, 5.32:1 / #e8b84a dark, 9.23:1) on the daily total and the three Add buttons (`.btn-add`). Rainbow and violet gradients replaced with solid colours.
-- [ ] **16. Two different logos** — Medium
+- [x] **16. Two different logos** — Medium
   - **What:** the home-screen icon and favicon use `logo2.png` (gold Indus coin, 12 references). The app header uses `logo.png` (blue shield with arrow and coin, 11 references). A person installs one brand and opens another.
   - **Fix:** choose one mark and use it in both places. Also drop the logo from page headers after the first screen (`branding.md › Best practices`: "Resist the temptation to display your logo throughout your app").
 
-- **Remove one accessory:** the hidden bottom nav plus hamburger plus sidebar is three navigation systems in the markup. After #5, delete the mobile hamburger panel entirely.
+  - **Status (2026-10-21, branch `fix/ui-remaining`):** Fixed: the gold coin (`logo2.png`) is used everywhere, with "SpendWise" as live text in the header and on the sign-in card. `logo.png` was deleted.
+- **Remove one accessory (done, branch `fix/ui-remaining`):** the hamburger button and slide-out panel markup were removed from all 6 pages (the JS helpers are null-guarded). Originally: the hidden bottom nav plus hamburger plus sidebar is three navigation systems in the markup. After #5, delete the mobile hamburger panel entirely.
 
 ---
 
@@ -154,5 +163,7 @@ Tick a box when fixed. Findings are numbered so you can say "fix 3".
 - **Foldables:** `@media (spanning: …)` was never standardised. Use the viewport-segments API (`@media (horizontal-viewport-segments: 2)`) or drop it.
 
 **Verified 2026-10-21** by rendering with headless Chrome at 390×844 and 1280px: bottom nav visible / hamburger hidden on phones, inputs 16px, Add buttons gold in light and dark, focus ring drawn. Not yet checked on a real iPhone.
+
+**Still open:** `viewport-fit=cover` and the foldable `spanning` query (platform notes). Both need a real-device check.
 
 **Suggested order:** #1 → #2 → #3 → #4 (accessibility), then #5 and #6 (navigation and input friction on phones), then #7–#11, then craft #15–#16.

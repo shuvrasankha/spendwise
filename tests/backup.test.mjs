@@ -55,7 +55,7 @@ test('1,201 items are written in batches of at most 500', async () => {
   await window.handleImportClick();
 
   assert.deepEqual(fb.commits.map(c => c.length), [500, 500, 201]);
-  assert.equal(statuses.at(-1), '✅ Imported 1201 items successfully!');
+  assert.equal(statuses.at(-1), 'Imported 1201 items successfully!');
 });
 
 test('exported ids are reused, so restoring twice writes the same documents', async () => {
@@ -75,7 +75,7 @@ test('a retry after a failed chunk overwrites the saved chunk instead of duplica
 
   await window.handleImportClick();
   assert.equal(fb.commits.length, 1);
-  assert.equal(statuses.at(-1), '❌ Import failed. Please try again.');
+  assert.equal(statuses.at(-1), 'Import failed. Please try again.');
 
   await window.handleImportClick();
   const all = refs();

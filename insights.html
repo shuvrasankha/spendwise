@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
@@ -9,7 +9,9 @@
   <title>SpendWise - AI Insights</title>
   <link rel="icon" type="image/png" href="assets/images/logo2.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#121212">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c1c1e">
+  <script src="assets/js/theme.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
@@ -63,7 +65,8 @@
   <div id="auth-screen" class="auth-screen hidden">
     <div class="auth-card">
       <div class="auth-logo">
-        <img src="assets/images/logo.png" alt="SpendWise Logo" class="auth-logo-image">
+        <img src="assets/images/logo2.png" alt="" class="auth-logo-image">
+        <h1 class="auth-logo-text">SpendWise</h1>
         <p>Track every rupee, effortlessly.</p>
       </div>
       <div class="tab-switcher">
@@ -136,14 +139,11 @@
   <div id="app" class="app hidden">
     <nav class="navbar">
       <div class="nav-left">
-        <a href="index.html" class="nav-logo-link"><img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image"></a>
+        <a href="index.html" class="nav-logo-link"><img src="assets/images/logo2.png" alt="" class="nav-logo-image"><span class="nav-logo-text">SpendWise</span></a>
       </div>
       <div class="nav-right">
         <button class="theme-toggle" data-action="toggleTheme" title="Toggle Theme" id="theme-btn">
           <i id="theme-icon" data-lucide="sun"></i>
-        </button>
-        <button class="menu-toggle" data-action="toggleMobileMenu" title="Menu" id="menu-toggle-btn">
-          <i data-lucide="menu"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
           <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
@@ -160,40 +160,6 @@
       </div>
     </nav>
 
-    <div class="mobile-menu-overlay" id="mobile-menu-overlay" data-action="closeMobileMenu"></div>
-    <div class="mobile-menu-panel" id="mobile-menu-panel">
-      <div class="mobile-menu-header">
-        <span class="mobile-menu-title">Menu</span>
-        <button class="mobile-menu-close" data-action="closeMobileMenu">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <nav class="mobile-menu-nav">
-        <button class="mobile-menu-btn" data-action="navigateToDashboard" id="mmnu-dashboard">
-          <i data-lucide="layout-dashboard"></i> Dashboard
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToExpense" id="mmnu-add">
-          <i data-lucide="wallet"></i> Expense
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToIncome" id="mmnu-income">
-          <i data-lucide="trending-up"></i> Income
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToHistory" id="mmnu-history">
-          <i data-lucide="history"></i> History
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToDebt" id="mmnu-debt">
-          <i data-lucide="hand-coins"></i> Debt Tracker
-        </button>
-        <button class="mobile-menu-btn active" data-action="navigateToInsights" id="mmnu-insights">
-          <i data-lucide="sparkles"></i> AI Insights
-        </button>
-      </nav>
-      <div class="mobile-menu-footer">
-        <button class="btn-logout" data-action="handleLogout">
-          <i data-lucide="log-out"></i> Logout
-        </button>
-      </div>
-    </div>
 
     <div class="bottom-nav">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
@@ -363,7 +329,7 @@
             <h3 id="error-title">Something went wrong</h3>
             <p id="error-message">Unable to generate insights. Please try again.</p>
           </div>
-          <button class="error-dismiss" data-action="dismissInsightError">
+          <button class="error-dismiss" data-action="dismissInsightError" aria-label="Dismiss error">
             <i data-lucide="x"></i>
           </button>
         </div>

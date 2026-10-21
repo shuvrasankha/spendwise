@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
@@ -9,7 +9,9 @@
   <title>SpendWise - Income Tracker</title>
   <link rel="icon" type="image/png" href="assets/images/logo2.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#121212">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c1c1e">
+  <script src="assets/js/theme.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo2.png">
@@ -65,14 +67,11 @@
   <div id="app" class="app hidden">
     <nav class="navbar">
       <div class="nav-left">
-        <a href="index.html" class="nav-logo-link"><img src="assets/images/logo.png" alt="SpendWise Logo" class="nav-logo-image"></a>
+        <a href="index.html" class="nav-logo-link"><img src="assets/images/logo2.png" alt="" class="nav-logo-image"><span class="nav-logo-text">SpendWise</span></a>
       </div>
       <div class="nav-right">
         <button class="theme-toggle" data-action="toggleTheme" title="Toggle Theme" id="theme-btn">
           <i id="theme-icon" data-lucide="sun"></i>
-        </button>
-        <button class="menu-toggle" data-action="toggleMobileMenu" title="Menu" id="menu-toggle-btn">
-          <i data-lucide="menu"></i>
         </button>
         <div class="profile-menu" id="profile-menu">
           <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
@@ -90,40 +89,6 @@
     </nav>
 
     <!-- Mobile Menu -->
-    <div class="mobile-menu-overlay" id="mobile-menu-overlay" data-action="closeMobileMenu"></div>
-    <div class="mobile-menu-panel" id="mobile-menu-panel">
-      <div class="mobile-menu-header">
-        <span class="mobile-menu-title">Menu</span>
-        <button class="mobile-menu-close" data-action="closeMobileMenu">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <nav class="mobile-menu-nav">
-        <button class="mobile-menu-btn" data-action="navigateToDashboard" id="mmnu-dashboard">
-          <i data-lucide="layout-dashboard"></i> Dashboard
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToExpense" id="mmnu-add">
-          <i data-lucide="wallet"></i> Expense
-        </button>
-        <button class="mobile-menu-btn active" data-action="navigateToIncome" id="mmnu-income">
-          <i data-lucide="trending-up"></i> Income
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToHistory" id="mmnu-history">
-          <i data-lucide="history"></i> History
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToDebt" id="mmnu-debt">
-          <i data-lucide="hand-coins"></i> Debt Tracker
-        </button>
-        <button class="mobile-menu-btn" data-action="navigateToInsights" id="mmnu-insights">
-          <i data-lucide="sparkles"></i> AI Insights
-        </button>
-      </nav>
-      <div class="mobile-menu-footer">
-        <button class="btn-logout" data-action="handleLogout">
-          <i data-lucide="log-out"></i> Logout
-        </button>
-      </div>
-    </div>
 
     <!-- Bottom nav (mobile) -->
     <div class="bottom-nav">
@@ -184,7 +149,7 @@
             <span class="summary-label">This Month</span>
             <div class="summary-icon"><i data-lucide="trending-up"></i></div>
           </div>
-          <div class="summary-amount" id="inc-monthly">Rs 0.00</div>
+          <div class="summary-amount" id="inc-monthly"><span class="currency-symbol">₹</span> 0.00</div>
           <div class="summary-sub" id="inc-monthly-count">0 entries</div>
         </div>
         <div class="summary-card">
@@ -192,7 +157,7 @@
             <span class="summary-label">This Year</span>
             <div class="summary-icon"><i data-lucide="calendar"></i></div>
           </div>
-          <div class="summary-amount" id="inc-yearly">Rs 0.00</div>
+          <div class="summary-amount" id="inc-yearly"><span class="currency-symbol">₹</span> 0.00</div>
           <div class="summary-sub" id="inc-yearly-count">0 entries</div>
         </div>
         <div class="summary-card">
@@ -200,7 +165,7 @@
             <span class="summary-label">Cash Income</span>
             <div class="summary-icon"><i data-lucide="banknote"></i></div>
           </div>
-          <div class="summary-amount" id="inc-cash">Rs 0.00</div>
+          <div class="summary-amount" id="inc-cash"><span class="currency-symbol">₹</span> 0.00</div>
           <div class="summary-sub" id="inc-cash-label">All time</div>
         </div>
         <div class="summary-card">
@@ -208,7 +173,7 @@
             <span class="summary-label">Online Income</span>
             <div class="summary-icon"><i data-lucide="building-2"></i></div>
           </div>
-          <div class="summary-amount" id="inc-online">Rs 0.00</div>
+          <div class="summary-amount" id="inc-online"><span class="currency-symbol">₹</span> 0.00</div>
           <div class="summary-sub" id="inc-online-label">All time</div>
         </div>
       </div>
