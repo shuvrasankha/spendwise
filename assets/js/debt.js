@@ -666,3 +666,6 @@ function friendlyErr(code) {
 // Import auth functions
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 const gProvider = new GoogleAuthProvider();
+
+// Refresh after offline-queue.js writes queued items
+window.addEventListener('spendwise:synced', () => loadDebts());
