@@ -27,6 +27,12 @@ test('GET is rejected', async () => {
   assert.equal(res.status, 405);
 });
 
+test('push routes also require sign-in', async () => {
+  const req = new Request(URL_ + '/push/subscribe', { method: 'POST', body: JSON.stringify({ endpoint: 'https://x', remindAt: '21:00', tz: 'Asia/Kolkata' }) });
+  const res = await worker.fetch(req, { ...env, DB: { prepare() { throw new Error('DB was touched'); } } });
+  assert.equal(res.status, 401);
+});
+
 test('no token is rejected', async () => {
   const res = await worker.fetch(new Request(URL_, { method: 'POST', body }), env);
   assert.equal(res.status, 401);

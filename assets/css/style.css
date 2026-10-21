@@ -372,6 +372,35 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   .profile-currency-wrap select { font-size: 0.875rem; }
 }
 
+/* ── Daily reminder (reminders.js injects this into the profile menu) ── */
+.profile-reminder-wrap {
+  padding: 12px 18px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  max-width: 260px;
+}
+.profile-reminder-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.profile-reminder-label { font-size: 0.875rem; font-weight: 500; color: var(--text); }
+.reminder-switch {
+  appearance: none; -webkit-appearance: none; flex-shrink: 0;
+  width: 44px; height: 26px; border-radius: 13px; background: var(--text3); position: relative; /* ≥3:1 for the off state */
+  cursor: pointer; transition: background var(--transition);
+}
+.reminder-switch::before {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: var(--shadow-sm); transition: transform var(--transition);
+}
+.reminder-switch:checked { background: var(--success); }
+.reminder-switch:checked::before { transform: translateX(18px); }
+.reminder-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+.profile-reminder-time {
+  width: 100%; margin-top: 4px; padding: 7px 10px; min-height: 36px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xs);
+  color: var(--text); font-size: 0.875rem;
+}
+.profile-reminder-time:disabled { opacity: 0.5; }
+.profile-reminder-note { margin-top: 8px; font-size: 0.75rem; line-height: 1.4; color: var(--text2); }
+
 /* ── Logout button ── */
 .btn-logout {
   display: flex; align-items: center; gap: 10px;

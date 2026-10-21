@@ -572,6 +572,7 @@ window.addExpense = async () => {
     resetForm();
     showFormMsg("Expense added successfully!", "success");
     showToast("Expense added!", "success");
+    window.markLoggedToday?.(); // skips today's reminder (reminders.js)
   } catch (e) { 
     console.error(e);
     if (window.addToOfflineQueue && navigator.onLine === false) {

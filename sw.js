@@ -30,6 +30,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/csv-upload.js',
   './assets/js/modules/backup.js',
   './assets/js/modules/accessibility.js',
+  './assets/js/modules/reminders.js',
   './assets/images/logo2.png',
   './manifest.json',
   'https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js',
@@ -104,5 +105,28 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(e.request)
       .catch(() => caches.match(e.request))
+  );
+});
+
+// Daily reminder (worker/src/push.js sends an empty push; the text lives here)
+self.addEventListener('push', (e) => {
+  e.waitUntil(self.registration.showNotification("Log today's spending", {
+    body: 'Add what you spent today. It only takes a few seconds.',
+    icon: './assets/images/logo2.png',
+    tag: 'daily-reminder', // a newer reminder replaces an unread one
+    data: { url: new URL('./expense.html', self.registration.scope).href },
+  }));
+});
+
+// Tapping the reminder opens Add Expense, reusing an open SpendWise window if there is one
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = e.notification.data?.url || self.registration.scope;
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => w.url.startsWith(self.registration.scope));
+      if (open) return open.navigate(url).then((w) => (w || open).focus());
+      return self.clients.openWindow(url);
+    })
   );
 });
