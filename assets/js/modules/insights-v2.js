@@ -373,7 +373,7 @@ function showChatError(text) {
 function setBusy(on) {
   busy = on;
   ['chat-input', 'chat-send-btn'].forEach(id => { const el = $(id); if (el) el.disabled = on; });
-  document.querySelectorAll('.suggested-btn, .ins-topic').forEach(b => { b.disabled = on; });
+  document.querySelectorAll('.suggested-btn, .chip').forEach(b => { b.disabled = on; });
 }
 
 function closeChat() {
@@ -449,13 +449,13 @@ function showConsentDialog() {
 // ── Setup ───────────────────────────────────────────────────────────────────
 function selectPeriod(period) {
   selectedPeriod = period;
-  document.querySelectorAll('.ins-period').forEach(b => b.setAttribute('aria-pressed', b.dataset.period === period ? 'true' : 'false'));
+  document.querySelectorAll('.seg-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.period === period ? 'true' : 'false'));
   $('custom-date-range')?.classList.toggle('hidden', period !== 'custom');
 }
 
 function initUI() {
   $('period-tabs')?.addEventListener('click', e => {
-    const btn = e.target.closest('.ins-period');
+    const btn = e.target.closest('.seg-btn');
     if (!btn || btn.dataset.period === selectedPeriod) return;
     selectPeriod(btn.dataset.period);
     closeChat(); // a conversation is about one period's numbers
@@ -473,9 +473,9 @@ function initUI() {
 
   const topics = $('coach-topics');
   if (topics) {
-    topics.innerHTML = Object.entries(TYPES).map(([type, t]) => `<button type="button" class="ins-topic" data-type="${type}">${esc(t.chip)}</button>`).join('');
+    topics.innerHTML = Object.entries(TYPES).map(([type, t]) => `<button type="button" class="chip" data-type="${type}">${esc(t.chip)}</button>`).join('');
     topics.addEventListener('click', e => {
-      const btn = e.target.closest('.ins-topic');
+      const btn = e.target.closest('.chip');
       if (btn) startChat(btn.dataset.type);
     });
   }

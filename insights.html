@@ -212,14 +212,14 @@
           <p>Where your money went, worked out on this device.</p>
         </header>
 
-        <div class="ins-periods" id="period-tabs" role="group" aria-label="Period">
-          <button type="button" class="ins-period" data-period="month" aria-pressed="true">This month</button>
-          <button type="button" class="ins-period" data-period="lastMonth" aria-pressed="false">Last month</button>
-          <button type="button" class="ins-period" data-period="quarter" aria-pressed="false">3 months</button>
-          <button type="button" class="ins-period" data-period="year" aria-pressed="false">This year</button>
-          <button type="button" class="ins-period" data-period="custom" aria-pressed="false">Custom</button>
+        <div class="seg" id="period-tabs" role="group" aria-label="Period">
+          <button type="button" class="seg-btn" data-period="month" aria-pressed="true">This month</button>
+          <button type="button" class="seg-btn" data-period="lastMonth" aria-pressed="false">Last month</button>
+          <button type="button" class="seg-btn" data-period="quarter" aria-pressed="false">3 months</button>
+          <button type="button" class="seg-btn" data-period="year" aria-pressed="false">This year</button>
+          <button type="button" class="seg-btn" data-period="custom" aria-pressed="false">Custom</button>
         </div>
-        <div class="ins-custom hidden" id="custom-date-range" role="group" aria-label="Custom dates">
+        <div class="date-range hidden" id="custom-date-range" role="group" aria-label="Custom dates">
           <label>From <input type="date" id="insights-start-date" /></label>
           <label>To <input type="date" id="insights-end-date" /></label>
         </div>
@@ -227,7 +227,7 @@
         <div id="insights-error" class="ins-error hidden" role="alert">
           <i data-lucide="alert-circle"></i>
           <p id="error-message"></p>
-          <button type="button" class="ins-icon-btn" data-action="dismissInsightError" aria-label="Dismiss"><i data-lucide="x"></i></button>
+          <button type="button" class="icon-btn" data-action="dismissInsightError" aria-label="Dismiss"><i data-lucide="x"></i></button>
         </div>
 
         <!-- Numbers worked out on the device (insights-v2.js renderGlance); no AI needed -->
@@ -238,10 +238,10 @@
         <section class="home-section ins-coach" aria-labelledby="coach-title">
           <div class="home-section-head">
             <h2 id="coach-title"><i data-lucide="sparkles"></i> AI coach</h2>
-            <button type="button" class="ins-icon-btn hidden" id="new-chat-btn" aria-label="Close conversation" title="Close conversation"><i data-lucide="x"></i></button>
+            <button type="button" class="icon-btn hidden" id="new-chat-btn" aria-label="Close conversation" title="Close conversation"><i data-lucide="x"></i></button>
           </div>
           <p class="ins-coach-note" id="coach-note">Ask about the numbers above. Answers are written by AI and can be wrong.</p>
-          <div class="ins-topics" id="coach-topics"></div>
+          <div class="chips" id="coach-topics"></div>
           <div id="insights-results" class="hidden"></div>
         </section>
       </div>

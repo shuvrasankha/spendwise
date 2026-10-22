@@ -218,261 +218,57 @@
     </aside>
 
     <main class="main-content" id="main-content">
-      <!-- Page Header -->
-      <div class="page-header">
-        <h2>Transaction History</h2>
-      </div>
+      <div class="hist-page">
+        <header class="hist-head">
+          <h1>History</h1>
+          <button type="button" class="icon-btn" data-action="downloadHistoryCSV" aria-label="Download as CSV" title="Download as CSV"><i data-lucide="download"></i></button>
+        </header>
 
-      <!-- Expense / Income Tab Switcher -->
-      <div class="history-tab-switcher">
-        <button class="history-tab active" id="htab-expenses" data-action="switchHistoryTabExpenses">
-          <i data-lucide="trending-down"></i> Expenses
-        </button>
-        <button class="history-tab" id="htab-income" data-action="switchHistoryTabIncome">
-          <i data-lucide="trending-up"></i> Income
-        </button>
-      </div>
+        <div class="seg" id="hist-tabs" role="group" aria-label="Show">
+          <button type="button" class="seg-btn" data-hist-tab="expenses" aria-pressed="true">Expenses</button>
+          <button type="button" class="seg-btn" data-hist-tab="income" aria-pressed="false">Income</button>
+        </div>
 
-      <!-- ═══ EXPENSE HISTORY SECTION ═══ -->
-      <div id="expense-history-section">
-        <div class="filter-card">
-          <div class="filter-card__header">
-            <div class="filter-card__title">
-              <i data-lucide="filter"></i>
-              <span>Filters</span>
-            </div>
-            <span class="filter-card__badge" id="filter-count">0 active</span>
-          </div>
-          <div class="filter-card__grid">
-            <div class="filter-card__field">
-              <label>From</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="calendar"></i>
-                <input type="date" id="filter-from" />
-              </div>
-            </div>
-            <div class="filter-card__field">
-              <label>To</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="calendar"></i>
-                <input type="date" id="filter-to" />
-              </div>
-            </div>
-            <div class="filter-card__field">
-              <label>Search</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="search"></i>
-                <input type="text" id="filter-search" placeholder="Type to search..." data-keyup="applyFilters" />
-              </div>
-            </div>
-            <div class="filter-card__field filter-card__field--full-width">
-              <label>Categories</label>
-              <div class="category-select-wrap">
-                <div class="category-select-trigger" id="category-trigger" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false">
-                  <i data-lucide="tag"></i>
-                  <span id="category-placeholder">All Categories</span>
-                  <i data-lucide="chevron-down" class="category-chevron"></i>
-                </div>
-                <div class="category-dropdown hidden" id="category-dropdown" role="listbox" aria-multiselectable="true">
-                  <div class="category-dropdown-header">
-                    <span>Select Categories</span>
-                    <button class="category-select-all-btn" id="category-select-all-btn">Select All</button>
-                  </div>
-                  <div class="category-options" id="category-options">
-                    <label class="category-option">
-                      <input type="checkbox" value="Food & Dining" />
-                      <span>Food & Dining</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Transport" />
-                      <span>Transport</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Shopping" />
-                      <span>Shopping</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Entertainment" />
-                      <span>Entertainment</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Health" />
-                      <span>Health</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Bills & Utilities" />
-                      <span>Bills & Utilities</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Education" />
-                      <span>Education</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Travel" />
-                      <span>Travel</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Groceries" />
-                      <span>Groceries</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Subscription" />
-                      <span>Subscription</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Rent" />
-                      <span>Rent</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Investment" />
-                      <span>Investment</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Personal Care" />
-                      <span>Personal Care</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Gifts" />
-                      <span>Gifts</span>
-                    </label>
-                    <label class="category-option">
-                      <input type="checkbox" value="Other" />
-                      <span>Other</span>
-                    </label>
-                  </div>
-                </div>
-                <div class="category-chips" id="category-chips"></div>
-              </div>
-            </div>
-          </div>
-          <div class="filter-card__actions">
-            <button class="btn btn-secondary" data-action="clearFilters">
-              <i data-lucide="x"></i> Clear All
-            </button>
-            <button class="btn btn-primary" data-action="applyFilters">
-              <i data-lucide="filter"></i> Apply Filters
-            </button>
-          </div>
+        <div class="hist-search">
+          <i data-lucide="search"></i>
+          <label for="hist-search" class="sr-only">Search</label>
+          <input type="search" id="hist-search" placeholder="Search" autocomplete="off" enterkeyhint="search" />
         </div>
-        <div class="table-card">
-          <div class="table-header">
-            <span id="history-count" class="result-count">All entries</span>
-            <button class="btn-download" data-action="downloadHistoryCSV">
-              <i data-lucide="download"></i> Download CSV
-            </button>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th data-col="date" class="sortable" data-action="sortHistoryDate">Date <i data-lucide="arrow-up-down"
-                      class="sort-icon"></i></th>
-                  <th data-col="category" class="sortable" data-action="sortHistoryCategory">Category <i
-                      data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                  <th data-col="description">Description</th>
-                  <th data-col="payment">Payment</th>
-                  <th data-col="notes">Notes</th>
-                  <th data-col="tags">Tags</th>
-                  <th class="text-right sortable" data-col="amount" data-action="sortHistoryAmount">Amount <i
-                      data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                  <th class="text-center" data-col="actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="history-body">
-                <tr>
-                  <td colspan="9" class="empty-row">No expenses recorded yet.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="table-footer" id="history-total"></div>
-          <div id="history-pagination" class="pagination-row"></div>
-        </div>
-      </div>
 
-      <!-- ═══ INCOME HISTORY SECTION ═══ -->
-      <div id="income-history-section" class="hidden">
-        <div class="filter-card">
-          <div class="filter-card__header">
-            <div class="filter-card__title">
-              <i data-lucide="filter"></i>
-              <span>Filters</span>
-            </div>
-            <span class="filter-card__badge" id="inc-filter-count">0 active</span>
-          </div>
-          <div class="filter-card__grid">
-            <div class="filter-card__field">
-              <label>From</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="calendar"></i>
-                <input type="date" id="inc-filter-from" />
-              </div>
-            </div>
-            <div class="filter-card__field">
-              <label>To</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="calendar"></i>
-                <input type="date" id="inc-filter-to" />
-              </div>
-            </div>
-            <div class="filter-card__field">
-              <label>Search</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="search"></i>
-                <input type="text" id="inc-filter-search" placeholder="Search source, notes..." data-keyup="applyIncomeFilters" />
-              </div>
-            </div>
-            <div class="filter-card__field">
-              <label>Payment Type</label>
-              <div class="input-icon-wrap">
-                <i data-lucide="credit-card"></i>
-                <select id="inc-filter-payment">
-                  <option value="">All Types</option>
-                  <option value="Online">Online</option>
-                  <option value="Cash">Cash</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="filter-card__actions">
-            <button class="btn btn-secondary" data-action="clearIncomeFilters">
-              <i data-lucide="x"></i> Clear All
-            </button>
-            <button class="btn btn-success" data-action="applyIncomeFilters">
-              <i data-lucide="filter"></i> Apply Filters
-            </button>
-          </div>
+        <div class="hist-controls">
+          <label class="hist-select">
+            <span class="sr-only">Dates</span>
+            <select id="hist-range">
+              <option value="all">All time</option>
+              <option value="month">This month</option>
+              <option value="lastMonth">Last month</option>
+              <option value="quarter">Last 3 months</option>
+              <option value="year">This year</option>
+              <option value="custom">Custom dates</option>
+            </select>
+          </label>
+          <label class="hist-select">
+            <span class="sr-only">Sort</span>
+            <select id="hist-sort">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="largest">Largest first</option>
+            </select>
+          </label>
         </div>
-        <div class="table-card">
-          <div class="table-header">
-            <span id="inc-history-count" class="result-count">All entries</span>
-            <button class="btn-download" data-action="downloadIncomeHistoryCSV">
-              <i data-lucide="download"></i> Download CSV
-            </button>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th data-col="date" class="sortable inc-sortable" data-action="sortIncomeHistoryDate">Date <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                  <th data-col="source" class="sortable inc-sortable" data-action="sortIncomeHistorySource">Source <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                  <th data-col="paymentType">Payment</th>
-                  <th data-col="bank">Bank</th>
-                  <th data-col="notes">Notes</th>
-                  <th class="text-right sortable inc-sortable" data-col="amount" data-action="sortIncomeHistoryAmount">Amount <i data-lucide="arrow-up-down" class="sort-icon"></i></th>
-                  <th class="text-center" data-col="actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="inc-history-body">
-                <tr>
-                  <td colspan="7" class="empty-row">No income entries recorded yet.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="table-footer" id="inc-history-total"></div>
-          <div id="inc-history-pagination" class="pagination-row"></div>
+        <div class="date-range hidden" id="hist-custom" role="group" aria-label="Custom dates">
+          <label>From <input type="date" id="hist-from" /></label>
+          <label>To <input type="date" id="hist-to" /></label>
         </div>
+
+        <!-- Categories (expenses) or sources (income) found in the data; built by dashboard.js renderHistory -->
+        <div class="chips hist-kinds" id="hist-kinds" role="group" aria-label="Categories"></div>
+
+        <p class="hist-summary" id="hist-summary" role="status"></p>
+        <div class="hist-list" id="history-list" aria-busy="true">
+          <div class="hist-skeleton"><span></span><span></span><span></span><span></span></div>
+        </div>
+        <button type="button" class="hist-more hidden" id="hist-more"></button>
       </div>
     </main>
   </div>
@@ -621,13 +417,13 @@
         <div id="edit-error" class="form-msg error hidden"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel-icon" data-action="closeEditModal" title="Cancel">
+        <button class="btn-cancel-icon" data-action="closeEditModal" title="Cancel" aria-label="Cancel">
           <i data-lucide="x-circle"></i>
         </button>
-        <button class="btn-delete-icon" data-action="deleteFromEdit" title="Delete">
+        <button class="btn-delete-icon" data-action="deleteFromEdit" title="Delete" aria-label="Delete">
           <i data-lucide="trash-2"></i>
         </button>
-        <button class="btn-save-icon" data-action="saveEditExpense" title="Save Changes">
+        <button class="btn-save-icon" data-action="saveEditExpense" title="Save Changes" aria-label="Save changes">
           <i data-lucide="check-circle"></i>
         </button>
       </div>
@@ -706,13 +502,13 @@
         <div id="inc-edit-error" class="form-msg error hidden"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel-icon" data-action="closeIncEditModal" title="Cancel">
+        <button class="btn-cancel-icon" data-action="closeIncEditModal" title="Cancel" aria-label="Cancel">
           <i data-lucide="x-circle"></i>
         </button>
-        <button class="btn-delete-icon" data-action="deleteFromIncEdit" title="Delete">
+        <button class="btn-delete-icon" data-action="deleteFromIncEdit" title="Delete" aria-label="Delete">
           <i data-lucide="trash-2"></i>
         </button>
-        <button class="btn-save-icon" data-action="saveIncEdit" title="Save Changes">
+        <button class="btn-save-icon" data-action="saveIncEdit" title="Save Changes" aria-label="Save changes">
           <i data-lucide="check-circle"></i>
         </button>
       </div>
