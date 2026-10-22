@@ -80,7 +80,7 @@ function clearCache(uid) {
   try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
 }
 
-let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
+let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, chartInstance = null, editingExpenseId = null;
 
 // ── Page loader ─────────────────────────────────────────────────────────────
 function dismissPageLoader() {
@@ -163,7 +163,7 @@ onAuthStateChanged(auth, user => {
         updatePeriodSummary();
         requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
       }
-      if (document.getElementById("history-body")) {
+      if (document.getElementById("history-list")) {
         renderHistory();
       }
       // Silently sync with Firestore in the background
@@ -171,7 +171,6 @@ onAuthStateChanged(auth, user => {
     } else {
       // No cache — show skeleton and fetch from Firestore
       if (document.getElementById("table-body")) showTableSkeleton("table-body", 5);
-      if (document.getElementById("history-body")) showTableSkeleton("history-body", 7);
       setTimeout(() => loadExpenses(), 0);
     }
     // Load income data for dashboard cards (always fresh)
@@ -313,10 +312,7 @@ window.showPage = (page) => {
       renderTrendChart();
     });
   }
-  if (page === "history") {
-    renderHistory();
-    renderIncomeHistory();
-  }
+  if (page === "history") renderHistory();
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
 
@@ -356,7 +352,7 @@ async function loadExpenses(isSilentSync = false) {
       initPeriodPicker();
       updatePeriodSummary();
     }
-    if (document.getElementById("history-body")) {
+    if (document.getElementById("history-list")) {
       renderHistory();
     }
     // Update expense summary cards (expense page)
@@ -387,7 +383,7 @@ async function loadIncome() {
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
     updateIncomeCards();
     // If on history page, render income history
-    if (document.getElementById("inc-history-body")) {
+    if (document.getElementById("history-list")) {
       renderIncomeHistory();
     }
   } catch (e) { console.error("Income load error:", e); }
@@ -1087,383 +1083,183 @@ function renderDashboardPagination(totalItems, totalPages) {
 
 // ── Pagination & Sorting state ────────────────────────────────
 const DASHBOARD_PER_PAGE = 10;
-const HISTORY_PER_PAGE = 10;
 let dashboardPage = 1;
-let historyPage = 1;
-let sortCol = "date";
-let sortAsc = false;
-
-window.sortHistory = (col) => {
-  if (sortCol === col) {
-    sortAsc = !sortAsc;
-  } else {
-    sortCol = col;
-    // Default: Amount descending, others ascending
-    sortAsc = col === "amount" ? false : true;
-  }
-  historyPage = 1;
-  // Re-render with the current filtered set (not sorted — renderHistory will sort)
-  renderHistory(filteredExpenses);
-};
-
-function renderHistory(data) {
-  if (!document.getElementById("history-body")) return;
-  // Always work on a copy so we never mutate allExpenses or the filter result
-  const source = data !== undefined ? data : allExpenses;
-  filteredExpenses = source.slice();   // ← key fix: copy, not reference
-
-  // Apply sorting
-  filteredExpenses.sort((a, b) => {
-    let valA = a[sortCol];
-    let valB = b[sortCol];
-    if (typeof valA === "string") valA = valA.toLowerCase();
-    if (typeof valB === "string") valB = valB.toLowerCase();
-    if (valA < valB) return sortAsc ? -1 : 1;
-    if (valA > valB) return sortAsc ? 1 : -1;
-    return 0;
-  });
-
-  // Update header sort icons
-  document.querySelectorAll(".sortable").forEach(th => {
-    th.classList.remove("active", "asc", "desc");
-    if (th.dataset.col === sortCol) {
-      th.classList.add("active", sortAsc ? "asc" : "desc");
-    }
-  });
-
-  const total = filteredExpenses.reduce((s, e) => s + e.amount, 0);
-  document.getElementById("history-count").textContent =
-    filteredExpenses.length + " entr" + (filteredExpenses.length !== 1 ? "ies" : "y");
-  const totalEl = document.getElementById("history-total");
-  if (totalEl) totalEl.textContent = filteredExpenses.length ? "Total: " + fmt(total) : "";
-
-  // Pagination against filteredExpenses (already sorted copy)
-  const totalPages = Math.max(1, Math.ceil(filteredExpenses.length / HISTORY_PER_PAGE));
-  if (historyPage > totalPages) historyPage = totalPages;
-
-  const start = (historyPage - 1) * HISTORY_PER_PAGE;
-  renderTable("history-body", filteredExpenses.slice(start, start + HISTORY_PER_PAGE), true);
-  renderPagination(filteredExpenses.length, totalPages);
-}
-
-window.goToHistoryPage = (p) => {
-  historyPage = p;
-  renderHistory(filteredExpenses || allExpenses);
-  const card = document.querySelector("#expense-history-section .table-card");
-  if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
-};
-
-function renderPagination(totalItems, totalPages) {
-  const el = document.getElementById("history-pagination");
-  if (!el) return;
-  if (totalPages <= 1) { el.innerHTML = ""; return; }
-
-  const MAX_VISIBLE = 7;
-  let startP = Math.max(1, historyPage - Math.floor(MAX_VISIBLE / 2));
-  let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
-  if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
-
-  let html = `<button class="page-btn" data-page-action="expense" data-page="${historyPage - 1}" ${historyPage === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
-
-  if (startP > 1) {
-    html += `<button class="page-btn" data-page-action="expense" data-page="1">1</button>`;
-    if (startP > 2) html += `<span class="pagination-dots">…</span>`;
-  }
-  for (let i = startP; i <= endP; i++) {
-    html += `<button class="page-btn${i === historyPage ? " active" : ""}" data-page-action="expense" data-page="${i}">${i}</button>`;
-  }
-  if (endP < totalPages) {
-    if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
-    html += `<button class="page-btn" data-page-action="expense" data-page="${totalPages}">${totalPages}</button>`;
-  }
-
-  const from = (historyPage - 1) * HISTORY_PER_PAGE + 1;
-  const to = Math.min(historyPage * HISTORY_PER_PAGE, totalItems);
-  html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
-  html += `<button class="page-btn" data-page-action="expense" data-page="${historyPage + 1}" ${historyPage === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button>`;
-
-  el.innerHTML = html;
-  if (window.lucide) lucide.createIcons();
-}
 
 // ═══════════════════════════════════════════════════════════════════
-// CATEGORY MULTI-SELECT
+// HISTORY PAGE: one searchable list for expenses or income
 // ═══════════════════════════════════════════════════════════════════
-
-let selectedCategories = [];
-
-function initCategoryMultiSelect() {
-  const trigger = document.getElementById('category-trigger');
-  const dropdown = document.getElementById('category-dropdown');
-  const options = document.getElementById('category-options');
-  const selectAllBtn = document.getElementById('category-select-all-btn');
-  
-  if (!trigger || !dropdown || !options) return;
-  
-  // Toggle dropdown on trigger click
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
-    toggleCategoryDropdown(!isExpanded);
-  });
-  
-  // Keyboard support
-  trigger.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
-      toggleCategoryDropdown(!isExpanded);
-    }
-    if (e.key === 'Escape') {
-      toggleCategoryDropdown(false);
-    }
-  });
-  
-  // Handle checkbox changes
-  options.addEventListener('change', (e) => {
-    if (e.target.type === 'checkbox') {
-      updateSelectedCategories();
-    }
-  });
-  
-  // Select All button
-  if (selectAllBtn) {
-    selectAllBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const checkboxes = options.querySelectorAll('input[type="checkbox"]');
-      const allSelected = Array.from(checkboxes).every(cb => cb.checked);
-      
-      checkboxes.forEach(cb => {
-        cb.checked = !allSelected;
-      });
-      
-      selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
-      updateSelectedCategories();
-    });
-  }
-  
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target) && e.target !== trigger) {
-      toggleCategoryDropdown(false);
-    }
-  });
-  
-  // Close on scroll and reposition on resize
-  let scrollTimeout;
-  window.addEventListener('scroll', () => {
-    if (trigger.getAttribute('aria-expanded') === 'true') {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => toggleCategoryDropdown(false), 150);
-    }
-  }, { passive: true });
-  
-  window.addEventListener('resize', () => {
-    if (trigger.getAttribute('aria-expanded') === 'true') {
-      toggleCategoryDropdown(false);
-    }
-  });
-}
-
-function toggleCategoryDropdown(open) {
-  const trigger = document.getElementById('category-trigger');
-  const dropdown = document.getElementById('category-dropdown');
-  
-  if (!trigger || !dropdown) return;
-  
-  if (open) {
-    // Position dropdown below trigger
-    const triggerRect = trigger.getBoundingClientRect();
-    const dropdownHeight = 320; // approximate max-height
-    const spaceBelow = window.innerHeight - triggerRect.bottom;
-    const spaceAbove = triggerRect.top;
-    
-    // Determine if we should show below or above
-    let topPosition;
-    if (spaceBelow >= dropdownHeight || spaceBelow > spaceAbove) {
-      // Show below
-      topPosition = triggerRect.bottom + 8;
-    } else {
-      // Show above
-      topPosition = triggerRect.top - dropdownHeight - 8;
-    }
-    
-    dropdown.style.top = topPosition + 'px';
-    dropdown.style.left = triggerRect.left + 'px';
-    dropdown.style.width = Math.max(triggerRect.width, 280) + 'px';
-    dropdown.style.maxHeight = '320px';
-    
-    // Adjust if it goes off-screen right
-    requestAnimationFrame(() => {
-      const dropdownRect = dropdown.getBoundingClientRect();
-      if (dropdownRect.right > window.innerWidth - 16) {
-        dropdown.style.left = (window.innerWidth - dropdownRect.width - 16) + 'px';
-      }
-      if (dropdownRect.left < 16) {
-        dropdown.style.left = '16px';
-      }
-    });
-    
-    dropdown.classList.remove('hidden');
-    trigger.setAttribute('aria-expanded', 'true');
-  } else {
-    dropdown.classList.add('hidden');
-    trigger.setAttribute('aria-expanded', 'false');
-  }
-}
-
-function updateSelectedCategories() {
-  const options = document.getElementById('category-options');
-  const chipsContainer = document.getElementById('category-chips');
-  const placeholder = document.getElementById('category-placeholder');
-  const selectAllBtn = document.getElementById('category-select-all-btn');
-  
-  if (!options) return;
-  
-  // Get selected values
-  selectedCategories = Array.from(options.querySelectorAll('input[type="checkbox"]:checked'))
-    .map(cb => cb.value);
-  
-  // Update chips
-  if (chipsContainer) {
-    chipsContainer.innerHTML = '';
-    selectedCategories.forEach(cat => {
-      const chip = document.createElement('div');
-      chip.className = 'category-chip';
-      chip.innerHTML = `
-        <span>${escapeHtml(cat)}</span>
-        <button type="button" aria-label="Remove ${cat}" data-category="${cat}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      `;
-      chipsContainer.appendChild(chip);
-    });
-    
-    // Add click handlers to remove buttons
-    chipsContainer.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const category = btn.dataset.category;
-        const checkbox = options.querySelector(`input[value="${CSS.escape(category)}"]`);
-        if (checkbox) {
-          checkbox.checked = false;
-          updateSelectedCategories();
-        }
-      });
-    });
-  }
-  
-  // Update placeholder text
-  if (placeholder) {
-    if (selectedCategories.length === 0) {
-      placeholder.textContent = 'All Categories';
-    } else if (selectedCategories.length === 1) {
-      placeholder.textContent = selectedCategories[0];
-    } else if (selectedCategories.length <= 3) {
-      placeholder.textContent = selectedCategories.join(', ');
-    } else {
-      placeholder.textContent = `${selectedCategories.length} categories selected`;
-    }
-  }
-  
-  // Update Select All button text
-  if (selectAllBtn) {
-    const checkboxes = options.querySelectorAll('input[type="checkbox"]');
-    const allSelected = Array.from(checkboxes).every(cb => cb.checked);
-    selectAllBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
-  }
-  
-  // Update field highlighting
-  updateFieldHighlight('filter-category', selectedCategories.length > 0 ? 'selected' : '');
-}
-
-// Initialize on DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initCategoryMultiSelect);
-} else {
-  initCategoryMultiSelect();
-}
-
-window.applyFilters = () => {
-  const from = document.getElementById("filter-from").value,
-    to = document.getElementById("filter-to").value,
-    q = document.getElementById("filter-search") ? document.getElementById("filter-search").value.toLowerCase().trim() : "";
-
-  let data = allExpenses.slice();
-  if (from) data = data.filter(e => e.date >= from);
-  if (to) data = data.filter(e => e.date <= to);
-  if (selectedCategories.length > 0) data = data.filter(e => selectedCategories.includes(e.category));
-  if (q) {
-    data = data.filter(e =>
-      e.description.toLowerCase().includes(q) ||
-      e.category.toLowerCase().includes(q) ||
-      (e.notes && e.notes.toLowerCase().includes(q))
-    );
-  }
-
-  historyPage = 1;
-  renderHistory(data);
-  updateFilterCount(from, to, selectedCategories, q);
+// Filters live in `hist` and the controls, so a list redrawn after an edit or delete keeps them.
+const HISTORY_STEP = 50;
+const hist = { tab: "expenses", kinds: new Set(), shown: HISTORY_STEP };
+const HISTORY_TABS = {
+  expenses: {
+    rows: () => allExpenses,
+    kind: e => e.category,
+    title: e => e.description || e.category,
+    meta: e => [e.category, e.cardName ? `${e.payment} (${e.cardName})` : e.payment, ...(e.tags || []).map(t => "#" + t)],
+    text: e => [e.description, e.category, e.notes, e.payment, e.cardName, ...(e.tags || [])],
+    attr: "data-edit-expense", kindsLabel: "Categories", one: "expense", many: "expenses",
+    empty: 'No expenses yet. <a href="expense.html">Add an expense</a>',
+  },
+  income: {
+    rows: () => allIncome,
+    kind: i => i.source || "Other",
+    title: i => i.source || "Income",
+    meta: i => [i.paymentType, i.bank],
+    text: i => [i.source, i.bank, i.notes, i.paymentType],
+    attr: "data-edit-income", kindsLabel: "Sources", one: "income entry", many: "income entries",
+    empty: 'No income recorded yet. <a href="income.html">Add income</a>',
+  },
 };
 
-window.clearFilters = () => {
-  ["filter-from", "filter-to", "filter-search"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = "";
+// Start and end of the "Dates" choice ("" = open-ended)
+function historyRange(key) {
+  const t = new Date(), y = t.getFullYear(), m = t.getMonth(), today = todayStr(t);
+  const day = (Y, M, D) => todayStr(new Date(Y, M, D));
+  switch (key) {
+    case "month": return [day(y, m, 1), today];
+    case "lastMonth": return [day(y, m - 1, 1), day(y, m, 0)];
+    case "quarter": return [day(y, m - 2, 1), today];
+    case "year": return [day(y, 0, 1), today];
+    case "custom": return [document.getElementById("hist-from").value, document.getElementById("hist-to").value];
+    default: return ["", ""];
+  }
+}
+
+// The rows on screen: tab, dates, chips, search and sort applied (also what Download exports)
+function historyRows() {
+  const t = HISTORY_TABS[hist.tab];
+  const [from, to] = historyRange(document.getElementById("hist-range")?.value);
+  const q = (document.getElementById("hist-search")?.value || "").toLowerCase().trim();
+  const sort = document.getElementById("hist-sort")?.value;
+  const rows = t.rows().filter(r =>
+    (!from || r.date >= from) && (!to || r.date <= to) &&
+    (!hist.kinds.size || hist.kinds.has(t.kind(r))) &&
+    (!q || t.text(r).some(v => v && String(v).toLowerCase().includes(q))));
+  if (sort === "largest") return rows.sort((a, b) => b.amount - a.amount);
+  if (sort === "oldest") return rows.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  return rows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
+function historyDay(ds) {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (ds === todayStr()) return "Today";
+  if (ds === todayStr(yesterday)) return "Yesterday";
+  const d = new Date(ds + "T00:00:00");
+  const opts = { weekday: "short", day: "numeric", month: "short" };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString("en-IN", opts);
+}
+
+function renderHistory() {
+  const list = document.getElementById("history-list");
+  if (!list) return;
+  const t = HISTORY_TABS[hist.tab];
+  const all = t.rows();
+
+  // Chips: the categories (or sources) in the data, most used first
+  const counts = {};
+  all.forEach(r => { const k = t.kind(r); counts[k] = (counts[k] || 0) + 1; });
+  hist.kinds.forEach(k => { if (!counts[k]) hist.kinds.delete(k); });
+  const kinds = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  const chips = document.getElementById("hist-kinds");
+  chips.setAttribute("aria-label", t.kindsLabel);
+  chips.classList.toggle("hidden", kinds.length < 2);
+  chips.innerHTML = kinds.map(k => `<button type="button" class="chip" data-hist-kind="${escapeHtml(k)}" aria-pressed="${hist.kinds.has(k)}">${escapeHtml(k)}</button>`).join("");
+
+  const rows = historyRows();
+  const clear = rows.length !== all.length ? ' <button type="button" class="hist-clear" id="hist-clear">Clear filters</button>' : "";
+  document.getElementById("hist-summary").innerHTML = rows.length
+    ? `${rows.length} ${rows.length === 1 ? t.one : t.many} · <strong>${fmt(rows.reduce((s, r) => s + r.amount, 0))}</strong>${clear}`
+    : "";
+  list.setAttribute("aria-busy", "false");
+  const more = document.getElementById("hist-more");
+  if (!rows.length) {
+    list.innerHTML = `<p class="hist-empty">${all.length ? `Nothing matches.${clear}` : t.empty}</p>`;
+    more.classList.add("hidden");
+    return;
+  }
+
+  // Grouped by day with each day's total, unless sorted by amount
+  const byDate = document.getElementById("hist-sort").value !== "largest";
+  const dayTotals = {};
+  if (byDate) rows.forEach(r => { dayTotals[r.date] = (dayTotals[r.date] || 0) + r.amount; });
+  const groups = [];
+  rows.slice(0, hist.shown).forEach(r => {
+    const key = byDate ? r.date : "";
+    if (groups.at(-1)?.key === key) groups.at(-1).rows.push(r);
+    else groups.push({ key, rows: [r] });
   });
-  
-  // Clear category checkboxes
-  const options = document.getElementById('category-options');
-  if (options) {
-    options.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-  }
-  selectedCategories = [];
-  updateSelectedCategories();
-  
-  historyPage = 1;
-  renderHistory(allExpenses);
-  updateFilterCount("", "", [], "");
-};
+  const income = hist.tab === "income";
+  const row = r => {
+    const meta = t.meta(r).filter(Boolean);
+    if (!byDate) meta.unshift(formatDate(r.date));
+    return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}">
+      <span class="hist-row-main">
+        <span class="hist-row-title">${escapeHtml(t.title(r))}</span>
+        <span class="hist-row-meta">${escapeHtml(meta.join(" · "))}</span>
+        ${r.notes ? `<span class="hist-row-note">${escapeHtml(r.notes)}</span>` : ""}
+      </span>
+      <span class="hist-row-amount${income ? " income" : ""}">${income ? "+" : ""}${fmt(r.amount)}</span>
+    </button></li>`;
+  };
+  list.innerHTML = groups.map(g => `
+    <section class="hist-day">
+      ${g.key ? `<h2 class="hist-day-head"><span>${historyDay(g.key)}</span><span>${fmt(dayTotals[g.key])}</span></h2>` : ""}
+      <ul class="hist-rows">${g.rows.map(row).join("")}</ul>
+    </section>`).join("");
 
-function updateFilterCount(from, to, cats, q) {
-  const badge = document.getElementById('filter-count');
-  if (!badge) return;
-  
-  // Handle both array and string for backward compatibility
-  const catArray = Array.isArray(cats) ? cats : (cats ? [cats] : []);
-  
-  let activeCount = 0;
-  if (from) activeCount++;
-  if (to) activeCount++;
-  if (catArray.length > 0) activeCount++;
-  if (q) activeCount++;
-  
-  badge.textContent = `${activeCount} active`;
-  badge.style.opacity = activeCount > 0 ? '1' : '0.6';
-  
-  // Update field highlighting
-  updateFieldHighlight('filter-from', from);
-  updateFieldHighlight('filter-to', to);
-  updateFieldHighlight('filter-category', catArray.length > 0 ? 'selected' : '');
-  updateFieldHighlight('filter-search', q);
+  const left = rows.length - hist.shown;
+  more.classList.toggle("hidden", left <= 0);
+  more.textContent = `Show ${Math.min(left, HISTORY_STEP)} more`;
+}
+function renderIncomeHistory() { renderHistory(); }
+
+function clearHistoryFilters() {
+  document.getElementById("hist-search").value = "";
+  document.getElementById("hist-range").value = "all";
+  document.getElementById("hist-custom").classList.add("hidden");
+  hist.kinds.clear();
+  hist.shown = HISTORY_STEP;
+  renderHistory();
+  document.getElementById("hist-search").focus();
 }
 
-function updateFieldHighlight(inputId, value) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  
-  const field = input.closest('.filter-card__field');
-  if (!field) return;
-  
-  if (value && value.trim()) {
-    field.classList.add('has-value');
-  } else {
-    field.classList.remove('has-value');
-  }
+function initHistory() {
+  if (!document.getElementById("history-list")) return;
+  const $id = id => document.getElementById(id);
+  const rerender = () => { hist.shown = HISTORY_STEP; renderHistory(); };
+  const now = new Date();
+  $id("hist-from").value = todayStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  $id("hist-to").value = todayStr(now);
+
+  $id("hist-tabs").addEventListener("click", e => {
+    const btn = e.target.closest("[data-hist-tab]");
+    if (!btn || btn.dataset.histTab === hist.tab) return;
+    hist.tab = btn.dataset.histTab;
+    hist.kinds.clear(); // categories and sources differ
+    document.querySelectorAll("[data-hist-tab]").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    rerender();
+  });
+  let searchTimer;
+  $id("hist-search").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(rerender, 150); });
+  $id("hist-range").addEventListener("change", e => { $id("hist-custom").classList.toggle("hidden", e.target.value !== "custom"); rerender(); });
+  ["hist-sort", "hist-from", "hist-to"].forEach(id => $id(id).addEventListener("change", rerender));
+  $id("hist-kinds").addEventListener("click", e => {
+    const btn = e.target.closest("[data-hist-kind]");
+    if (!btn) return;
+    const k = btn.dataset.histKind;
+    hist.kinds.has(k) ? hist.kinds.delete(k) : hist.kinds.add(k);
+    rerender();
+    $id("hist-kinds").querySelector(`[data-hist-kind="${CSS.escape(k)}"]`)?.focus(); // the chips were rebuilt
+  });
+  $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
+  document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
 }
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initHistory);
+else initHistory();
 
 function renderTable(tbodyId, rows, del) {
   const tbody = document.getElementById(tbodyId);
@@ -1583,7 +1379,7 @@ window.downloadCSV = () => {
   exportCSV(allExpenses.filter(e => e.date >= from && e.date <= today), "SpendWise_" + label);
 };
 
-window.downloadHistoryCSV = () => exportCSV(filteredExpenses || allExpenses, "SpendWise_History");
+window.downloadHistoryCSV = () => hist.tab === "income" ? window.downloadIncomeHistoryCSV() : exportCSV(historyRows(), "SpendWise_History");
 
 function exportCSV(rows, name) {
   if (!rows.length) { showToast("No data to export.", "error"); return; }
@@ -2325,232 +2121,8 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 //  INCOME HISTORY (in History page)
 // ============================================================
-let incHistoryPage = 1;
-let incSortCol = 'date';
-let incSortAsc = false;
-let filteredIncome = null;
 let incDeleteTarget = null;
 let editingIncId = null;
-const INC_HISTORY_PER_PAGE = 10;
-
-// ── Tab Switcher ─────────────────────────────────────────────
-window.switchHistoryTab = (tab) => {
-  document.querySelectorAll('.history-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('htab-' + tab).classList.add('active');
-
-  const expSection = document.getElementById('expense-history-section');
-  const incSection = document.getElementById('income-history-section');
-
-  if (tab === 'expenses') {
-    expSection.classList.remove('hidden');
-    incSection.classList.add('hidden');
-    renderHistory();
-  } else {
-    expSection.classList.add('hidden');
-    incSection.classList.remove('hidden');
-    renderIncomeHistory();
-  }
-};
-
-// ── Render Income History ────────────────────────────────────
-function renderIncomeHistory(data) {
-  const source = data !== undefined ? data : allIncome;
-  filteredIncome = source.slice();
-
-  // Apply sorting
-  filteredIncome.sort((a, b) => {
-    let valA = a[incSortCol];
-    let valB = b[incSortCol];
-    if (typeof valA === 'string') valA = valA.toLowerCase();
-    if (typeof valB === 'string') valB = valB.toLowerCase();
-    if (valA < valB) return incSortAsc ? -1 : 1;
-    if (valA > valB) return incSortAsc ? 1 : -1;
-    return 0;
-  });
-
-  // Update header sort icons (only income-specific ones)
-  document.querySelectorAll('.inc-sortable').forEach(th => {
-    th.classList.remove('active', 'asc', 'desc');
-    if (th.dataset.col === incSortCol) {
-      th.classList.add('active', incSortAsc ? 'asc' : 'desc');
-    }
-  });
-
-  const total = filteredIncome.reduce((s, i) => s + i.amount, 0);
-  const countEl = document.getElementById('inc-history-count');
-  if (countEl) countEl.textContent = filteredIncome.length + ' entr' + (filteredIncome.length !== 1 ? 'ies' : 'y');
-  const totalEl = document.getElementById('inc-history-total');
-  if (totalEl) totalEl.textContent = filteredIncome.length ? 'Total: ' + fmt(total) : '';
-
-  const totalPages = Math.max(1, Math.ceil(filteredIncome.length / INC_HISTORY_PER_PAGE));
-  if (incHistoryPage > totalPages) incHistoryPage = totalPages;
-
-  const start = (incHistoryPage - 1) * INC_HISTORY_PER_PAGE;
-  renderIncomeTableRows(filteredIncome.slice(start, start + INC_HISTORY_PER_PAGE));
-  renderIncPagination(filteredIncome.length, totalPages);
-}
-
-function renderIncomeTableRows(rows) {
-  const tbody = document.getElementById('inc-history-body');
-  if (!tbody) return;
-
-  if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan='7' class='empty-row'>No income entries found.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = '';
-  rows.forEach(entry => {
-    const tr = document.createElement('tr');
-
-    const tdDate = document.createElement('td');
-    tdDate.dataset.label = 'Date';
-    tdDate.textContent = formatDate(entry.date);
-    tr.appendChild(tdDate);
-
-    const tdSrc = document.createElement('td');
-    tdSrc.dataset.label = 'Source';
-    const badge = document.createElement('span');
-    badge.className = 'category-badge income-source-badge';
-    badge.textContent = entry.source || '-';
-    tdSrc.appendChild(badge);
-    tr.appendChild(tdSrc);
-
-    const tdPay = document.createElement('td');
-    tdPay.dataset.label = 'Payment';
-    tdPay.textContent = entry.paymentType || '-';
-    tr.appendChild(tdPay);
-
-    const tdBank = document.createElement('td');
-    tdBank.dataset.label = 'Bank';
-    tdBank.textContent = entry.bank || '-';
-    tr.appendChild(tdBank);
-
-    const tdNotes = document.createElement('td');
-    tdNotes.dataset.label = 'Notes';
-    tdNotes.textContent = entry.notes || '-';
-    tr.appendChild(tdNotes);
-
-    const tdAmt = document.createElement('td');
-    tdAmt.dataset.label = 'Amount';
-    tdAmt.className = 'text-right income-amount-cell';
-    tdAmt.textContent = fmt(entry.amount);
-    tr.appendChild(tdAmt);
-
-    const tdAct = document.createElement('td');
-    tdAct.className = 'text-center';
-    tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' data-edit-income='${entry.id}' title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' data-delete-income='${entry.id}' title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
-    tr.appendChild(tdAct);
-
-    tbody.appendChild(tr);
-  });
-  if (window.lucide) lucide.createIcons();
-}
-
-// ── Sorting ──────────────────────────────────────────────────
-window.sortIncomeHistory = (col) => {
-  if (incSortCol === col) {
-    incSortAsc = !incSortAsc;
-  } else {
-    incSortCol = col;
-    incSortAsc = col === 'amount' ? false : true;
-  }
-  incHistoryPage = 1;
-  renderIncomeHistory(filteredIncome);
-};
-
-// ── Pagination ───────────────────────────────────────────────
-window.goToIncHistoryPage = (p) => {
-  incHistoryPage = p;
-  renderIncomeHistory(filteredIncome || allIncome);
-  const card = document.querySelector('#income-history-section .table-card');
-  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
-
-function renderIncPagination(totalItems, totalPages) {
-  const el = document.getElementById('inc-history-pagination');
-  if (!el) return;
-  if (totalPages <= 1) { el.innerHTML = ''; return; }
-
-  const MAX_VISIBLE = 7;
-  let startP = Math.max(1, incHistoryPage - Math.floor(MAX_VISIBLE / 2));
-  let endP = Math.min(totalPages, startP + MAX_VISIBLE - 1);
-  if (endP - startP + 1 < MAX_VISIBLE) startP = Math.max(1, endP - MAX_VISIBLE + 1);
-
-  let html = `<button class="page-btn" data-page-action="income" data-page="${incHistoryPage - 1}" ${incHistoryPage === 1 ? 'disabled' : ''}><i data-lucide="chevron-left"></i></button>`;
-  if (startP > 1) {
-    html += `<button class="page-btn" data-page-action="income" data-page="1">1</button>`;
-    if (startP > 2) html += `<span class="pagination-dots">…</span>`;
-  }
-  for (let i = startP; i <= endP; i++) {
-    html += `<button class="page-btn${i === incHistoryPage ? ' active' : ''}" data-page-action="income" data-page="${i}">${i}</button>`;
-  }
-  if (endP < totalPages) {
-    if (endP < totalPages - 1) html += `<span class="pagination-dots">…</span>`;
-    html += `<button class="page-btn" data-page-action="income" data-page="${totalPages}">${totalPages}</button>`;
-  }
-  const from = (incHistoryPage - 1) * INC_HISTORY_PER_PAGE + 1;
-  const to = Math.min(incHistoryPage * INC_HISTORY_PER_PAGE, totalItems);
-  html += `<span class="pagination-info">${from}–${to} of ${totalItems}</span>`;
-  html += `<button class="page-btn" data-page-action="income" data-page="${incHistoryPage + 1}" ${incHistoryPage === totalPages ? 'disabled' : ''}><i data-lucide="chevron-right"></i></button>`;
-
-  el.innerHTML = html;
-  if (window.lucide) lucide.createIcons();
-}
-
-// ── Filters ──────────────────────────────────────────────────
-window.applyIncomeFilters = () => {
-  const from = document.getElementById('inc-filter-from').value;
-  const to = document.getElementById('inc-filter-to').value;
-  const pay = document.getElementById('inc-filter-payment').value;
-  const q = document.getElementById('inc-filter-search') ? document.getElementById('inc-filter-search').value.toLowerCase().trim() : '';
-
-  let data = allIncome.slice();
-  if (from) data = data.filter(i => i.date >= from);
-  if (to) data = data.filter(i => i.date <= to);
-  if (pay) data = data.filter(i => i.paymentType === pay);
-  if (q) {
-    data = data.filter(i =>
-      (i.source || '').toLowerCase().includes(q) ||
-      (i.bank || '').toLowerCase().includes(q) ||
-      (i.notes || '').toLowerCase().includes(q)
-    );
-  }
-
-  incHistoryPage = 1;
-  renderIncomeHistory(data);
-  updateIncomeFilterCount(from, to, pay, q);
-};
-
-window.clearIncomeFilters = () => {
-  ['inc-filter-from', 'inc-filter-to', 'inc-filter-payment', 'inc-filter-search'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  incHistoryPage = 1;
-  renderIncomeHistory(allIncome);
-  updateIncomeFilterCount('', '', '', '');
-};
-
-function updateIncomeFilterCount(from, to, pay, q) {
-  const badge = document.getElementById('inc-filter-count');
-  if (!badge) return;
-  
-  let activeCount = 0;
-  if (from) activeCount++;
-  if (to) activeCount++;
-  if (pay) activeCount++;
-  if (q) activeCount++;
-  
-  badge.textContent = `${activeCount} active`;
-  badge.style.opacity = activeCount > 0 ? '1' : '0.6';
-  
-  // Update field highlighting
-  updateFieldHighlight('inc-filter-from', from);
-  updateFieldHighlight('inc-filter-to', to);
-  updateFieldHighlight('inc-filter-payment', pay);
-  updateFieldHighlight('inc-filter-search', q);
-}
 
 // ── Edit Income (from history page) ──────────────────────────
 window.openIncEdit = (id) => {
@@ -2667,7 +2239,7 @@ window.deleteFromIncEdit = () => {
 
 // ── CSV Download ─────────────────────────────────────────────
 window.downloadIncomeHistoryCSV = () => {
-  const rows = filteredIncome || allIncome;
+  const rows = historyRows();
   if (!rows.length) { showToast('No data to export.', 'error'); return; }
   const hdr = ['Date', 'Source', 'Payment Type', 'Bank/Wallet', 'Notes', 'Amount (Rs)'];
   const csv = [hdr.join(','), ...rows.map(i => [

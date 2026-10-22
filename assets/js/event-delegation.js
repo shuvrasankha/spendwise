@@ -76,20 +76,7 @@
     'confirmDelete': function() { if (window.confirmDelete) window.confirmDelete(); },
 
     // History
-    'applyFilters': function() { if (window.applyFilters) window.applyFilters(); },
-    'clearFilters': function() { if (window.clearFilters) window.clearFilters(); },
     'downloadHistoryCSV': function() { if (window.downloadHistoryCSV) window.downloadHistoryCSV(); },
-    'switchHistoryTabExpenses': function() { if (window.switchHistoryTab) window.switchHistoryTab('expenses'); },
-    'switchHistoryTabIncome': function() { if (window.switchHistoryTab) window.switchHistoryTab('income'); },
-    'applyIncomeFilters': function() { if (window.applyIncomeFilters) window.applyIncomeFilters(); },
-    'clearIncomeFilters': function() { if (window.clearIncomeFilters) window.clearIncomeFilters(); },
-    'downloadIncomeHistoryCSV': function() { if (window.downloadIncomeHistoryCSV) window.downloadIncomeHistoryCSV(); },
-    'sortHistoryDate': function() { if (window.sortHistory) window.sortHistory('date'); },
-    'sortHistoryCategory': function() { if (window.sortHistory) window.sortHistory('category'); },
-    'sortHistoryAmount': function() { if (window.sortHistory) window.sortHistory('amount'); },
-    'sortIncomeHistoryDate': function() { if (window.sortIncomeHistory) window.sortIncomeHistory('date'); },
-    'sortIncomeHistorySource': function() { if (window.sortIncomeHistory) window.sortIncomeHistory('source'); },
-    'sortIncomeHistoryAmount': function() { if (window.sortIncomeHistory) window.sortIncomeHistory('amount'); },
 
     // Income
     'addIncome': function() { if (window.addIncome) window.addIncome(); },
@@ -162,22 +149,6 @@
   // Initialize event delegation
   function initEventDelegation() {
     document.addEventListener('click', function(e) {
-      // Handle pagination buttons (data-page-action)
-      const pageBtn = e.target.closest('[data-page-action]');
-      if (pageBtn && !pageBtn.disabled) {
-        e.preventDefault();
-        const page = parseInt(pageBtn.dataset.page, 10);
-        const type = pageBtn.dataset.pageAction;
-        if (!isNaN(page)) {
-          if (type === 'expense' && window.goToHistoryPage) {
-            window.goToHistoryPage(page);
-          } else if (type === 'income' && window.goToIncHistoryPage) {
-            window.goToIncHistoryPage(page);
-          }
-        }
-        return;
-      }
-
       // Handle expense edit/delete buttons
       const editExpBtn = e.target.closest('[data-edit-expense]');
       if (editExpBtn) {
