@@ -30,6 +30,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/offline-queue.js',
   './assets/js/modules/csv-upload.js',
   './assets/js/modules/pickers.js',
+  './assets/js/modules/nav.js',
   './assets/js/modules/budget.js',
   './assets/js/modules/app-lock.js',
   './assets/js/modules/backup.js',

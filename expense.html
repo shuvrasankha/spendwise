@@ -180,26 +180,23 @@
 
 
     <!-- Bottom nav (mobile) -->
-    <div class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Main">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Home</span>
-      </button>
-      <button class="bottom-nav-btn active" aria-current="page" id="bnav-add">
-        <i data-lucide="wallet"></i><span>Expense</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
-        <i data-lucide="trending-up"></i><span>Income</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
-      <button class="bottom-nav-btn" data-action="navigateToDebt" id="bnav-debt">
-        <i data-lucide="hand-coins"></i><span>Debt</span>
+      <button class="bottom-nav-btn bottom-nav-add active" aria-current="page" id="bnav-add" aria-label="Add expense" title="Add expense (hold for voice)">
+        <i data-lucide="plus"></i><span>Add expense</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>Insights</span>
       </button>
-    </div>
+      <button class="bottom-nav-btn" id="bnav-more" aria-haspopup="dialog" aria-expanded="false">
+        <i data-lucide="more-horizontal"></i><span>More</span>
+      </button>
+    </nav>
 
     <!-- Sidebar (desktop) -->
     <aside class="sidebar">
@@ -831,6 +828,7 @@
   <script type="module" src="assets/js/modules/csv-upload.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
   <script src="assets/js/modules/pickers.js"></script>
+  <script src="assets/js/modules/nav.js"></script>
   <script type="module" src="assets/js/modules/budget.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {

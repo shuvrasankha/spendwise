@@ -88,10 +88,28 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   }
   [data-theme="dark"] .bottom-nav { border-top-color: var(--border); }
   .bottom-nav-btn {
-    border-radius: 18px; color: var(--text2); gap: 2px; min-width: 0;
-    font-size: 11.5px; font-weight: 600; letter-spacing: 0;
+    flex: 1 1 0; border-radius: 18px; color: var(--text2); gap: 3px; min-width: 0;
+    font-size: 12px; font-weight: 600; letter-spacing: 0;
   }
+  .bottom-nav-btn svg, .bottom-nav-btn i { width: 22px; height: 22px; }
   .bottom-nav-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Centre +: a raised gold coin. Tap adds an expense, hold opens voice (nav.js). */
+  .bottom-nav .bottom-nav-add, [data-theme="dark"] .bottom-nav .bottom-nav-add,
+  .bottom-nav .bottom-nav-add.active, [data-theme="dark"] .bottom-nav .bottom-nav-add.active { background: none; box-shadow: none; color: var(--gold-on); }
+  .bottom-nav-add span {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; /* name for screen readers only */
+  }
+  .bottom-nav-add svg, .bottom-nav-add i {
+    box-sizing: content-box; width: 26px; height: 26px; padding: 13px; margin-top: -22px; border-radius: 50%;
+    background: var(--gold); color: var(--gold-on); stroke-width: 2.5;
+    box-shadow: 0 0 0 5px var(--bg), 0 8px 20px color-mix(in srgb, var(--gold) 45%, transparent);
+    transition: transform var(--transition);
+  }
+  .bottom-nav-add:active svg { transform: scale(0.94); }
+  .bottom-nav-add.active svg { box-shadow: 0 0 0 5px var(--bg), 0 0 0 7px var(--gold); }
+  .bottom-nav-add:focus-visible { outline: none; }
+  .bottom-nav-add:focus-visible svg { outline: 2px solid var(--accent); outline-offset: 4px; }
   .bottom-nav-btn.active { background: var(--hero-bg); color: var(--hero-text); }
   .bottom-nav-btn.active svg { color: var(--gold-bright); }
   .bottom-nav-btn:hover:not(.active) { color: var(--text); }
@@ -112,6 +130,34 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   .main-content { padding-bottom: calc(104px + var(--safe-bottom)); }
   .voice-fab { bottom: calc(88px + var(--safe-bottom)); z-index: 98; }
 }
+
+/* Top bar on phones: logo and avatar only; Appearance lives in the profile menu (theme.js) */
+.theme-menu-row { display: none; }
+@media (max-width: 767px) {
+  #theme-btn { display: none; }
+  .theme-menu-row { display: flex; }
+  .navbar { padding: 0 14px 0 16px; }
+  .nav-logo-text { font-size: 1.125rem; }
+  .nav-logo-image { width: 28px; height: 28px; }
+  .user-avatar { width: 32px; height: 32px; }
+}
+
+/* More sheet (nav.js): page rows with an icon and a hint */
+.nav-more-list { gap: 6px; padding-bottom: 16px; }
+/* .sw-pick-opt (pickers) is space-between and hides its svg (a check mark): undo both here */
+.sw-pick-opt.nav-more-opt { justify-content: flex-start; gap: 14px; min-height: 64px; color: var(--text); text-decoration: none; }
+.sw-pick-opt.nav-more-opt:hover { text-decoration: none; }
+.sw-pick-opt.nav-more-opt svg { opacity: 1; color: inherit; }
+.nav-more-icon {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--gold-bg); color: var(--gold);
+}
+.nav-more-icon svg { width: 20px; height: 20px; color: var(--gold); }
+.nav-more-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nav-more-text strong { font-weight: 700; }
+.nav-more-text small { font-size: 0.8125rem; color: var(--text2); font-weight: 500; }
+.nav-more-opt[aria-current="page"] { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border); }
+.nav-more-opt[aria-current="page"] strong::after { content: " · here"; font-weight: 500; color: var(--text2); }
 
 /* =====================
    SURFACES: one card language everywhere
