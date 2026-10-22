@@ -1,6 +1,8 @@
 // insights-data.js — Pure calculations for the Insights page (no DOM, no Firebase), so they can be tested.
 // All dates are local 'YYYY-MM-DD' strings, compared as text.
 
+import { isSpending } from '../utils/helpers.js';
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 const SHORT = MONTHS.map(m => m.slice(0, 3));
@@ -75,11 +77,13 @@ const sum = list => list.reduce((s, x) => s + x.amount, 0);
 const pct = (now, before) => (before > 0 ? ((now - before) / before) * 100 : null);
 
 export function summarize({ expenses = [], income = [], debts = [] }, r) {
-  const exp = expenses.filter(e => inRange(e.date, r.start, r.end));
+  const inPeriod = expenses.filter(e => inRange(e.date, r.start, r.end));
+  const exp = inPeriod.filter(isSpending);
   const inc = income.filter(i => inRange(i.date, r.start, r.end));
-  const prevExp = expenses.filter(e => inRange(e.date, r.prevStart, r.prevEnd));
+  const prevExp = expenses.filter(e => isSpending(e) && inRange(e.date, r.prevStart, r.prevEnd));
 
   const spent = sum(exp), earned = sum(inc), prevSpent = sum(prevExp);
+  const invested = sum(inPeriod) - spent;
   const byCat = {}, prevByCat = {};
   exp.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
   prevExp.forEach(e => { prevByCat[e.category] = (prevByCat[e.category] || 0) + e.amount; });
@@ -100,7 +104,7 @@ export function summarize({ expenses = [], income = [], debts = [] }, r) {
 
   const dailyAvg = spent / r.elapsedDays;
   return {
-    spent, earned, saved: earned - spent,
+    spent, earned, invested, saved: earned - spent, // what was invested counts as saved
     savingsRate: earned > 0 ? ((earned - spent) / earned) * 100 : null,
     txCount: exp.length, incomeCount: inc.length,
     dailyAvg,
@@ -116,7 +120,7 @@ export function summarize({ expenses = [], income = [], debts = [] }, r) {
   };
 }
 
-export const hasData = s => s.txCount > 0 || s.incomeCount > 0 || s.debts.activeCount > 0;
+export const hasData = s => s.txCount > 0 || s.incomeCount > 0 || s.invested > 0 || s.debts.activeCount > 0;
 
 // Compact, number-only facts for the AI. No descriptions, notes or names leave the device.
 export function factsText(s, r, money) {
@@ -125,7 +129,8 @@ export function factsText(s, r, money) {
     `SPENT: ${money(s.spent)} in ${s.txCount} expenses (${money(s.dailyAvg)} per day)`,
     `INCOME: ${s.incomeCount ? `${money(s.earned)} from ${s.incomeCount} entries` : 'none recorded'}`,
   ];
-  if (s.savingsRate !== null) lines.push(`SAVED: ${money(s.saved)} (${s.savingsRate.toFixed(1)}% of income)`);
+  if (s.invested > 0) lines.push(`INVESTED: ${money(s.invested)} (counted as saved, not as spending)`);
+  if (s.savingsRate !== null) lines.push(`SAVED: ${money(s.saved)} (${s.savingsRate.toFixed(1)}% of income${s.invested > 0 ? ', including what was invested' : ''})`);
   if (s.projection !== null) lines.push(`ON TRACK TO SPEND THIS MONTH: ${money(s.projection)}`);
   lines.push(`COMPARED WITH ${r.prevLabel.toUpperCase()}: spent ${money(s.prevSpent)}` +
     (s.spendChange !== null ? ` (${s.spendChange >= 0 ? '+' : ''}${s.spendChange.toFixed(0)}%)` : ''));

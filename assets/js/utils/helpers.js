@@ -8,6 +8,9 @@ export function todayStr(d = new Date()) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 
+// Money put into Investment is saved, not spent: every spending total, chart and projection leaves it out
+export const isSpending = e => e.category !== 'Investment';
+
 export function getWeekStart() {
   const d = new Date();
   const day = d.getDay();

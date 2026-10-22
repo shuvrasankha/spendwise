@@ -32,6 +32,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/accessibility.js',
   './assets/js/modules/reminders.js',
   './assets/js/modules/insights-data.js',
+  './assets/js/modules/sms-parse.js',
   './assets/images/logo-96.png',
   './assets/images/logo-192.png',
   './manifest.json',

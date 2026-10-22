@@ -159,7 +159,7 @@ function renderGlance(s, r) {
       <div class="home-tile">
         <span class="home-tile-label">Saved</span>
         <span class="home-tile-value">${s.savingsRate !== null ? money(s.saved) : '—'}</span>
-        <span class="home-tile-sub">${s.savingsRate !== null ? `${s.savingsRate.toFixed(0)}% of income` : 'Needs income entries'}</span>
+        <span class="home-tile-sub">${s.savingsRate !== null ? `${s.savingsRate.toFixed(0)}% of income` : 'Needs income entries'}${s.invested > 0 ? ` · ${money(s.invested)} invested` : ''}</span>
       </div>
       ${s.debts.activeCount ? `
       <a class="home-tile home-tile-wide" href="debt.html">

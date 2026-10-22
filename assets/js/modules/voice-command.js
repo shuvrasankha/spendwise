@@ -3,6 +3,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
+import { parseSms } from './sms-parse.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -74,7 +75,18 @@ onAuthStateChanged(auth, user => {
     }
     // On index.html, FAB starts hidden; showPage('add') will reveal it.
   }
+  if (user) openSharedSms();
 });
+
+// An SMS shared to SpendWise from the Messages app (manifest share_target) arrives as ?text=
+function openSharedSms() {
+  const params = new URLSearchParams(location.search);
+  const shared = params.get('text') || params.get('title');
+  if (!shared) return;
+  history.replaceState(null, '', location.pathname); // a reload shouldn't add it again
+  openVoiceModal();
+  handleTextSubmit(shared);
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  SPEECH RECOGNITION (Web Speech API)
@@ -762,16 +774,34 @@ function toggleMic() {
 }
 
 // ── Manual text submit ───────────────────────────────────────────────────────
-function handleTextSubmit() {
-  const input = document.getElementById('voice-text-input');
-  if (!input) return;
-  const text = input.value.trim();
+// A bank SMS is read on this device (instant, offline, nothing sent); anything else goes to the AI
+function handleTextSubmit(text = document.getElementById('voice-text-input')?.value || '') {
+  text = text.trim();
   if (!text) {
     showVoiceStatus('Please type or speak a command first.', 'error');
     return;
   }
   document.getElementById('voice-transcript').textContent = text;
+  const sms = parseSms(text);
+  if (sms) {
+    parsedData = validateEntries([sms]);
+    showPreview(parsedData);
+    showVoiceStatus('Read from your SMS on this device. Check it, then save.', 'success');
+    return;
+  }
   parseVoiceCommand(text);
+}
+
+// Reads the clipboard directly: a text box would drop the SMS's line breaks
+async function pasteSms() {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch { /* blocked or unsupported */ }
+  if (!text.trim()) {
+    document.getElementById('voice-text-input')?.focus();
+    showVoiceStatus('Copy a bank SMS first, or paste it into the box below.', 'loading');
+    return;
+  }
+  handleTextSubmit(text);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -800,7 +830,8 @@ function initVoiceUI() {
 
   // Send text button
   const sendBtn = document.getElementById('voice-send-btn');
-  if (sendBtn) sendBtn.addEventListener('click', handleTextSubmit);
+  if (sendBtn) sendBtn.addEventListener('click', () => handleTextSubmit());
+  document.getElementById('voice-paste-btn')?.addEventListener('click', pasteSms);
 
   // Enter key on text input
   const textInput = document.getElementById('voice-text-input');
