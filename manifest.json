@@ -4,12 +4,17 @@
   "description": "Track every rupee, effortlessly.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#0f0e0c",
+  "theme_color": "#0f0e0c",
   "icons": [
     {
+      "src": "assets/images/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
       "src": "assets/images/logo2.png",
-      "sizes": "192x192 512x512 any",
+      "sizes": "500x500",
       "type": "image/png"
     }
   ],
@@ -20,5 +25,46 @@
       "title": "title",
       "text": "text"
     }
-  }
+  },
+  "shortcuts": [
+    {
+      "name": "Add expense",
+      "short_name": "Add",
+      "description": "Log an expense",
+      "url": "./expense.html?source=shortcut",
+      "icons": [
+        {
+          "src": "assets/images/logo-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Voice entry",
+      "short_name": "Voice",
+      "description": "Say what you spent",
+      "url": "./expense.html?voice=1",
+      "icons": [
+        {
+          "src": "assets/images/logo-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "short_name": "History",
+      "description": "See past transactions",
+      "url": "./history.html",
+      "icons": [
+        {
+          "src": "assets/images/logo-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

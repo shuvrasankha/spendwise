@@ -9,9 +9,10 @@
   <title>SpendWise - AI Insights</title>
   <link rel="icon" type="image/png" href="assets/images/logo-96.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c1c1e">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ea">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
   <script src="assets/js/theme.js"></script>
+  <script src="assets/js/modules/app-lock.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo-192.png">
@@ -22,10 +23,11 @@
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js" />
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js" />
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/tokens.css" />
   <link rel="stylesheet" href="assets/css/style.css?v=4" />
   <link rel="stylesheet" href="assets/css/responsive.css" />
+  <link rel="stylesheet" href="assets/css/reimagine.css" />
   <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous" defer></script>
 </head>
 
@@ -167,26 +169,23 @@
     </nav>
 
 
-    <div class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Main">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Home</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToExpense" id="bnav-add">
-        <i data-lucide="wallet"></i><span>Expense</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
-        <i data-lucide="trending-up"></i><span>Income</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
-      <button class="bottom-nav-btn" data-action="navigateToDebt" id="bnav-debt">
-        <i data-lucide="hand-coins"></i><span>Debt</span>
+      <button class="bottom-nav-btn bottom-nav-add" data-action="navigateToExpense" id="bnav-add" aria-label="Add expense" title="Add expense (hold for voice)">
+        <i data-lucide="plus"></i><span>Add expense</span>
       </button>
       <button class="bottom-nav-btn active" aria-current="page" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>Insights</span>
       </button>
-    </div>
+      <button class="bottom-nav-btn" id="bnav-more" aria-haspopup="dialog" aria-expanded="false">
+        <i data-lucide="more-horizontal"></i><span>More</span>
+      </button>
+    </nav>
 
     <aside class="sidebar">
       <nav class="sidebar-nav">
@@ -285,6 +284,9 @@
   <script type="module" src="assets/js/dashboard.js"></script>
   <script type="module" src="assets/js/modules/insights-v2.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
+  <script src="assets/js/modules/pickers.js"></script>
+  <script src="assets/js/modules/nav.js"></script>
+  <script type="module" src="assets/js/modules/budget.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));

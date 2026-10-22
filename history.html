@@ -9,9 +9,10 @@
   <title>SpendWise - Transaction History</title>
   <link rel="icon" type="image/png" href="assets/images/logo-96.png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1c1c1e">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ea">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
   <script src="assets/js/theme.js"></script>
+  <script src="assets/js/modules/app-lock.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo-192.png">
@@ -22,10 +23,11 @@
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js" />
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js" />
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/tokens.css" />
   <link rel="stylesheet" href="assets/css/style.css?v=3" />
   <link rel="stylesheet" href="assets/css/responsive.css" />
+  <link rel="stylesheet" href="assets/css/reimagine.css" />
   <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous" defer></script>
 </head>
 
@@ -178,26 +180,23 @@
 
 
     <!-- Bottom nav (mobile) -->
-    <div class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Main">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Home</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToExpense" id="bnav-add">
-        <i data-lucide="wallet"></i><span>Expense</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
-        <i data-lucide="trending-up"></i><span>Income</span>
       </button>
       <button class="bottom-nav-btn active" aria-current="page" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
-      <button class="bottom-nav-btn" data-action="navigateToDebt" id="bnav-debt">
-        <i data-lucide="hand-coins"></i><span>Debt</span>
+      <button class="bottom-nav-btn bottom-nav-add" data-action="navigateToExpense" id="bnav-add" aria-label="Add expense" title="Add expense (hold for voice)">
+        <i data-lucide="plus"></i><span>Add expense</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>Insights</span>
       </button>
-    </div>
+      <button class="bottom-nav-btn" id="bnav-more" aria-haspopup="dialog" aria-expanded="false">
+        <i data-lucide="more-horizontal"></i><span>More</span>
+      </button>
+    </nav>
 
     <!-- Sidebar (desktop) -->
     <aside class="sidebar">
@@ -324,64 +323,52 @@
             <label>Category *</label>
             <input type="hidden" id="edit-category" />
             <div class="category-picker" id="edit-category-picker">
-              <button type="button" class="cat-tile" data-value="Food &amp; Dining">
+              <button type="button" class="cat-tile" data-value="Food &amp; Dining" title="Food &amp; Dining">
                 <div class="cat-icon"><i data-lucide="utensils"></i></div>
                 <span>Food</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Transport">
-                <div class="cat-icon"><i data-lucide="car"></i></div>
-                <span>Transport</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Shopping">
-                <div class="cat-icon"><i data-lucide="shopping-bag"></i></div>
-                <span>Shopping</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Entertainment">
-                <div class="cat-icon"><i data-lucide="clapperboard"></i></div>
-                <span>Fun</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Health">
-                <div class="cat-icon"><i data-lucide="heart-pulse"></i></div>
-                <span>Health</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Bills &amp; Utilities">
-                <div class="cat-icon"><i data-lucide="zap"></i></div>
-                <span>Bills</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Education">
-                <div class="cat-icon"><i data-lucide="graduation-cap"></i></div>
-                <span>Education</span>
-              </button>
-              <button type="button" class="cat-tile" data-value="Travel">
-                <div class="cat-icon"><i data-lucide="plane"></i></div>
-                <span>Travel</span>
               </button>
               <button type="button" class="cat-tile" data-value="Groceries">
                 <div class="cat-icon"><i data-lucide="shopping-cart"></i></div>
                 <span>Groceries</span>
               </button>
-              <button type="button" class="cat-tile" data-value="Subscription">
-                <div class="cat-icon"><i data-lucide="repeat"></i></div>
-                <span>Subscriptions</span>
+              <button type="button" class="cat-tile" data-value="Transport">
+                <div class="cat-icon"><i data-lucide="car"></i></div>
+                <span>Transport</span>
               </button>
-              <button type="button" class="cat-tile" data-value="Rent">
+              <button type="button" class="cat-tile" data-value="Travel">
+                <div class="cat-icon"><i data-lucide="plane"></i></div>
+                <span>Travel</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Shopping">
+                <div class="cat-icon"><i data-lucide="shopping-bag"></i></div>
+                <span>Shopping</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Bills &amp; Utilities" title="Bills &amp; Utilities">
+                <div class="cat-icon"><i data-lucide="zap"></i></div>
+                <span>Bills</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Home &amp; Rent" title="Home &amp; Rent">
                 <div class="cat-icon"><i data-lucide="home"></i></div>
-                <span>Rent</span>
+                <span>Home</span>
               </button>
-              <button type="button" class="cat-tile" data-value="Investment">
-                <div class="cat-icon"><i data-lucide="chart-no-axes-combined"></i></div>
-                <span>Investment</span>
+              <button type="button" class="cat-tile" data-value="Health">
+                <div class="cat-icon"><i data-lucide="heart-pulse"></i></div>
+                <span>Health</span>
               </button>
-              <button type="button" class="cat-tile" data-value="Personal Care">
-                <div class="cat-icon"><i data-lucide="sparkles"></i></div>
-                <span>Personal</span>
+              <button type="button" class="cat-tile" data-value="Entertainment" title="Entertainment">
+                <div class="cat-icon"><i data-lucide="clapperboard"></i></div>
+                <span>Fun</span>
               </button>
-              <button type="button" class="cat-tile" data-value="Gifts">
-                <div class="cat-icon"><i data-lucide="gift"></i></div>
-                <span>Gifts</span>
+              <button type="button" class="cat-tile" data-value="Education">
+                <div class="cat-icon"><i data-lucide="graduation-cap"></i></div>
+                <span>Education</span>
+              </button>
+              <button type="button" class="cat-tile" data-value="Savings &amp; Investments" title="Savings &amp; Investments">
+                <div class="cat-icon"><i data-lucide="piggy-bank"></i></div>
+                <span>Savings</span>
               </button>
               <button type="button" class="cat-tile" data-value="Other">
-                <div class="cat-icon"><i data-lucide="folder-open"></i></div>
+                <div class="cat-icon"><i data-lucide="more-horizontal"></i></div>
                 <span>Other</span>
               </button>
             </div>
@@ -418,6 +405,12 @@
           <div class="form-group full-width">
             <label>Notes <span class="optional-tag">optional</span></label>
             <textarea id="edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label class="repeat-row" for="edit-repeat">
+              <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+              <input type="checkbox" role="switch" id="edit-repeat" class="reminder-switch">
+            </label>
           </div>
         </div>
         <div id="edit-error" class="form-msg error hidden"></div>
@@ -551,6 +544,9 @@
   <script src="assets/js/modules/offline-queue.js"></script>
   <script type="module" src="assets/js/dashboard.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
+  <script src="assets/js/modules/pickers.js"></script>
+  <script src="assets/js/modules/nav.js"></script>
+  <script type="module" src="assets/js/modules/budget.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));

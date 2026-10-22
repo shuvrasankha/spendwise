@@ -94,3 +94,33 @@ test('not a transaction: OTPs, reminders, requests, failures, plain sentences', 
   assert.equal(read('Spent 200 on groceries today'), null); // a typed voice command goes to the AI
   assert.equal(read(''), null);
 });
+
+test('subscriptions, rent and investments use the merged categories', () => {
+  assert.equal(read('Rs.649.00 debited from A/c XX1234 on 20-10-26 to VPA netflix@icici (UPI Ref No 629451234567) -HDFC Bank').category, 'Bills & Utilities');
+  assert.equal(read('Rs.18000.00 debited from A/c XX1234 on 01-10-26 to VPA nobroker@icici (UPI Ref No 629451234568) -HDFC Bank').category, 'Home & Rent');
+  assert.equal(read('Rs.5000.00 debited from A/c XX1234 on 05-10-26 to VPA zerodha@icici (UPI Ref No 629451234569) -HDFC Bank').category, 'Savings & Investments');
+});
+
+test('SBI UPI debit with no currency before the amount', () => {
+  const e = read('Dear UPI user A/C X1234 debited by 250.0 on date 21Oct26 trf to ZOMATO Refno 629812345678. If not u? call 1800111109. -SBI');
+  assert.equal(e.type, 'expense');
+  assert.equal(e.amount, 250);
+  assert.equal(e.date, '2026-10-21');
+  assert.equal(e.description, 'Zomato');
+  assert.equal(e.category, 'Food & Dining');
+});
+
+test('"Rs:" amount, ignoring the balance', () => {
+  const e = read('A/c *1234 Debited for Rs:100.00 on 21-10-2026 10:20:30 by Mob Bk ref no 629812 Avl Bal Rs:5000.00.If not you, Call 1800-180-1111 -Canara Bank');
+  assert.equal(e.type, 'expense');
+  assert.equal(e.amount, 100);
+  assert.equal(e.date, '2026-10-21');
+});
+
+test('ICICI "<payee> credited" names who was paid', () => {
+  const e = read('ICICI Bank Acct XX123 debited for Rs 499.00 on 21-Oct-26; Netflix credited. UPI:629811112222. Call 18002662 for dispute.');
+  assert.equal(e.type, 'expense');
+  assert.equal(e.amount, 499);
+  assert.equal(e.description, 'Netflix');
+  assert.equal(e.category, 'Bills & Utilities');
+});

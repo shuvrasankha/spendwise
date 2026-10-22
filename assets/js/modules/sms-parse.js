@@ -10,7 +10,9 @@ const SKIP = /\b(otp|one[- ]time password|verification code|will be (debited|cre
 const ACCOUNT = /\b(a\/c|acct|account|card|upi|vpa|ref|txn|avl|bank|neft|imps|rtgs|wallet)\b|@/i;
 const DEBIT = /\b(debited|spent|paid|sent|withdrawn|withdrawal|purchase|charged|deducted|debit)\b/i;
 const CREDIT = /\b(credited|received|deposited|refunded|refund|cashback|credit(?!\s*card))\b/i;
-const AMOUNT = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/gi;
+const AMOUNT = /(?:rs|inr|₹)[.:]?\s*([\d,]+(?:\.\d{1,2})?)/gi; // Rs.450, Rs:100, INR 1,250.00, ₹99
+// SBI leaves the currency out: "A/C X1234 debited by 250.0"
+const BARE_AMOUNT = /\b(?:debited|credited)\s+(?:by|for|with)\s+([\d,]+(?:\.\d{1,2})?)\b/i;
 const NOT_AMOUNT = /(bal(ance)?|lmt|limit|avl|available|due|outstanding)[\s.:a-z]*$/i; // text just before a balance, not the payment
 
 const BANKS = [
@@ -27,14 +29,14 @@ const CATEGORIES = [
   ['Food & Dining', /swiggy|zomato|domino|pizza|mcdonald|kfc|starbucks|cafe|restaurant|eatsure|burger/],
   ['Travel', /makemytrip|goibibo|indigo|air ?india|vistara|akasa|cleartrip|airbnb|\boyo\b|yatra/],
   ['Transport', /\buber\b|\bola\b|rapido|metro|irctc|redbus|fuel|petrol|hpcl|bpcl|iocl|indian ?oil|fastag|parking/],
-  ['Subscription', /netflix|spotify|hotstar|prime ?video|youtube|apple\.com|google ?play|sonyliv|zee5/],
+  ['Bills & Utilities', /netflix|spotify|hotstar|prime ?video|youtube|apple\.com|google ?play|sonyliv|zee5/],
   ['Shopping', /amazon|flipkart|myntra|ajio|meesho|nykaa|croma|decathlon|ikea/],
   ['Bills & Utilities', /airtel|\bjio\b|vodafone|\bvi\b|bsnl|electricity|bescom|tata ?power|broadband|recharge|\bbill\b/],
   ['Health', /apollo|pharmeasy|netmeds|1mg|medplus|hospital|clinic|pharmacy|practo/],
   ['Entertainment', /bookmyshow|\bpvr\b|inox|steam|playstation/],
-  ['Investment', /zerodha|groww|upstox|kuvera|mutual ?fund|\bsip\b|\bnps\b|\bppf\b/],
+  ['Savings & Investments', /zerodha|groww|upstox|kuvera|mutual ?fund|\bsip\b|\bnps\b|\bppf\b/],
   ['Education', /udemy|coursera|byju|unacademy|school|college|tuition/],
-  ['Rent', /\brent\b|nobroker/],
+  ['Home & Rent', /\brent\b|nobroker/],
 ];
 
 function amountOf(text) {
@@ -43,7 +45,9 @@ function amountOf(text) {
     const n = parseFloat(m[1].replace(/,/g, ''));
     if (n > 0) return n;
   }
-  return null;
+  const bare = text.match(BARE_AMOUNT);
+  const n = bare ? parseFloat(bare[1].replace(/,/g, '')) : 0;
+  return n > 0 ? n : null;
 }
 
 // Indian SMS dates: 21-10-26, 21/10/2026, 21-Oct-26, 21 Oct 2026, 2026-10-21. Falls back to today.
@@ -63,7 +67,7 @@ function dateOf(text, today) {
   return ymd(today);
 }
 
-const STOP = '(?=\\s+(?:on|ref|via|using|upi|avl|from|for|with|txn|is|has|was|thru|through|dated|info)\\b|\\s*[.,;:(]|\\s+\\d|$)';
+const STOP = '(?=\\s+(?:on|ref|refno|via|using|upi|avl|from|for|with|txn|is|has|was|thru|through|dated|info)\\b|\\s*[.,;:(]|\\s+\\d|$)';
 const NAME = "([A-Za-z][\\w&'.* -]{1,40}?)";
 
 // Who was paid (debit) or who paid (credit)
@@ -75,6 +79,8 @@ function partyOf(text, debit) {
     const m = text.match(new RegExp(`\\b${words}\\s+(?!a\\/c|ac\\b|acct|your|account|card|neft|imps|rtgs|upi|transfer|bank\\b)${NAME}${STOP}`, 'i'));
     name = m ? m[1] : null;
   }
+  // ICICI: "debited for Rs 499.00 on 21-Oct-26; Netflix credited"
+  if (!name && debit) name = text.match(new RegExp(`;\\s*${NAME}\\s+credited\\b`, 'i'))?.[1] ?? null;
   if (!name || /\d{5,}/.test(name)) return ''; // QR codes and account numbers aren't names
   name = name.replace(/[._-]+/g, ' ').trim();
   return name === name.toUpperCase() || name === name.toLowerCase()

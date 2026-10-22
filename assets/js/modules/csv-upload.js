@@ -4,7 +4,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
-import { todayStr } from '../utils/helpers.js';
+import { todayStr, EXPENSE_CATEGORIES, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -18,11 +18,7 @@ const fmt = window.fmt;
 const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const VALID_CATEGORIES = [
-  'Food & Dining', 'Transport', 'Shopping', 'Entertainment', 'Health',
-  'Bills & Utilities', 'Education', 'Travel', 'Groceries', 'Subscription',
-  'Rent', 'Investment', 'Personal Care', 'Gifts', 'Other'
-];
+const VALID_CATEGORIES = EXPENSE_CATEGORIES;
 
 const VALID_PAYMENTS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
 
@@ -152,7 +148,7 @@ async function callAIModel(csvText) {
   // Validate & sanitise each entry
   return parsed.map(entry => ({
     amount: Math.abs(parseFloat(entry.amount)) || 0,
-    category: VALID_CATEGORIES.includes(entry.category) ? entry.category : 'Other',
+    category: VALID_CATEGORIES.includes(normalizeCategory(entry.category)) ? normalizeCategory(entry.category) : 'Other',
     description: String(entry.description || '-').slice(0, 200),
     payment: VALID_PAYMENTS.includes(entry.payment) ? entry.payment : 'UPI',
     date: /^\d{4}-\d{2}-\d{2}$/.test(entry.date) ? entry.date : todayStr(),

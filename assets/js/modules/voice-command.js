@@ -4,6 +4,7 @@
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
 import { parseSms } from './sms-parse.js';
+import { EXPENSE_CATEGORIES, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -16,30 +17,33 @@ const fmt = window.fmt;
 // AI runs on Cloudflare Workers AI via our proxy (config/ai.js)
 const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 
-// ── Categories (must match the app's category list) ──────────────────────────
-const EXPENSE_CATEGORIES = [
-  'Food & Dining', 'Transport', 'Shopping', 'Entertainment', 'Health',
-  'Bills & Utilities', 'Education', 'Travel', 'Groceries', 'Subscription',
-  'Rent', 'Investment', 'Personal Care', 'Gifts', 'Other'
-];
 
 const PAYMENT_METHODS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
 
 const DEBT_TYPES = ['they-owe', 'i-owe'];
 
+const INCOME_PAYMENT_TYPES = ['Online', 'Cash'];
+
+// Tapping one fills the box, so people see the phrasing that works (nothing is sent)
+const EXAMPLE_COMMANDS = [
+  'Spent 250 on groceries and 80 on an auto',
+  'Got my salary of 50000 today',
+  'Lent 500 to Ravi yesterday'
+];
+
 // ── Supported Languages ──────────────────────────────────────────────────────
 const VOICE_LANGUAGES = [
-  { code: 'en-IN', label: 'English', flag: '🇬🇧' },
-  { code: 'hi-IN', label: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'bn-IN', label: 'বাংলা', flag: '🇮🇳' },
-  { code: 'ta-IN', label: 'தமிழ்', flag: '🇮🇳' },
-  { code: 'te-IN', label: 'తెలుగు', flag: '🇮🇳' },
-  { code: 'kn-IN', label: 'ಕನ್ನಡ', flag: '🇮🇳' },
-  { code: 'ml-IN', label: 'മലയാളം', flag: '🇮🇳' },
-  { code: 'mr-IN', label: 'मराठी', flag: '🇮🇳' },
-  { code: 'gu-IN', label: 'ગુજરાતી', flag: '🇮🇳' },
-  { code: 'pa-IN', label: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
-  { code: 'or-IN', label: 'ଓଡ଼ିଆ', flag: '🇮🇳' }
+  { code: 'en-IN', label: 'English', flag: '🇬🇧', name: 'English' },
+  { code: 'hi-IN', label: 'हिन्दी', flag: '🇮🇳', name: 'Hindi' },
+  { code: 'bn-IN', label: 'বাংলা', flag: '🇮🇳', name: 'Bengali' },
+  { code: 'ta-IN', label: 'தமிழ்', flag: '🇮🇳', name: 'Tamil' },
+  { code: 'te-IN', label: 'తెలుగు', flag: '🇮🇳', name: 'Telugu' },
+  { code: 'kn-IN', label: 'ಕನ್ನಡ', flag: '🇮🇳', name: 'Kannada' },
+  { code: 'ml-IN', label: 'മലയാളം', flag: '🇮🇳', name: 'Malayalam' },
+  { code: 'mr-IN', label: 'मराठी', flag: '🇮🇳', name: 'Marathi' },
+  { code: 'gu-IN', label: 'ગુજરાતી', flag: '🇮🇳', name: 'Gujarati' },
+  { code: 'pa-IN', label: 'ਪੰਜਾਬੀ', flag: '🇮🇳', name: 'Punjabi' },
+  { code: 'or-IN', label: 'ଓଡ଼ିଆ', flag: '🇮🇳', name: 'Odia' }
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,8 +79,17 @@ onAuthStateChanged(auth, user => {
     }
     // On index.html, FAB starts hidden; showPage('add') will reveal it.
   }
-  if (user) openSharedSms();
+  if (user) { openSharedSms(); openFromShortcut(); }
 });
+
+// The "Voice entry" home-screen shortcut (manifest.json) opens expense.html?voice=1
+function openFromShortcut() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('voice') !== '1') return;
+  params.delete('voice');
+  history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
+  openVoiceModal();
+}
 
 // An SMS shared to SpendWise from the Messages app (manifest share_target) arrives as ?text=
 function openSharedSms() {
@@ -165,13 +178,17 @@ function initSpeechRecognition() {
     clearTimeout(silenceTimer);
     isListening = false;
     updateRecordingUI(false);
-    if (e.error === 'not-allowed') {
-      showVoiceStatus('Microphone access denied. Please allow microphone permission.', 'error');
-    } else if (e.error === 'no-speech') {
-      showVoiceStatus('No speech detected. Tap the mic and try again.', 'error');
-    } else {
-      showVoiceStatus('Speech recognition error. Try again or type your command.', 'error');
-    }
+    const messages = {
+      'not-allowed': 'Microphone access is blocked. Allow it in your browser settings, or type below.',
+      'service-not-allowed': 'Microphone access is blocked. Allow it in your browser settings, or type below.',
+      'no-speech': 'Didn\'t hear anything. Tap the mic and try again.',
+      'audio-capture': 'No microphone found. Type your command below instead.',
+      'network': 'Speech needs an internet connection. Type below, or paste a bank SMS.',
+      'language-not-supported': 'This language isn\'t available for speech here. Try English, or type below.',
+      'aborted': ''
+    };
+    const msg = e.error in messages ? messages[e.error] : 'Speech recognition stopped. Try again or type your command.';
+    if (msg) showVoiceStatus(msg, 'error');
   };
 
   rec.onend = () => {
@@ -188,14 +205,21 @@ function initSpeechRecognition() {
   return rec;
 }
 
+const offline = () => (window.isOffline ? window.isOffline() : !navigator.onLine);
+const OFFLINE_AI_MSG = 'You\'re offline. Spoken and typed commands need a connection, but a pasted bank SMS works offline.';
+
 function startListening() {
+  if (offline()) {
+    showVoiceStatus(OFFLINE_AI_MSG, 'error');
+    return;
+  }
   if (!recognition) recognition = initSpeechRecognition();
   if (!recognition) {
     showVoiceStatus('Speech recognition not supported in this browser. Use the text input below.', 'error');
     return;
   }
   // Reset UI
-  document.getElementById('voice-transcript').textContent = 'Listening… (speak naturally, will auto-stop after pause)';
+  document.getElementById('voice-transcript').textContent = 'Listening… speak naturally, it stops when you pause';
   document.getElementById('voice-transcript').classList.remove('interim');
   document.getElementById('voice-text-input').value = '';
   hidePreview();
@@ -354,6 +378,9 @@ async function callAIModel(text) {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
+// AI output is untrusted text: keep it a string and within the form fields' limits
+const clip = (v, max) => String(v ?? '').trim().slice(0, max);
+
 function validateSingleEntry(data) {
   if (!data || typeof data !== 'object') return null;
   if (!data.type || !['expense', 'income', 'debt'].includes(data.type)) return null;
@@ -368,7 +395,8 @@ function validateSingleEntry(data) {
   }
 
   if (data.type === 'expense') {
-    // Validate category
+    // Validate category (the AI may still use an older name such as "Rent" or "Subscription")
+    data.category = normalizeCategory(data.category);
     if (!EXPENSE_CATEGORIES.includes(data.category)) {
       // Try fuzzy match
       const lower = (data.category || '').toLowerCase();
@@ -379,20 +407,20 @@ function validateSingleEntry(data) {
     if (!PAYMENT_METHODS.includes(data.payment)) {
       data.payment = 'UPI';
     }
-    data.description = data.description || '-';
-    data.cardName = data.cardName || '';
-    data.notes = data.notes || '';
+    data.description = clip(data.description, 100) || '-';
+    data.cardName = clip(data.cardName, 100);
+    data.notes = clip(data.notes, 500);
   } else if (data.type === 'income') {
     // Income
-    data.source = data.source || 'Other';
-    data.paymentType = ['Online', 'Cash'].includes(data.paymentType) ? data.paymentType : 'Online';
-    data.bank = data.bank || '';
-    data.notes = data.notes || '';
+    data.source = clip(data.source, 100) || 'Other';
+    data.paymentType = INCOME_PAYMENT_TYPES.includes(data.paymentType) ? data.paymentType : 'Online';
+    data.bank = clip(data.bank, 100);
+    data.notes = clip(data.notes, 500);
   } else {
     // Debt
     data.debtType = DEBT_TYPES.includes(data.debtType) ? data.debtType : 'they-owe';
-    data.person = data.person || 'Unknown';
-    data.notes = data.notes || '';
+    data.person = clip(data.person, 100);
+    data.notes = clip(data.notes, 500);
   }
 
   return data;
@@ -405,6 +433,10 @@ function validateEntries(dataArray) {
 
 async function parseVoiceCommand(text) {
   if (!text.trim()) return;
+  if (offline()) {
+    showVoiceStatus(OFFLINE_AI_MSG, 'error');
+    return;
+  }
 
   showVoiceStatus('AI is analyzing your command…', 'loading');
   showParsingSpinner(true);
@@ -424,8 +456,8 @@ async function parseVoiceCommand(text) {
     const count = validEntries.length;
     showVoiceStatus(
       count === 1
-        ? 'Parsed successfully! Review and confirm below.'
-        : `${count} entries parsed! Review and confirm below.`,
+        ? 'Check it and fix anything that\'s off, then save.'
+        : `Found ${count} entries. Check them and fix anything that's off, then save.`,
       'success'
     );
     showParsingSpinner(false);
@@ -448,98 +480,87 @@ const refFor = (entry, coll) => doc(db, coll, entry.docId ??= doc(collection(db,
 // ══════════════════════════════════════════════════════════════════════════════
 //  SAVE TO FIRESTORE
 // ══════════════════════════════════════════════════════════════════════════════
+// The Firestore document for one reviewed entry (same fields as the Add forms)
+function toDocData(entry) {
+  const base = { uid: currentUser.uid, amount: entry.amount, date: entry.date, encoding: 'plain', createdAt: serverTimestamp() };
+  if (entry.type === 'expense') {
+    return ['expenses', 'expense', { ...base, category: entry.category, payment: entry.payment, cardName: entry.cardName || '',
+      description: entry.description || '-', notes: entry.notes || '' }];
+  }
+  if (entry.type === 'income') {
+    return ['income', 'income', { ...base, source: entry.source, paymentType: entry.paymentType, bank: entry.bank || '', notes: entry.notes || '' }];
+  }
+  return ['debts', 'debt', { ...base, type: entry.debtType, person: entry.person, notes: entry.notes || '', settled: false, settledDate: '' }];
+}
+
+// Checks the reviewed entries; marks the first bad field and returns a message, or '' when all are fine
+function reviewProblem() {
+  for (let i = 0; i < parsedData.length; i++) {
+    const e = parsedData[i];
+    let field = null, msg = '';
+    if (!(e.amount > 0)) { field = 'amount'; msg = 'Enter an amount above zero.'; }
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) { field = 'date'; msg = 'Pick a date.'; }
+    else if (e.type === 'debt' && !e.person) { field = 'person'; msg = 'Add who the debt is with.'; }
+    if (field) {
+      const input = document.querySelector(`.vp-card[data-idx="${i}"] [data-field="${field}"]`);
+      if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+      return parsedData.length > 1 ? `Entry ${i + 1}: ${msg}` : msg;
+    }
+  }
+  return '';
+}
+
 async function saveEntry() {
   if (!parsedData || !parsedData.length || !currentUser) return;
+  const problem = reviewProblem();
+  if (problem) { showVoiceStatus(problem, 'error'); return; }
 
   const btn = document.getElementById('voice-confirm-btn');
   btn.disabled = true;
   btn.innerHTML = '<i data-lucide="loader-2" class="voice-spin"></i> Saving…';
   if (window.lucide) lucide.createIcons();
 
-  try {
-    // One batch: all entries save or none do, so "try again" can't add some twice
-    const batch = writeBatch(db);
-    let savedCount = 0;
-    for (const entry of parsedData) {
-      if (entry.type === 'expense') {
-        batch.set(refFor(entry, 'expenses'), {
-          uid: currentUser.uid,
-          amount: entry.amount,
-          category: entry.category,
-          date: entry.date,
-          payment: entry.payment,
-          cardName: entry.cardName || '',
-          description: entry.description || '-',
-          notes: entry.notes || '',
-          encoding: 'plain',
-          createdAt: serverTimestamp()
-        });
-      } else if (entry.type === 'income') {
-        batch.set(refFor(entry, 'income'), {
-          uid: currentUser.uid,
-          amount: entry.amount,
-          date: entry.date,
-          source: entry.source,
-          paymentType: entry.paymentType,
-          bank: entry.bank || '',
-          notes: entry.notes || '',
-          encoding: 'plain',
-          createdAt: serverTimestamp()
-        });
-      } else {
-        // Debt
-        batch.set(refFor(entry, 'debts'), {
-          uid: currentUser.uid,
-          amount: entry.amount,
-          type: entry.debtType,
-          person: entry.person,
-          date: entry.date,
-          notes: entry.notes || '',
-          settled: false,
-          settledDate: '',
-          encoding: 'plain',
-          createdAt: serverTimestamp()
-        });
-      }
-      savedCount++;
-    }
-    await batch.commit();
+  const docs = parsedData.map(toDocData);
+  const count = docs.length;
+  const total = parsedData.reduce((sum, e) => sum + e.amount, 0);
+  const what = count === 1 ? `${fmt(total)} saved` : `${count} entries saved · ${fmt(total)}`;
 
-    const totalAmount = parsedData.reduce((sum, e) => sum + e.amount, 0);
-    const debtCount = parsedData.filter(e => e.type === 'debt').length;
-    const otherCount = savedCount - debtCount;
-
-    let label;
-    if (debtCount > 0 && otherCount === 0) {
-      label = `${debtCount} debt${debtCount > 1 ? 's' : ''} of ${fmt(totalAmount)} saved!`;
-    } else if (debtCount > 0) {
-      label = `${savedCount} entries saved (${debtCount} debt${debtCount > 1 ? 's' : ''})! Total: ${fmt(totalAmount)}`;
-    } else {
-      label = savedCount === 1
-        ? `${parsedData[0].type === 'expense' ? 'Expense' : 'Income'} of ${fmt(totalAmount)} saved!`
-        : `${savedCount} entries saved! Total: ${fmt(totalAmount)}`;
-    }
-    showVoiceStatus(label, 'success');
+  // Offline: hand them to the app's queue, which writes them when the connection is back
+  const queueAll = () => {
+    if (typeof window.addToOfflineQueue !== 'function') return false;
+    docs.forEach(([, type, data]) => window.addToOfflineQueue(type, data));
+    return true;
+  };
+  const finish = (statusMsg, toastMsg, reload) => {
+    showVoiceStatus(statusMsg, 'success');
     window.markLoggedToday?.(); // skips today's reminder (reminders.js)
-
-    // Show toast on the page
-    showPageToast(
-      savedCount === 1 ? 'Entry added via voice!' : `${savedCount} entries added via voice!`,
-      'success'
-    );
-
-    // Reset after short delay
+    showPageToast(toastMsg, 'success');
     setTimeout(() => {
       closeVoiceModal();
-      window.location.reload();
+      if (reload) window.location.reload();
     }, 1200);
+  };
 
+  if (offline() && queueAll()) {
+    finish(`You're offline: ${what} on this device. They sync when you're back online.`, 'Saved offline. Will sync when online.', false);
+    return;
+  }
+
+  try {
+    // One batch: all entries save or none do, so a retry after a failure can't make duplicates
+    const batch = writeBatch(db);
+    docs.forEach(([coll, , data], i) => batch.set(refFor(parsedData[i], coll), data));
+    await batch.commit();
+    finish(`${what}!`, count === 1 ? 'Entry added by voice.' : `${count} entries added by voice.`, true);
   } catch (err) {
     console.error('Save error:', err);
-    showVoiceStatus('Failed to save. Please try again.', 'error');
+    if (!navigator.onLine && queueAll()) {
+      finish(`Connection lost: ${what} on this device. They sync when you're back online.`, 'Saved offline. Will sync when online.', false);
+      return;
+    }
+    showVoiceStatus('Couldn\'t save. Nothing was saved, so it\'s safe to try again.', 'error');
     btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="check-circle"></i> Confirm & Save';
-    if (window.lucide) lucide.createIcons();
+    updateSaveButton();
   }
 }
 
@@ -579,6 +600,11 @@ function updateRecordingUI(recording) {
   const pulseRings = document.getElementById('voice-pulse-rings');
   if (!micBtn) return;
 
+  const label = document.querySelector('.voice-mic-label');
+  if (label && isSpeechSupported()) label.textContent = recording ? 'Listening… tap to stop' : 'Tap to speak';
+  micBtn.setAttribute('aria-label', recording ? 'Stop listening' : 'Start speaking');
+  micBtn.setAttribute('aria-pressed', String(recording));
+
   if (recording) {
     micBtn.classList.add('recording');
     if (pulseRings) pulseRings.classList.add('active');
@@ -609,142 +635,112 @@ function showParsingSpinner(show) {
   if (el) el.classList.toggle('hidden', !show);
 }
 
+// ── Review: every parsed entry is an editable card ───────────────────────────
+const options = (list, current) => list.map(v => `<option value="${escapeHtml(v)}"${v === current ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+
+function entryFields(e) {
+  if (e.type === 'expense') {
+    return `
+      <label class="vp-field"><span>Category</span><select data-field="category">${options(EXPENSE_CATEGORIES, e.category)}</select></label>
+      <label class="vp-field"><span>Paid by</span><select data-field="payment">${options(PAYMENT_METHODS, e.payment)}</select></label>
+      <label class="vp-field vp-wide"><span>Description</span><input type="text" data-field="description" maxlength="100" value="${escapeHtml(e.description === '-' ? '' : e.description)}" placeholder="What was it for?"></label>`;
+  }
+  if (e.type === 'income') {
+    return `
+      <label class="vp-field"><span>Source</span><input type="text" data-field="source" maxlength="100" value="${escapeHtml(e.source)}"></label>
+      <label class="vp-field"><span>Received as</span><select data-field="paymentType">${options(INCOME_PAYMENT_TYPES, e.paymentType)}</select></label>`;
+  }
+  return `
+    <label class="vp-field"><span>Person</span><input type="text" data-field="person" maxlength="100" value="${escapeHtml(e.person)}" placeholder="Who?"></label>
+    <label class="vp-field"><span>Direction</span><select data-field="debtType">
+      <option value="they-owe"${e.debtType === 'they-owe' ? ' selected' : ''}>They owe me</option>
+      <option value="i-owe"${e.debtType === 'i-owe' ? ' selected' : ''}>I owe them</option>
+    </select></label>
+    <label class="vp-field vp-wide"><span>Notes</span><input type="text" data-field="notes" maxlength="500" value="${escapeHtml(e.notes)}" placeholder="Optional"></label>`;
+}
+
+const CHECK_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+const TYPE_LABEL = { expense: 'Expense', income: 'Income', debt: 'Debt' };
+const TYPE_ICON = { expense: 'trending-down', income: 'trending-up', debt: 'hand-coins' };
+
 function showPreview(entries) {
   const preview = document.getElementById('voice-preview');
   if (!preview) return;
+  const symbol = escapeHtml(window.getCurrencyInfo?.(window.getCurrency?.())?.symbol || '₹');
 
-  let html = '';
+  preview.innerHTML = entries.map((e, i) => `
+    <div class="vp-card" data-idx="${i}">
+      <div class="vp-head">
+        <span class="vp-type vp-type-${e.type}"><i data-lucide="${TYPE_ICON[e.type]}"></i>${TYPE_LABEL[e.type]}${entries.length > 1 ? ` ${i + 1}` : ''}</span>
+        <button type="button" class="vp-remove" data-remove="${i}" aria-label="Remove ${TYPE_LABEL[e.type].toLowerCase()} ${entries.length > 1 ? i + 1 : ''}" title="Remove"><i data-lucide="x"></i></button>
+      </div>
+      <div class="vp-grid">
+        <label class="vp-field vp-amount"><span>Amount</span><span class="vp-money"><b>${symbol}</b><input type="text" inputmode="decimal" data-field="amount" value="${e.amount}" autocomplete="off"></span></label>
+        <label class="vp-field"><span>Date</span><input type="date" data-field="date" value="${escapeHtml(e.date)}"></label>
+        ${entryFields(e)}
+      </div>
+    </div>`).join('');
 
-  // Show entry count badge for multiple entries
-  if (entries.length > 1) {
-    const totalAmt = entries.reduce((s, e) => s + e.amount, 0);
-    html += `<div class="voice-preview-count">
-      <i data-lucide="layers"></i>
-      <span>${entries.length} entries detected</span>
-      <span class="voice-preview-total">Total: ${fmt(totalAmt)}</span>
-    </div>`;
-  }
-
-  entries.forEach((data, idx) => {
-    if (data.type === 'expense') {
-      html += `
-        <div class="voice-preview-card">
-          <div class="voice-preview-header expense">
-            <i data-lucide="trending-down"></i>
-            <span>Expense${entries.length > 1 ? ' #' + (idx + 1) : ''}</span>
-          </div>
-          <div class="voice-preview-grid">
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Amount</span>
-              <span class="voice-preview-value amount">${fmt(data.amount)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Date</span>
-              <span class="voice-preview-value">${formatDateShort(data.date)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Category</span>
-              <span class="voice-preview-value">${escapeHtml(data.category)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Payment</span>
-              <span class="voice-preview-value">${escapeHtml(data.payment)}</span>
-            </div>
-            <div class="voice-preview-field full">
-              <span class="voice-preview-label">Description</span>
-              <span class="voice-preview-value">${escapeHtml(data.description)}</span>
-            </div>
-          </div>
-        </div>`;
-    } else if (data.type === 'income') {
-      html += `
-        <div class="voice-preview-card">
-          <div class="voice-preview-header income">
-            <i data-lucide="trending-up"></i>
-            <span>Income${entries.length > 1 ? ' #' + (idx + 1) : ''}</span>
-          </div>
-          <div class="voice-preview-grid">
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Amount</span>
-              <span class="voice-preview-value amount income-green">${fmt(data.amount)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Date</span>
-              <span class="voice-preview-value">${formatDateShort(data.date)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Source</span>
-              <span class="voice-preview-value">${escapeHtml(data.source)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Payment</span>
-              <span class="voice-preview-value">${escapeHtml(data.paymentType)}</span>
-            </div>
-            ${data.bank ? `<div class="voice-preview-field">
-              <span class="voice-preview-label">Bank</span>
-              <span class="voice-preview-value">${escapeHtml(data.bank)}</span>
-            </div>` : ''}
-          </div>
-        </div>`;
-    } else {
-      // Debt
-      const debtLabel = data.debtType === 'they-owe' ? 'They owe me' : 'I owe them';
-      const debtClass = data.debtType === 'they-owe' ? 'income' : 'expense';
-      html += `
-        <div class="voice-preview-card">
-          <div class="voice-preview-header ${debtClass}">
-            <i data-lucide="hand-coins"></i>
-            <span>Debt: ${debtLabel}${entries.length > 1 ? ' #' + (idx + 1) : ''}</span>
-          </div>
-          <div class="voice-preview-grid">
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Amount</span>
-              <span class="voice-preview-value amount">${fmt(data.amount)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Date</span>
-              <span class="voice-preview-value">${formatDateShort(data.date)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Person</span>
-              <span class="voice-preview-value">${escapeHtml(data.person)}</span>
-            </div>
-            <div class="voice-preview-field">
-              <span class="voice-preview-label">Type</span>
-              <span class="voice-preview-value">${debtLabel}</span>
-            </div>
-            ${data.notes ? `<div class="voice-preview-field full">
-              <span class="voice-preview-label">Notes</span>
-              <span class="voice-preview-value">${escapeHtml(data.notes)}</span>
-            </div>` : ''}
-          </div>
-        </div>`;
-    }
-  });
-
-  preview.innerHTML = html;
   preview.classList.remove('hidden');
   document.getElementById('voice-actions').classList.remove('hidden');
-
-  // Update button text for multiple entries
-  const btn = document.getElementById('voice-confirm-btn');
-  if (btn && entries.length > 1) {
-    btn.innerHTML = `<i data-lucide="check-circle"></i> Confirm & Save All (${entries.length})`;
-  }
-
+  document.querySelector('.voice-examples')?.classList.add('hidden');
+  updateSaveButton();
   if (window.lucide) lucide.createIcons();
+}
+
+// Edits go straight into parsedData, so Save writes what is on screen
+function onPreviewInput(ev) {
+  const input = ev.target.closest('[data-field]');
+  const card = ev.target.closest('.vp-card');
+  if (!input || !card || !parsedData) return;
+  const entry = parsedData[+card.dataset.idx];
+  if (!entry) return;
+  const field = input.dataset.field;
+  input.removeAttribute('aria-invalid');
+  if (field === 'amount') {
+    entry.amount = parseFloat(input.value.replace(/[^\d.]/g, '')) || 0;
+    updateSaveButton();
+  } else if (field === 'description') {
+    entry.description = input.value.trim() || '-';
+  } else {
+    entry[field] = input.value.trim();
+  }
+}
+
+function onPreviewClick(ev) {
+  const btn = ev.target.closest('[data-remove]');
+  if (!btn || !parsedData) return;
+  parsedData.splice(+btn.dataset.remove, 1);
+  if (!parsedData.length) {
+    parsedData = null;
+    hidePreview();
+    showVoiceStatus('Nothing left to save. Speak or type another command.', 'loading');
+    return;
+  }
+  showPreview(parsedData);
+}
+
+function updateSaveButton() {
+  const btn = document.getElementById('voice-confirm-btn');
+  if (!btn || !parsedData) return;
+  const total = parsedData.reduce((s, e) => s + (e.amount > 0 ? e.amount : 0), 0);
+  const label = parsedData.length === 1 ? `Save · ${fmt(total)}` : `Save ${parsedData.length} · ${fmt(total)}`;
+  // Inline icon: lucide.createIcons() here would redraw every icon on the page, including the
+  // one under a finger tapping Remove (the amount's change event fires first), and drop that tap
+  btn.innerHTML = `${CHECK_SVG} ${escapeHtml(label)}`;
 }
 
 function hidePreview() {
   const preview = document.getElementById('voice-preview');
   const actions = document.getElementById('voice-actions');
-  if (preview) preview.classList.add('hidden');
+  if (preview) { preview.classList.add('hidden'); preview.innerHTML = ''; }
   if (actions) actions.classList.add('hidden');
+  document.querySelector('.voice-examples')?.classList.remove('hidden');
   // Reset confirm button
   const btn = document.getElementById('voice-confirm-btn');
   if (btn) {
     btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="check-circle"></i> Confirm & Save';
+    btn.innerHTML = `${CHECK_SVG} Save`;
   }
 }
 
@@ -792,7 +788,7 @@ function handleTextSubmit(text = document.getElementById('voice-text-input')?.va
   if (sms) {
     parsedData = validateEntries([sms]);
     showPreview(parsedData);
-    showVoiceStatus('Read from your SMS on this device. Check it, then save.', 'success');
+    showVoiceStatus('Read from your SMS on this device. Check it, fix anything that\'s off, then save.', 'success');
     return;
   }
   parseVoiceCommand(text);
@@ -808,6 +804,109 @@ async function pasteSms() {
     return;
   }
   handleTextSubmit(text);
+}
+
+// ── Language picker ──────────────────────────────────────────────────────────
+// The phone's own <select> sheet can't be styled, so a button opens an in-app
+// list instead. The hidden <select> stays the source of truth: picking a
+// language sets its value and fires 'change', which the handler above uses.
+function initLangPicker(select) {
+  const wrap = select.closest('.voice-lang-picker');
+  if (!wrap) return;
+  select.hidden = true;
+
+  const current = () => VOICE_LANGUAGES.find(l => l.code === select.value) || VOICE_LANGUAGES[0];
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'voice-lang-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  const panel = document.createElement('div');
+  panel.className = 'voice-lang-panel';
+  panel.hidden = true;
+  panel.innerHTML = '<p class="voice-lang-panel-title" id="voice-lang-title">Speech language</p>';
+  const list = document.createElement('ul');
+  list.className = 'voice-lang-list';
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-labelledby', 'voice-lang-title');
+  list.tabIndex = -1;
+
+  VOICE_LANGUAGES.forEach(lang => {
+    const li = document.createElement('li');
+    li.className = 'voice-lang-option';
+    li.setAttribute('role', 'option');
+    li.dataset.code = lang.code;
+    li.tabIndex = -1;
+    li.lang = lang.code;
+    li.innerHTML = `<span class="voice-lang-native"></span><span class="voice-lang-name"></span>`;
+    li.querySelector('.voice-lang-native').textContent = lang.label;
+    li.querySelector('.voice-lang-name').textContent = lang.name === lang.label ? '' : lang.name;
+    list.appendChild(li);
+  });
+  panel.appendChild(list);
+  wrap.append(trigger, panel);
+
+  const options = () => [...list.children];
+  function render() {
+    const lang = current();
+    trigger.innerHTML = '<span class="voice-lang-trigger-text"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+    trigger.querySelector('.voice-lang-trigger-text').textContent = lang.label;
+    trigger.setAttribute('aria-label', `Speech language: ${lang.name}`);
+    options().forEach(o => o.setAttribute('aria-selected', String(o.dataset.code === lang.code)));
+  }
+  function open() {
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    (list.querySelector('[aria-selected="true"]') || options()[0]).focus();
+  }
+  function close(refocus) {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (refocus) trigger.focus();
+  }
+  function choose(code) {
+    if (select.value !== code) {
+      select.value = code;
+      select.dispatchEvent(new Event('change'));
+    }
+    render();
+    close(true);
+  }
+
+  trigger.addEventListener('click', () => (panel.hidden ? open() : close(true)));
+  list.addEventListener('click', (e) => {
+    const opt = e.target.closest('.voice-lang-option');
+    if (opt) choose(opt.dataset.code);
+  });
+  list.addEventListener('keydown', (e) => {
+    const all = options();
+    const i = all.indexOf(document.activeElement);
+    const cols = getComputedStyle(list).gridTemplateColumns.split(' ').length || 1;
+    const move = { ArrowDown: cols, ArrowUp: -cols, ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (move) {
+      e.preventDefault();
+      all[Math.min(all.length - 1, Math.max(0, i + move))].focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      all[e.key === 'Home' ? 0 : all.length - 1].focus();
+    } else if ((e.key === 'Enter' || e.key === ' ') && i >= 0) {
+      e.preventDefault();
+      choose(all[i].dataset.code);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close(true);
+    }
+  });
+  // Tap or focus anywhere else closes it
+  document.addEventListener('pointerdown', (e) => { if (!wrap.contains(e.target)) close(false); });
+  wrap.addEventListener('focusout', (e) => { if (e.relatedTarget && !wrap.contains(e.relatedTarget)) close(false); });
+  document.getElementById('voice-close-btn')?.addEventListener('click', () => close(false));
+
+  render();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -850,6 +949,38 @@ function initVoiceUI() {
     });
   }
 
+  // Review cards: edits and removals
+  const preview = document.getElementById('voice-preview');
+  if (preview) {
+    preview.addEventListener('input', onPreviewInput);
+    preview.addEventListener('change', onPreviewInput);
+    preview.addEventListener('click', onPreviewClick);
+  }
+
+  // Example phrases under the transcript
+  const transcript = document.getElementById('voice-transcript');
+  if (transcript && textInput) {
+    const ex = document.createElement('div');
+    ex.className = 'voice-examples';
+    ex.innerHTML = '<span class="voice-examples-label">Try saying</span>' +
+      EXAMPLE_COMMANDS.map(c => `<button type="button" class="voice-example">${escapeHtml(c)}</button>`).join('');
+    ex.addEventListener('click', (e) => {
+      const b = e.target.closest('.voice-example');
+      if (!b) return;
+      textInput.value = b.textContent;
+      textInput.focus();
+    });
+    transcript.after(ex);
+  }
+
+  // No speech engine (e.g. Firefox): say so up front instead of failing on tap
+  if (!isSpeechSupported() && micBtn) {
+    micBtn.disabled = true;
+    micBtn.setAttribute('aria-label', 'Voice input is not available in this browser');
+    const label = document.querySelector('.voice-mic-label');
+    if (label) label.textContent = 'Voice isn\'t available in this browser. Type below.';
+  }
+
   // Confirm save
   const confirmBtn = document.getElementById('voice-confirm-btn');
   if (confirmBtn) confirmBtn.addEventListener('click', saveEntry);
@@ -885,6 +1016,7 @@ function initVoiceUI() {
       }
       recognition = initSpeechRecognition();
     });
+    initLangPicker(langSelect);
   }
 
   // Hide FAB initially (shown when auth resolves)
