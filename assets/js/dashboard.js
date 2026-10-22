@@ -1704,6 +1704,12 @@ function renderTrendChart() {
   const ctx = chartCanvas.getContext('2d');
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
   const isMobile = window.innerWidth < 600;
+  // Bar, grid and tick colours come from the theme tokens (tokens.css)
+  const css = getComputedStyle(document.documentElement);
+  const token = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
+  const barColor = token('--chart-bar', '#4a9eff');
+  const gridColor = token('--chart-grid', isDarkMode ? 'rgba(58, 58, 58, 0.5)' : 'rgba(229, 229, 229, 0.5)');
+  const tickColor = token('--chart-tick', isDarkMode ? '#b0b0b0' : '#888888');
 
   // Abbreviated Y-axis: uses fmtCompact from currency.js
   function fmtTick(value) {
@@ -1717,13 +1723,14 @@ function renderTrendChart() {
       datasets: [{
         label: 'Spending',
         data: data,
-        borderColor: '#4a9eff',
-        backgroundColor: '#4a9eff',
-        borderRadius: 4,
+        borderColor: barColor,
+        backgroundColor: barColor,
+        borderRadius: 8,
+        maxBarThickness: 48,
         borderWidth: 0,
         pointRadius: isMobile ? 4 : 5,
         pointHoverRadius: isMobile ? 6 : 7,
-        pointBackgroundColor: '#4a9eff',
+        pointBackgroundColor: barColor,
         pointBorderColor: isDarkMode ? '#262626' : '#ffffff',
         pointBorderWidth: 2,
         pointHoverBackgroundColor: '#0066cc'
@@ -1768,19 +1775,19 @@ function renderTrendChart() {
           beginAtZero: true,
           ticks: {
             maxTicksLimit: isMobile ? 5 : 7,
-            color: isDarkMode ? '#b0b0b0' : '#888888',
+            color: tickColor,
             font: { size: isMobile ? 10 : 11 },
             // Compact format: Rs 5k instead of Rs 5,000.00
             callback: fmtTick
           },
           grid: {
-            color: isDarkMode ? 'rgba(58, 58, 58, 0.5)' : 'rgba(229, 229, 229, 0.5)',
+            color: gridColor,
             drawBorder: false
           }
         },
         x: {
           ticks: {
-            color: isDarkMode ? '#b0b0b0' : '#888888',
+            color: tickColor,
             font: { size: isMobile ? 10 : 11 },
             maxRotation: isMobile ? 30 : 0,
             minRotation: 0,

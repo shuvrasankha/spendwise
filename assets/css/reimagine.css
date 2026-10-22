@@ -1,0 +1,243 @@
+/* ================================================================
+   SpendWise — "Ledger" visual layer
+   Loaded last on every page. Restyles the existing markup only:
+   no class names, ids or data-actions change, so the scripts are untouched.
+   Paper and ink surfaces, the coin's gold for money, a serif for amounts,
+   a floating tab dock on phones.
+   ================================================================ */
+
+/* =====================
+   TYPE
+===================== */
+body { font-family: var(--font-ui); letter-spacing: -0.005em; }
+body::before {
+  /* a faint warm wash at the top of the page */
+  content: ""; position: fixed; inset: 0 0 auto 0; height: 420px; z-index: -1; pointer-events: none;
+  background: radial-gradient(120% 100% at 0% 0%, var(--gold-bg), transparent 60%);
+}
+h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
+.page-header h2, .ins-head h1, .entry-page > h1, .page > h1 {
+  font-family: var(--font-display); font-weight: 600; font-variation-settings: "opsz" 72;
+}
+
+/* Every money figure: lining tabular digits */
+.home-spent-amount, .summary-amount, .home-tile-value, .period-summary-value,
+.home-row-amount, .hist-row-amount, .glance-cat-amount, .home-section-total {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+/* Amounts stay in the UI face: Fraunces' ₹ reads as a stray glyph at size */
+.home-spent-amount, .summary-amount, .home-tile-value, .period-summary-value { letter-spacing: -0.03em; }
+
+/* =====================
+   TOP BAR
+===================== */
+[data-theme] .navbar {
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
+  border-bottom: 1px solid transparent;
+}
+.nav-logo-link { gap: 10px; }
+.nav-logo-text {
+  font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 48; color: var(--text);
+}
+.theme-toggle { border: 1px solid var(--border); background: var(--surface); }
+.user-avatar {
+  background: var(--hero-bg); color: var(--gold-bright);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--gold);
+}
+.user-avatar:hover { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--gold-bright); }
+.profile-dropdown { border-radius: var(--radius); box-shadow: var(--shadow-xl); }
+
+/* =====================
+   SIDEBAR (tablet and up): part of the page, not a white slab
+===================== */
+[data-theme] .sidebar {
+  background: transparent; border-right: none; padding: 20px 14px;
+}
+.sidebar-nav { gap: 4px; }
+.sidebar-btn {
+  border-radius: var(--radius-full); padding: 11px 16px; color: var(--text2); font-weight: 500;
+}
+.sidebar-btn:hover { background: var(--surface); color: var(--text); }
+.sidebar-btn.active {
+  background: var(--hero-bg); color: var(--hero-text); font-weight: 600; box-shadow: var(--shadow-sm);
+}
+.sidebar-btn.active svg { color: var(--gold-bright); }
+
+/* =====================
+   TAB DOCK (phones): floats above the content, thumb-height
+===================== */
+@media (max-width: 767px) {
+  .bottom-nav {
+    left: 12px; right: 12px; bottom: calc(10px + var(--safe-bottom)); height: 64px; padding: 6px;
+    border: 1px solid var(--border); border-radius: 24px; gap: 2px;
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    backdrop-filter: saturate(170%) blur(20px); -webkit-backdrop-filter: saturate(170%) blur(20px);
+    box-shadow: var(--shadow-lg);
+  }
+  [data-theme="dark"] .bottom-nav { border-top-color: var(--border); }
+  .bottom-nav-btn {
+    border-radius: 18px; color: var(--text2); gap: 2px; min-width: 0;
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0;
+  }
+  .bottom-nav-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bottom-nav-btn.active { background: var(--hero-bg); color: var(--hero-text); }
+  .bottom-nav-btn.active svg { color: var(--gold-bright); }
+  .bottom-nav-btn:hover:not(.active) { color: var(--text); }
+  /* content and the mic button clear the dock */
+  .main-content { padding-bottom: calc(104px + var(--safe-bottom)); }
+  .voice-fab { bottom: calc(88px + var(--safe-bottom)); }
+}
+
+/* =====================
+   SURFACES: one card language everywhere
+===================== */
+.home-section, .home-tile, .summary-card, .chart-card, .table-card, .form-card,
+.hist-rows, [data-theme="dark"] .summary-card, [data-theme="dark"] .chart-card,
+[data-theme="dark"] .table-card, [data-theme="dark"] .form-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+.summary-card:hover { transform: none; box-shadow: var(--shadow-sm); }
+a.home-tile { transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition); }
+a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* Small caps-style labels */
+.home-tile-label, .summary-label, .period-summary-label {
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2);
+}
+.summary-icon { border-radius: 50%; background: var(--gold-bg); color: var(--gold); }
+.home-tile-value { font-size: 1.5rem; font-weight: 800; }
+.summary-amount { font-weight: 800; }
+
+.home-section-head h3, .chart-header h3 { font-size: 1.0625rem; font-weight: 700; }
+.home-more { color: var(--accent); font-weight: 600; }
+
+/* =====================
+   HERO: the month on an ink card, the total in coin gold
+===================== */
+.home-hero, [data-theme="dark"] .home-hero {
+  position: relative; overflow: hidden; isolation: isolate;
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(240, 195, 90, 0.22), transparent 55%),
+    radial-gradient(70% 90% at 0% 100%, rgba(165, 166, 255, 0.14), transparent 60%),
+    linear-gradient(160deg, var(--hero-bg2), var(--hero-bg));
+  border: 1px solid var(--hero-line); border-radius: var(--radius-xl);
+  color: var(--hero-text); box-shadow: var(--shadow-lg); padding: 24px;
+}
+.home-hero::after {
+  /* engraved guilloche rings, a nod to the coin */
+  content: ""; position: absolute; z-index: -1; right: -90px; top: -90px; width: 280px; height: 280px;
+  border-radius: 50%; pointer-events: none; opacity: 0.5;
+  background: repeating-radial-gradient(circle, transparent 0 13px, var(--hero-line) 13px 14px);
+}
+.home-hero .home-greeting, .home-hero .home-month, .home-hero .home-pace,
+.home-hero .home-spent-label, .home-hero p, .home-hero .glance-cat-meta { color: var(--hero-text2); }
+.home-hero .home-meter-text, .home-hero strong { color: var(--hero-text); }
+.home-hero .home-month { font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.home-hero .home-spent-amount { color: var(--gold-bright); font-size: clamp(2.5rem, 9vw, 3.5rem); font-weight: 800; }
+.home-hero .home-spent-amount.is-income { color: #5ad485; }
+.home-hero .home-spent-amount.is-owe { color: #ff8a7f; }
+.home-hero .glance-change.up { color: #ff8a7f; }
+.home-hero .glance-change.down { color: #5ad485; }
+.home-hero .home-meter { height: 8px; background: rgba(246, 241, 230, 0.12); }
+.home-hero .home-meter-fill { background: linear-gradient(90deg, #c8962b, var(--gold-bright)); }
+.home-hero .home-meter.over .home-meter-fill { background: #ff8a7f; }
+.home-hero .home-add, .home-hero .btn-add {
+  background: var(--gold-bright); color: #1d1b16; border-radius: var(--radius-full); box-shadow: 0 6px 20px rgba(240, 195, 90, 0.25);
+}
+.home-hero .home-add:hover, .home-hero .btn-add:hover { filter: brightness(1.06); background: var(--gold-bright); }
+.home-hero a:not(.btn-add):not(.home-add) { color: var(--gold-bright); }
+
+/* =====================
+   CATEGORY BARS
+===================== */
+.glance-bar { height: 8px; border-radius: 4px; background: var(--bg2); }
+.glance-bar span { border-radius: 4px; background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--gold))); }
+.glance-cat-name { font-weight: 600; }
+
+/* =====================
+   BUTTONS AND CONTROLS: pills
+===================== */
+.btn, .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-add, .home-add, .hist-more { border-radius: var(--radius-full); }
+.btn-primary { background: var(--accent); color: var(--accent-on); font-weight: 600; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-add, .form-actions .btn-add { background: var(--gold); color: var(--gold-on); font-weight: 700; }
+.btn-secondary { border-radius: var(--radius-full); }
+
+.seg, .tab-switcher, .table-tabs { border-radius: var(--radius-full); background: var(--bg2); padding: 4px; }
+.seg-btn, .tab-btn, .table-tab { border-radius: var(--radius-full); }
+.seg-btn[aria-pressed="true"], [data-theme="dark"] .seg-btn[aria-pressed="true"],
+[data-theme="dark"] .form-card .seg-btn[aria-pressed="true"], .tab-btn.active, .table-tab.active {
+  background: var(--hero-bg); color: var(--hero-text); box-shadow: var(--shadow-sm);
+}
+[data-theme="dark"] .seg-btn[aria-pressed="true"], [data-theme="dark"] .form-card .seg-btn[aria-pressed="true"],
+[data-theme="dark"] .tab-btn.active, [data-theme="dark"] .table-tab.active { background: var(--text); color: var(--bg); }
+
+.date-chip { border-radius: var(--radius-full); }
+.date-chip.active { background: var(--hero-bg); border-color: var(--hero-bg); color: var(--hero-text); }
+[data-theme="dark"] .date-chip.active { background: var(--text); border-color: var(--text); color: var(--bg); }
+
+/* Inputs: soft wells that light up on focus */
+.form-group input, .form-group select, .form-group textarea, .date-range input {
+  background: var(--surface2); border-color: var(--border); border-radius: var(--radius-sm);
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus, .date-range input:focus {
+  background: var(--surface); border-color: var(--accent); box-shadow: var(--focus-ring);
+}
+
+/* Category tiles */
+.cat-tile { background: var(--surface2); border-color: var(--border); border-radius: var(--radius); }
+.cat-icon { border-radius: 50%; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
+.cat-tile span { color: var(--text2); font-weight: 600; }
+.cat-tile:hover { border-color: var(--text2); background: var(--surface); transform: translateY(-1px); }
+.cat-tile:hover .cat-icon { background: var(--surface); color: var(--text); }
+.cat-tile:hover span { color: var(--text); }
+.cat-tile.selected { border-color: var(--hero-bg); background: var(--surface); box-shadow: 0 0 0 1px var(--hero-bg), var(--shadow-sm); }
+.cat-tile.selected .cat-icon { background: var(--hero-bg); color: var(--gold-bright); box-shadow: none; }
+.cat-tile.selected span { color: var(--text); font-weight: 700; }
+[data-theme="dark"] .cat-tile.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+[data-theme="dark"] .cat-tile.selected .cat-icon { background: var(--gold); color: var(--gold-on); }
+
+/* Mic button: ink with a gold glyph */
+.voice-fab { background: var(--hero-bg); color: var(--gold-bright); box-shadow: var(--shadow-lg); border: 1px solid var(--hero-line); }
+
+/* =====================
+   LISTS
+===================== */
+.hist-day-head {
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.hist-row-amount, .home-row-amount { font-weight: 700; }
+.hist-row:hover, .home-row:hover { background: var(--surface2); }
+.badge, .category-badge, .cat-badge { border-radius: var(--radius-full); }
+
+/* Tables (desktop) */
+.table-card thead th, .data-table th { background: var(--surface2); color: var(--text2); letter-spacing: 0.06em; }
+
+/* =====================
+   AUTH
+===================== */
+.auth-screen {
+  background:
+    radial-gradient(80% 60% at 50% 0%, var(--gold-bg), transparent 70%),
+    var(--bg);
+}
+.auth-card { border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); }
+.auth-card::before { height: 3px; background: linear-gradient(90deg, var(--gold), var(--accent)); }
+.auth-logo-text { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; }
+.auth-form .btn-primary { border-radius: var(--radius-full); min-height: 48px; }
+.btn-google { border-radius: var(--radius-full); }
+
+/* =====================
+   MODALS AND TOASTS
+===================== */
+.modal-box, .edit-modal-box, .voice-modal-sheet, .insights-consent-box { border-radius: var(--radius-lg); }
+.toast { border-radius: var(--radius-full); }
+
+@media (prefers-reduced-motion: reduce) {
+  a.home-tile:hover, .cat-tile:hover { transform: none; }
+}
