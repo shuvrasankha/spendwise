@@ -4,6 +4,7 @@
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
 import { parseSms } from './sms-parse.js';
+import { EXPENSE_CATEGORIES, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -16,12 +17,6 @@ const fmt = window.fmt;
 // AI runs on Cloudflare Workers AI via our proxy (config/ai.js)
 const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 
-// ── Categories (must match the app's category list) ──────────────────────────
-const EXPENSE_CATEGORIES = [
-  'Food & Dining', 'Transport', 'Shopping', 'Entertainment', 'Health',
-  'Bills & Utilities', 'Education', 'Travel', 'Groceries', 'Subscription',
-  'Rent', 'Investment', 'Personal Care', 'Gifts', 'Other'
-];
 
 const PAYMENT_METHODS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
 
@@ -391,7 +386,8 @@ function validateSingleEntry(data) {
   }
 
   if (data.type === 'expense') {
-    // Validate category
+    // Validate category (the AI may still use an older name such as "Rent" or "Subscription")
+    data.category = normalizeCategory(data.category);
     if (!EXPENSE_CATEGORIES.includes(data.category)) {
       // Try fuzzy match
       const lower = (data.category || '').toLowerCase();

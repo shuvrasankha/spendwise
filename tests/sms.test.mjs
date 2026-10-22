@@ -94,3 +94,9 @@ test('not a transaction: OTPs, reminders, requests, failures, plain sentences', 
   assert.equal(read('Spent 200 on groceries today'), null); // a typed voice command goes to the AI
   assert.equal(read(''), null);
 });
+
+test('subscriptions, rent and investments use the merged categories', () => {
+  assert.equal(read('Rs.649.00 debited from A/c XX1234 on 20-10-26 to VPA netflix@icici (UPI Ref No 629451234567) -HDFC Bank').category, 'Bills & Utilities');
+  assert.equal(read('Rs.18000.00 debited from A/c XX1234 on 01-10-26 to VPA nobroker@icici (UPI Ref No 629451234568) -HDFC Bank').category, 'Home & Rent');
+  assert.equal(read('Rs.5000.00 debited from A/c XX1234 on 05-10-26 to VPA zerodha@icici (UPI Ref No 629451234569) -HDFC Bank').category, 'Savings & Investments');
+});

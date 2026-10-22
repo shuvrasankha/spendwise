@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory } from './utils/helpers.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -72,7 +72,8 @@ function loadFromCache(uid) {
       sessionStorage.removeItem(getCacheKey(uid));
       return null;
     }
-    return parsed.data;
+    // A cache written before categories were merged still has the old names
+    return Array.isArray(parsed.data) ? parsed.data.map(e => ({ ...e, category: normalizeCategory(e.category) })) : parsed.data;
   } catch { return null; }
 }
 
@@ -333,6 +334,7 @@ async function loadExpenses(isSilentSync = false) {
       return {
         id: d.id, ...raw,
         amount: isNaN(amt) ? 0 : amt,
+        category: normalizeCategory(raw.category), // older names show under the merged ones
         cardName: raw.cardName || "",
         description: isPlain ? (raw.description || "") : dec(raw.description),
         notes: isPlain ? (raw.notes || "") : dec(raw.notes || "")
