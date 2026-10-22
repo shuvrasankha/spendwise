@@ -16,6 +16,7 @@ const fmt = window.fmt;
 
 // AI runs on Cloudflare Workers AI via our proxy (config/ai.js)
 const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
+const RECEIPT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'; // reads images
 
 
 const PAYMENT_METHODS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
@@ -331,14 +332,10 @@ Example output: [{"type":"debt","amount":500,"debtType":"they-owe","person":"Fri
   };
 }
 
-async function callAIModel(text) {
-  const prompt = buildPrompt(text);
+async function callAIModel(model, messages) {
   const response = await callAI({
-    model: AI_MODEL,
-    messages: [
-      { role: 'system', content: prompt.system },
-      { role: 'user', content: prompt.user }
-    ],
+    model,
+    messages,
     max_tokens: 1500,
     temperature: 0.1,
     top_p: 0.95
@@ -433,20 +430,29 @@ function validateEntries(dataArray) {
 
 async function parseVoiceCommand(text) {
   if (!text.trim()) return;
+  const prompt = buildPrompt(text);
+  await parseWithAI(AI_MODEL, [
+    { role: 'system', content: prompt.system },
+    { role: 'user', content: prompt.user }
+  ], 'AI is analyzing your command…', 'Could not understand the command. Please try rephrasing.');
+}
+
+// Sends the messages to the AI and opens the review cards with what comes back; nothing is saved yet
+async function parseWithAI(model, messages, busyMsg, noneMsg, fixEntries = e => e) {
   if (offline()) {
     showVoiceStatus(OFFLINE_AI_MSG, 'error');
     return;
   }
 
-  showVoiceStatus('AI is analyzing your command…', 'loading');
+  showVoiceStatus(busyMsg, 'loading');
   showParsingSpinner(true);
 
   try {
-    const rawEntries = await callAIModel(text);
-    const validEntries = validateEntries(rawEntries);
+    const rawEntries = await callAIModel(model, messages);
+    const validEntries = fixEntries(validateEntries(rawEntries));
 
     if (!validEntries.length) {
-      showVoiceStatus('Could not understand the command. Please try rephrasing.', 'error');
+      showVoiceStatus(noneMsg, 'error');
       showParsingSpinner(false);
       return;
     }
@@ -469,7 +475,7 @@ async function parseVoiceCommand(text) {
       showVoiceStatus('AI model is loading. Please try again in 20-30 seconds.', 'error');
     } else {
       console.error('Parse error:', err);
-      showVoiceStatus('Failed to parse command. Please try again or rephrase.', 'error');
+      showVoiceStatus('Something went wrong reading that. Nothing was saved, so please try again.', 'error');
     }
   }
 }
@@ -775,6 +781,52 @@ function toggleMic() {
   }
 }
 
+// ── Receipt photo ────────────────────────────────────────────────────────────
+// A phone photo shrunk to at most 1280px on its long side: ~200 KB to upload instead of several MB
+async function receiptDataUrl(file) {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const scale = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close();
+  return canvas.toDataURL('image/jpeg', 0.8);
+}
+
+// Reads the total, date, shop and category off a receipt photo, then shows them for review
+async function scanReceipt(file) {
+  if (!file) return;
+  hidePreview();
+  parsedData = null;
+  document.getElementById('voice-transcript').textContent = 'Receipt photo';
+  let image;
+  try { image = await receiptDataUrl(file); } catch {
+    showVoiceStatus('Couldn\'t open that photo. Try a JPG or PNG.', 'error');
+    return;
+  }
+  const today = todayStr();
+  const system = `You read shop receipts and bills for an Indian expense tracker. Today is ${today}.
+Reply with ONLY one JSON object, no other text:
+{"type":"expense","amount":<the final total paid, a number>,"date":"YYYY-MM-DD","category":"<one of: ${EXPENSE_CATEGORIES.join(', ')}>","payment":"<one of: ${PAYMENT_METHODS.join(', ')}, or leave out if not shown>","description":"<shop or merchant name, under 60 characters>"}
+Use the grand total after taxes and discounts, never a subtotal or a single item. If the date can't be read, use null.
+If the photo is not a receipt or bill, reply {"type":"none"}.`;
+  await parseWithAI(RECEIPT_MODEL, [
+    { role: 'system', content: system },
+    { role: 'user', content: [
+      { type: 'text', text: 'Read this receipt.' },
+      { type: 'image_url', image_url: { url: image } }
+    ] }
+  ], 'Sending the photo to AI to read it…', 'Couldn\'t find a total on that photo. Try a sharper, closer shot.',
+  // A misread year can land in the future; a receipt is never dated after today
+  entries => entries.filter(e => e.type === 'expense').map(e => (e.date > today ? { ...e, date: today } : e)));
+}
+
+function pickReceipt() {
+  openVoiceModal();
+  document.getElementById('voice-receipt-input')?.click();
+}
+
 // ── Manual text submit ───────────────────────────────────────────────────────
 // A bank SMS is read on this device (instant, offline, nothing sent); anything else goes to the AI
 function handleTextSubmit(text = document.getElementById('voice-text-input')?.value || '') {
@@ -937,6 +989,12 @@ function initVoiceUI() {
   const sendBtn = document.getElementById('voice-send-btn');
   if (sendBtn) sendBtn.addEventListener('click', () => handleTextSubmit());
   document.getElementById('voice-paste-btn')?.addEventListener('click', pasteSms);
+  document.getElementById('voice-receipt-btn')?.addEventListener('click', () => document.getElementById('voice-receipt-input')?.click());
+  document.getElementById('btn-scan-receipt')?.addEventListener('click', pickReceipt);
+  document.getElementById('voice-receipt-input')?.addEventListener('change', (e) => {
+    scanReceipt(e.target.files?.[0]);
+    e.target.value = ''; // the same photo can be picked again
+  });
 
   // Enter key on text input
   const textInput = document.getElementById('voice-text-input');
