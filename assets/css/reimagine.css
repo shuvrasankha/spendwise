@@ -88,10 +88,28 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   }
   [data-theme="dark"] .bottom-nav { border-top-color: var(--border); }
   .bottom-nav-btn {
-    border-radius: 18px; color: var(--text2); gap: 2px; min-width: 0;
-    font-size: 11.5px; font-weight: 600; letter-spacing: 0;
+    flex: 1 1 0; border-radius: 18px; color: var(--text2); gap: 3px; min-width: 0;
+    font-size: 12px; font-weight: 600; letter-spacing: 0;
   }
+  .bottom-nav-btn svg, .bottom-nav-btn i { width: 22px; height: 22px; }
   .bottom-nav-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Centre +: a raised gold coin. Tap adds an expense, hold opens voice (nav.js). */
+  .bottom-nav .bottom-nav-add, [data-theme="dark"] .bottom-nav .bottom-nav-add,
+  .bottom-nav .bottom-nav-add.active, [data-theme="dark"] .bottom-nav .bottom-nav-add.active { background: none; box-shadow: none; color: var(--gold-on); }
+  .bottom-nav-add span {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; /* name for screen readers only */
+  }
+  .bottom-nav-add svg, .bottom-nav-add i {
+    box-sizing: content-box; width: 26px; height: 26px; padding: 13px; margin-top: -22px; border-radius: 50%;
+    background: var(--gold); color: var(--gold-on); stroke-width: 2.5;
+    box-shadow: 0 0 0 5px var(--bg), 0 8px 20px color-mix(in srgb, var(--gold) 45%, transparent);
+    transition: transform var(--transition);
+  }
+  .bottom-nav-add:active svg { transform: scale(0.94); }
+  .bottom-nav-add.active svg { box-shadow: 0 0 0 5px var(--bg), 0 0 0 7px var(--gold); }
+  .bottom-nav-add:focus-visible { outline: none; }
+  .bottom-nav-add:focus-visible svg { outline: 2px solid var(--accent); outline-offset: 4px; }
   .bottom-nav-btn.active { background: var(--hero-bg); color: var(--hero-text); }
   .bottom-nav-btn.active svg { color: var(--gold-bright); }
   .bottom-nav-btn:hover:not(.active) { color: var(--text); }
@@ -112,6 +130,34 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   .main-content { padding-bottom: calc(104px + var(--safe-bottom)); }
   .voice-fab { bottom: calc(88px + var(--safe-bottom)); z-index: 98; }
 }
+
+/* Top bar on phones: logo and avatar only; Appearance lives in the profile menu (theme.js) */
+.theme-menu-row { display: none; }
+@media (max-width: 767px) {
+  #theme-btn { display: none; }
+  .theme-menu-row { display: flex; }
+  .navbar { padding: 0 14px 0 16px; }
+  .nav-logo-text { font-size: 1.125rem; }
+  .nav-logo-image { width: 28px; height: 28px; }
+  .user-avatar { width: 32px; height: 32px; }
+}
+
+/* More sheet (nav.js): page rows with an icon and a hint */
+.nav-more-list { gap: 6px; padding-bottom: 16px; }
+/* .sw-pick-opt (pickers) is space-between and hides its svg (a check mark): undo both here */
+.sw-pick-opt.nav-more-opt { justify-content: flex-start; gap: 14px; min-height: 64px; color: var(--text); text-decoration: none; }
+.sw-pick-opt.nav-more-opt:hover { text-decoration: none; }
+.sw-pick-opt.nav-more-opt svg { opacity: 1; color: inherit; }
+.nav-more-icon {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--gold-bg); color: var(--gold);
+}
+.nav-more-icon svg { width: 20px; height: 20px; color: var(--gold); }
+.nav-more-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nav-more-text strong { font-weight: 700; }
+.nav-more-text small { font-size: 0.8125rem; color: var(--text2); font-weight: 500; }
+.nav-more-opt[aria-current="page"] { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border); }
+.nav-more-opt[aria-current="page"] strong::after { content: " · here"; font-weight: 500; color: var(--text2); }
 
 /* =====================
    SURFACES: one card language everywhere
@@ -735,3 +781,104 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 @media (min-width: 769px) { .data-table td[data-label="Date"] { white-space: nowrap; } }
 .page-btn.active { background: var(--hero-bg); border-color: var(--hero-bg); color: var(--gold-bright); }
 [data-theme="dark"] .page-btn.active { background: var(--gold); border-color: var(--gold); color: var(--gold-on); }
+
+/* =====================
+   BUDGET (budget.js + Home)
+===================== */
+.home-hero .home-meter.near .home-meter-fill { background: linear-gradient(90deg, #d9822b, #ffb14a); }
+.glance-bar.near span { background: var(--warning); }
+.glance-bar.over span { background: var(--danger); }
+.home-budget-link {
+  display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0;
+  color: var(--gold-bright); font-weight: 600; font-size: 0.875rem; text-decoration: underline; text-underline-offset: 3px;
+}
+.home-budget-link + .home-add { margin-top: 8px; }
+.budget-box { max-width: 460px; max-height: 90vh; overflow-y: auto; }
+.budget-note { color: var(--text2); font-size: 0.875rem; margin: -8px 0 16px; }
+.budget-money {
+  display: flex; align-items: center; min-height: 48px; padding-left: 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface2);
+}
+.budget-money:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); background: var(--surface); }
+.budget-sym { color: var(--text2); font-weight: 700; }
+.budget-money input, .form-group .budget-money input {
+  flex: 1; min-width: 0; border: none !important; background: transparent !important; box-shadow: none !important;
+  padding: 0 12px 0 6px; min-height: 46px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.budget-cats { margin: 4px 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.budget-cats summary {
+  display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 14px;
+  font-weight: 600; cursor: pointer; list-style: none;
+}
+.budget-cats summary::-webkit-details-marker { display: none; }
+.budget-cats summary span { font-size: 0.75rem; font-weight: 600; color: var(--text2); }
+.budget-cat-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 4px 14px 14px; }
+.budget-cat { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.budget-cat > span:first-child { font-size: 0.8125rem; font-weight: 600; color: var(--text2); }
+.budget-cat .budget-money { min-height: 44px; }
+.budget-cat .budget-money input { min-height: 42px; }
+@media (max-width: 380px) { .budget-cat-list { grid-template-columns: 1fr; } }
+
+/* =====================
+   REPEATING EXPENSES
+===================== */
+.repeat-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); cursor: pointer;
+}
+.form-group .repeat-row { font-size: 1rem; color: var(--text); }
+.repeat-row > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.repeat-row strong { font-weight: 600; color: var(--text); }
+.repeat-row small { font-size: 0.8125rem; color: var(--text2); line-height: 1.35; }
+.repeat-row .reminder-switch { flex-shrink: 0; }
+.home-due { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); }
+.home-due .home-section-head h3::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--gold); vertical-align: middle;
+}
+.due-row { flex-wrap: wrap; row-gap: 10px; }
+.due-actions { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+.due-add {
+  min-height: 40px; padding: 0 18px; border-radius: var(--radius-full); background: var(--gold); color: var(--gold-on);
+  font-weight: 700; font-size: 0.875rem;
+}
+.due-add:hover { filter: brightness(1.08); }
+.due-more {
+  min-height: 40px; padding: 0 14px; border-radius: var(--radius-full); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text2); font-weight: 600; font-size: 0.8125rem;
+}
+.due-more:hover { color: var(--text); border-color: var(--text2); }
+.due-actions button:disabled { opacity: 0.5; cursor: progress; }
+
+/* =====================
+   APP LOCK (app-lock.js)
+===================== */
+.sw-locked body { overflow: hidden; }
+.sw-locked body > *:not(.sw-lock-layer) { visibility: hidden !important; }
+.sw-lock-layer {
+  position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; padding: 24px;
+  background:
+    radial-gradient(90% 60% at 100% 0%, rgba(240, 195, 90, 0.22), transparent 60%),
+    linear-gradient(160deg, var(--hero-bg2), var(--hero-bg));
+  color: var(--hero-text);
+}
+.sw-lock-card { width: 100%; max-width: 340px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.sw-lock-coin { width: 72px; height: 72px; border-radius: 50%; box-shadow: 0 0 0 10px rgba(240, 195, 90, 0.12); margin-bottom: 10px; }
+.sw-lock-card h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.75rem; letter-spacing: -0.02em; color: var(--hero-text); }
+.sw-lock-card p { color: var(--hero-text2); }
+.sw-lock-unlock { width: 100%; min-height: 52px; margin-top: 12px; border-radius: var(--radius-full); background: var(--gold-bright) !important; color: #1d1b16 !important; font-weight: 700; font-size: 1rem; }
+.sw-lock-msg { min-height: 1.4em; font-size: 0.875rem; }
+.sw-lock-signout { min-height: 44px; color: var(--hero-text2); text-decoration: underline; text-underline-offset: 3px; font-size: 0.875rem; }
+.due-actions .due-more[data-due-stop] { margin-left: auto; border-color: transparent; background: none; padding: 0 6px; }
+.budget-box .modal-actions {
+  position: sticky; bottom: -24px; margin: 0 -24px -24px; padding: 14px 24px 20px;
+  background: var(--surface); border-top: 1px solid var(--border-light);
+}
+.sw-lock-layer :focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+/* the form's generic input rules (full width, padding, border) must not reach the switch */
+.form-group .repeat-row input.reminder-switch {
+  width: 44px; height: 26px; min-height: 0; flex: 0 0 44px; padding: 0; border: none; border-radius: 13px;
+  background: var(--text3); box-shadow: none;
+}
+.form-group .repeat-row input.reminder-switch:checked { background: var(--success); }
+.form-group .repeat-row input.reminder-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.repeat-row > span { flex: 1 1 auto; }

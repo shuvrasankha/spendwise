@@ -12,6 +12,7 @@
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ea">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
   <script src="assets/js/theme.js"></script>
+  <script src="assets/js/modules/app-lock.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo-192.png">
@@ -179,26 +180,23 @@
 
 
     <!-- Bottom nav (mobile) -->
-    <div class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Main">
       <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
         <i data-lucide="layout-dashboard"></i><span>Home</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToExpense" id="bnav-add">
-        <i data-lucide="wallet"></i><span>Expense</span>
-      </button>
-      <button class="bottom-nav-btn" data-action="navigateToIncome" id="bnav-income">
-        <i data-lucide="trending-up"></i><span>Income</span>
       </button>
       <button class="bottom-nav-btn active" aria-current="page" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
-      <button class="bottom-nav-btn" data-action="navigateToDebt" id="bnav-debt">
-        <i data-lucide="hand-coins"></i><span>Debt</span>
+      <button class="bottom-nav-btn bottom-nav-add" data-action="navigateToExpense" id="bnav-add" aria-label="Add expense" title="Add expense (hold for voice)">
+        <i data-lucide="plus"></i><span>Add expense</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>Insights</span>
       </button>
-    </div>
+      <button class="bottom-nav-btn" id="bnav-more" aria-haspopup="dialog" aria-expanded="false">
+        <i data-lucide="more-horizontal"></i><span>More</span>
+      </button>
+    </nav>
 
     <!-- Sidebar (desktop) -->
     <aside class="sidebar">
@@ -408,6 +406,12 @@
             <label>Notes <span class="optional-tag">optional</span></label>
             <textarea id="edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
           </div>
+          <div class="form-group full-width">
+            <label class="repeat-row" for="edit-repeat">
+              <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+              <input type="checkbox" role="switch" id="edit-repeat" class="reminder-switch">
+            </label>
+          </div>
         </div>
         <div id="edit-error" class="form-msg error hidden"></div>
       </div>
@@ -541,6 +545,8 @@
   <script type="module" src="assets/js/dashboard.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
   <script src="assets/js/modules/pickers.js"></script>
+  <script src="assets/js/modules/nav.js"></script>
+  <script type="module" src="assets/js/modules/budget.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
