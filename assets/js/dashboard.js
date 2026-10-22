@@ -15,6 +15,7 @@ const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
 import { sanitize, friendlyErr, isSpending } from './utils/helpers.js';
+import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -1116,44 +1117,12 @@ const HISTORY_TABS = {
   },
 };
 
-// Start and end of the "Dates" choice ("" = open-ended)
-function historyRange(key) {
-  const t = new Date(), y = t.getFullYear(), m = t.getMonth(), today = todayStr(t);
-  const day = (Y, M, D) => todayStr(new Date(Y, M, D));
-  switch (key) {
-    case "month": return [day(y, m, 1), today];
-    case "lastMonth": return [day(y, m - 1, 1), day(y, m, 0)];
-    case "quarter": return [day(y, m - 2, 1), today];
-    case "year": return [day(y, 0, 1), today];
-    case "custom": return [document.getElementById("hist-from").value, document.getElementById("hist-to").value];
-    default: return ["", ""];
-  }
-}
-
 // The rows on screen: tab, dates, chips, search and sort applied (also what Download exports)
 function historyRows() {
   const t = HISTORY_TABS[hist.tab];
-  const [from, to] = historyRange(document.getElementById("hist-range")?.value);
-  const q = (document.getElementById("hist-search")?.value || "").toLowerCase().trim();
-  const sort = document.getElementById("hist-sort")?.value;
-  const rows = t.rows().filter(r =>
-    (!from || r.date >= from) && (!to || r.date <= to) &&
-    (!hist.kinds.size || hist.kinds.has(t.kind(r))) &&
-    (!q || t.text(r).some(v => v && String(v).toLowerCase().includes(q))));
-  if (sort === "largest") return rows.sort((a, b) => b.amount - a.amount);
-  if (sort === "oldest") return rows.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  return rows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-}
-
-function historyDay(ds) {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (ds === todayStr()) return "Today";
-  if (ds === todayStr(yesterday)) return "Yesterday";
-  const d = new Date(ds + "T00:00:00");
-  const opts = { weekday: "short", day: "numeric", month: "short" };
-  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
-  return d.toLocaleDateString("en-IN", opts);
+  const $id = id => document.getElementById(id);
+  const [from, to] = historyRange($id("hist-range")?.value, new Date(), { from: $id("hist-from")?.value, to: $id("hist-to")?.value });
+  return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, sort: $id("hist-sort")?.value });
 }
 
 function renderHistory() {
