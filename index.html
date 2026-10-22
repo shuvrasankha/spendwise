@@ -343,7 +343,7 @@
           </div>
           <div class="period-picker-controls">
             <div class="period-select-wrap">
-              <select id="picker-month">
+              <select id="picker-month" aria-label="Month">
                 <option value="">All Months</option>
                 <option value="01">January</option>
                 <option value="02">February</option>
@@ -360,7 +360,7 @@
               </select>
             </div>
             <div class="period-select-wrap">
-              <select id="picker-year">
+              <select id="picker-year" aria-label="Year">
                 <option value="">All Years</option>
               </select>
             </div>
@@ -856,6 +856,7 @@
   <script type="module" src="assets/js/modules/csv-upload.js"></script>
   <script type="module" src="assets/js/modules/backup.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
+  <script src="assets/js/modules/pickers.js"></script>
 
   <!-- Backup & Restore Modal -->
   <div id="backup-modal" class="modal-overlay hidden">
