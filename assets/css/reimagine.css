@@ -32,9 +32,14 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
    TOP BAR
 ===================== */
 [data-theme] .navbar {
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(160%) blur(24px); -webkit-backdrop-filter: saturate(160%) blur(24px);
   border-bottom: 1px solid transparent;
+}
+/* content scrolling up under the top bar fades out instead of meeting a hard edge */
+.app::before {
+  content: ""; position: fixed; left: 0; right: 0; top: var(--nav-h); height: 20px; z-index: 99; pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--bg) 88%, transparent), transparent);
 }
 .nav-logo-link { gap: 10px; }
 .nav-logo-text {
@@ -85,9 +90,22 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   .bottom-nav-btn.active { background: var(--hero-bg); color: var(--hero-text); }
   .bottom-nav-btn.active svg { color: var(--gold-bright); }
   .bottom-nav-btn:hover:not(.active) { color: var(--text); }
-  /* content and the mic button clear the dock */
+  /* the ink pill disappears on a dark dock: use the gold tint there */
+  [data-theme="dark"] .bottom-nav-btn.active { background: var(--gold-bg); color: var(--gold); box-shadow: inset 0 0 0 1px var(--hero-line); }
+  [data-theme="dark"] .bottom-nav-btn.active svg { color: var(--gold); }
+  /* content scrolling under the dock fades and blurs out instead of showing sliced through it.
+     On .app, not the dock: a backdrop-filter inside the dock's own backdrop-filter would see nothing. */
+  .app::after {
+    content: ""; position: fixed; left: 0; right: 0; bottom: 0; z-index: 95; pointer-events: none;
+    height: calc(128px + var(--safe-bottom));
+    background: linear-gradient(to top, var(--bg) 30%, color-mix(in srgb, var(--bg) 70%, transparent) 60%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    -webkit-mask-image: linear-gradient(to top, #000 45%, transparent);
+    mask-image: linear-gradient(to top, #000 45%, transparent);
+  }
+  /* content and the mic button clear the dock; the mic stays above the fade */
   .main-content { padding-bottom: calc(104px + var(--safe-bottom)); }
-  .voice-fab { bottom: calc(88px + var(--safe-bottom)); }
+  .voice-fab { bottom: calc(88px + var(--safe-bottom)); z-index: 98; }
 }
 
 /* =====================
