@@ -299,39 +299,6 @@
           </div>
         </div>
 
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-tabs">
-              <button class="table-tab" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
-              <button class="table-tab active" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
-              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
-              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
-            </div>
-            <button class="btn-download" data-action="downloadCSV">
-              <i data-lucide="download"></i> Download CSV
-            </button>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th data-col="date">Date</th>
-                  <th data-col="category">Category</th>
-                  <th data-col="description">Description</th>
-                  <th data-col="payment">Payment</th>
-                  <th class="text-right" data-col="amount">Amount</th>
-                </tr>
-              </thead>
-              <tbody id="table-body">
-                <tr>
-                  <td colspan="5" class="empty-row">No expenses yet. Add your first one!</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
-        </div>
-
         <!-- Look back at any month -->
         <div class="period-picker-card">
           <div class="period-picker-left">
@@ -390,6 +357,39 @@
             <span class="period-summary-label">Highest Spend</span>
             <span class="period-summary-value" id="period-max"><span class="currency-symbol">₹</span> 0.00</span>
           </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-tabs">
+              <button class="table-tab" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
+              <button class="table-tab active" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
+              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
+              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
+            </div>
+            <button class="btn-download" data-action="downloadCSV">
+              <i data-lucide="download"></i> Download CSV
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-col="date">Date</th>
+                  <th data-col="category">Category</th>
+                  <th data-col="description">Description</th>
+                  <th data-col="payment">Payment</th>
+                  <th class="text-right" data-col="amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="table-body">
+                <tr>
+                  <td colspan="5" class="empty-row">No expenses yet. Add your first one!</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
         </div>
       </div>
     </main>
