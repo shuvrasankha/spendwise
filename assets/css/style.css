@@ -1477,6 +1477,13 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   color: var(--text); line-height: 1.5; margin-bottom: 10px; word-break: break-word;
 }
 .voice-transcript.interim { color: var(--text3); font-style: italic; }
+.voice-paste-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin-bottom: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-xs); background: var(--surface);
+  color: var(--accent); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.voice-paste-btn:hover { background: var(--accent-bg); border-color: var(--accent); }
+.voice-paste-btn svg { width: 18px; height: 18px; }
 .voice-text-input-wrap { display: flex; gap: 8px; margin-bottom: 14px; }
 .voice-text-input-wrap input {
   flex: 1; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);

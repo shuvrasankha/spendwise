@@ -12,5 +12,13 @@
       "sizes": "192x192 512x512 any",
       "type": "image/png"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "./expense.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text"
+    }
+  }
 }
