@@ -32,7 +32,8 @@ const STATIC_ASSETS = [
   './assets/js/modules/accessibility.js',
   './assets/js/modules/reminders.js',
   './assets/js/modules/insights-data.js',
-  './assets/images/logo2.png',
+  './assets/images/logo-96.png',
+  './assets/images/logo-192.png',
   './manifest.json',
   'https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
@@ -63,23 +64,29 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Fetch: cache-first for static, network-first for HTML
+// Fetch: cache-first for static, stale-while-revalidate for HTML
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
   // Skip non-http/https requests (chrome-extension:, blob:, etc.) and writes (AI proxy, Firestore)
   if (!url.protocol.startsWith('http') || e.request.method !== 'GET') return;
 
-  // HTML pages: network-first (always get latest)
+  // HTML pages: show the cached page at once and refresh the cache in the background,
+  // so switching tabs never waits on the network. A deploy is picked up on the next visit.
   if (e.request.destination === 'document' || url.pathname.endsWith('.html')) {
     e.respondWith(
-      fetch(e.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+      caches.match(e.request, { ignoreSearch: true }).then((cached) => {
+        const fresh = fetch(e.request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          }
           return response;
-        })
-        .catch(() => caches.match(e.request))
+        });
+        if (!cached) return fresh;
+        e.waitUntil(fresh.catch(() => {})); // offline: the cached page is enough
+        return cached;
+      })
     );
     return;
   }
@@ -113,7 +120,7 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   e.waitUntil(self.registration.showNotification("Log today's spending", {
     body: 'Add what you spent today. It only takes a few seconds.',
-    icon: './assets/images/logo2.png',
+    icon: './assets/images/logo-192.png',
     tag: 'daily-reminder', // a newer reminder replaces an unread one
     data: { url: new URL('./expense.html', self.registration.scope).href },
   }));
