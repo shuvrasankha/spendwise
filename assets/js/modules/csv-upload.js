@@ -6,7 +6,7 @@ import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
 import { todayStr, EXPENSE_CATEGORIES, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -160,40 +160,49 @@ async function callAIModel(csvText) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  FIRESTORE BATCH SAVE
 // ══════════════════════════════════════════════════════════════════════════════
+// Firestore takes at most 500 writes per batch. Each batch saves fully or not at all, and each
+// transaction keeps the id it got on the first try, so "try again" overwrites instead of duplicating.
+const BATCH_LIMIT = 500;
+
 async function saveToFirestore(transactions) {
   if (!currentUser) throw new Error('NOT_AUTHENTICATED');
 
   let savedExpenses = 0;
   let savedIncome = 0;
 
-  for (const tx of transactions) {
-    if (tx.type === 'income') {
-      await addDoc(collection(db, 'income'), {
-        uid: currentUser.uid,
-        amount: tx.amount,
-        source: tx.description,
-        date: tx.date,
-        paymentType: tx.payment === 'Cash' ? 'Cash' : 'Online',
-        bank: '',
-        notes: tx.notes,
-        createdAt: serverTimestamp()
-      });
-      savedIncome++;
-    } else {
-      await addDoc(collection(db, 'expenses'), {
-        uid: currentUser.uid,
-        amount: tx.amount,
-        category: tx.category,
-        date: tx.date,
-        payment: tx.payment,
-        cardName: '',
-        description: tx.description,
-        notes: tx.notes,
-        encoding: 'plain',
-        createdAt: serverTimestamp()
-      });
-      savedExpenses++;
+  for (let i = 0; i < transactions.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    for (const tx of transactions.slice(i, i + BATCH_LIMIT)) {
+      const coll = tx.type === 'income' ? 'income' : 'expenses';
+      const ref = doc(db, coll, tx.docId ??= doc(collection(db, coll)).id);
+      if (tx.type === 'income') {
+        batch.set(ref, {
+          uid: currentUser.uid,
+          amount: tx.amount,
+          source: tx.description,
+          date: tx.date,
+          paymentType: tx.payment === 'Cash' ? 'Cash' : 'Online',
+          bank: '',
+          notes: tx.notes,
+          createdAt: serverTimestamp()
+        });
+      } else {
+        batch.set(ref, {
+          uid: currentUser.uid,
+          amount: tx.amount,
+          category: tx.category,
+          date: tx.date,
+          payment: tx.payment,
+          cardName: '',
+          description: tx.description,
+          notes: tx.notes,
+          encoding: 'plain',
+          createdAt: serverTimestamp()
+        });
+      }
     }
+    await batch.commit();
+    for (const tx of transactions.slice(i, i + BATCH_LIMIT)) tx.type === 'income' ? savedIncome++ : savedExpenses++;
   }
 
   return { savedExpenses, savedIncome };

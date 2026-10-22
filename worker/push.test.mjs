@@ -8,13 +8,16 @@ const IST = 'Asia/Kolkata';
 const at = iso => new Date(iso); // UTC instant
 const sub = (extra = {}) => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', remind_at: '21:00', tz: IST, last_logged: null, last_sent: null, ...extra });
 
-// Fake D1: records statements, returns `rows` for SELECTs
-function fakeDB(rows = []) {
+// Fake D1: records writes, returns `rows` for SELECTs and `devices` for the per-user count
+function fakeDB(rows = [], devices = 0) {
   const calls = [];
   return {
     calls,
     prepare(sql) {
-      return { bind: (...args) => ({ run: async () => calls.push({ sql, args }), all: async () => ({ results: rows }) }), all: async () => ({ results: rows }) };
+      return {
+        bind: (...args) => ({ run: async () => calls.push({ sql, args }), all: async () => ({ results: rows }), first: async () => ({ n: devices }) }),
+        all: async () => ({ results: rows }),
+      };
     },
   };
 }
@@ -47,6 +50,27 @@ test('subscribe validates input and stores it for the signed-in user', async () 
   const [status] = await handlePushRoute('/push/subscribe', { endpoint: sub().endpoint, remindAt: '20:30', tz: IST }, 'u1', env);
   assert.equal(status, 200);
   assert.deepEqual(env.DB.calls[0].args.slice(0, 4), [sub().endpoint, 'u1', '20:30', IST]);
+});
+
+test('only browser push services are accepted, so the cron never posts elsewhere', async () => {
+  const env = { DB: fakeDB() };
+  const ok = e => handlePushRoute('/push/subscribe', { endpoint: e, remindAt: '21:00', tz: IST }, 'u1', env).then(r => r[0]);
+  assert.equal(await ok('https://fcm.googleapis.com/fcm/send/abc'), 200);
+  assert.equal(await ok('https://updates.push.services.mozilla.com/wpush/v2/abc'), 200);
+  assert.equal(await ok('https://web.push.apple.com/QAbc'), 200);
+  assert.equal(await ok('https://wns2-pn1p.notify.windows.com/w/?token=abc'), 200);
+  assert.equal(await ok('https://victim.example/api'), 400);
+  assert.equal(await ok('https://fcm.googleapis.com.evil.example/x'), 400);
+  assert.equal(await ok('https://evilnotify.windows.com/x'), 400);
+});
+
+test('a user can have reminders on at most 10 devices', async () => {
+  const full = { DB: fakeDB([], 10) };
+  const [status] = await handlePushRoute('/push/subscribe', { endpoint: sub().endpoint, remindAt: '21:00', tz: IST }, 'u1', full);
+  assert.equal(status, 409);
+  assert.equal(full.DB.calls.length, 0);
+  // changing the time on a device already counted is still fine (the count excludes this endpoint)
+  assert.equal((await handlePushRoute('/push/subscribe', { endpoint: sub().endpoint, remindAt: '21:00', tz: IST }, 'u1', { DB: fakeDB([], 9) }))[0], 200);
 });
 
 test('unsubscribe and logged only touch the caller\'s own rows', async () => {

@@ -474,6 +474,9 @@ async function parseVoiceCommand(text) {
   }
 }
 
+// Each entry gets its document id once, so a retry after an unclear failure overwrites instead of duplicating
+const refFor = (entry, coll) => doc(db, coll, entry.docId ??= doc(collection(db, coll)).id);
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  SAVE TO FIRESTORE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -546,7 +549,7 @@ async function saveEntry() {
   try {
     // One batch: all entries save or none do, so a retry after a failure can't make duplicates
     const batch = writeBatch(db);
-    docs.forEach(([coll, , data]) => batch.set(doc(collection(db, coll)), data));
+    docs.forEach(([coll, , data], i) => batch.set(refFor(parsedData[i], coll), data));
     await batch.commit();
     finish(`${what}!`, count === 1 ? 'Entry added by voice.' : `${count} entries added by voice.`, true);
   } catch (err) {

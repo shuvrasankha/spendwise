@@ -1,48 +1,19 @@
-// income.js — SpendWise Income Tracker (Firebase Modular SDK)
+// income.js — SpendWise Income page
 
-import { auth, gProvider, db } from './config/firebase.js';
-import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { sanitize, escapeHtml, bindDateChips, shortDay, pad, todayStr } from './utils/helpers.js';
+import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
-const getCurrency = window.getCurrency;
-const getCurrencyInfo = window.getCurrencyInfo;
-const buildCurrencyOptions = window.buildCurrencyOptions;
 const updateCurrencyDisplay = window.updateCurrencyDisplay;
-const setCurrency = window.setCurrency;
-
-// Sanitize helper from utils
-import { sanitize, escapeHtml, bindDateChips, shortDay } from './utils/helpers.js';
-
-
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
 let allIncome = [];
 let editingIncomeId = null;
 let deleteIncomeTarget = null;
-
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-// fmt() is now provided by currency.js
-function pad(n) { return String(n).padStart(2, '0'); }
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-}
-function formatDate(ds) {
-  return new Date(ds + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast ' + (type || 'success');
-  t.classList.remove('hidden');
-  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
-  if (type !== 'error') setTimeout(() => t.classList.add('hidden'), 3000);
-}
 
 function showFormMsg(msg, type) {
   const el = document.getElementById('income-form-msg');
@@ -52,125 +23,14 @@ function showFormMsg(msg, type) {
   if (type === 'success') setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
-// ── Page Loader ───────────────────────────────────────────────────────────────
-function dismissPageLoader() {
-  const loader = document.getElementById('page-loader');
-  if (!loader) return;
-  loader.classList.add('fade-out');
-  setTimeout(() => loader.remove(), 450);
-}
-
-// ── Avatar helper (XSS-safe) ────────────────────────────────────────────────
-function updateUserAvatar(user) {
-  const avatarEl = document.getElementById('user-avatar');
-  if (!avatarEl) return;
-  avatarEl.innerHTML = '';
-  if (user.photoURL) {
-    const img = document.createElement('img');
-    img.src = user.photoURL;
-    img.referrerPolicy = 'no-referrer';
-    img.alt = 'Profile';
-    img.addEventListener('error', () => {
-      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-    });
-    avatarEl.appendChild(img);
-  } else {
-    avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-  }
-}
-
-
-// ── Auth ──────────────────────────────────────────────────────────────────────
-onAuthStateChanged(auth, user => {
-  dismissPageLoader();
-  if (user) {
-    if (!user.emailVerified && user.providerData[0]?.providerId === 'password') {
-      signOut(auth);
-      window.location.href = 'index.html';
-      return;
-    }
-    currentUser = user;
-    document.getElementById('app').classList.remove('hidden');
-    updateUserAvatar(user);
-
-    initCurrencySelector();
-
-    // Init date
-    const dateEl = document.getElementById('inc-date');
-    if (dateEl && !dateEl.value) dateEl.value = todayStr();
-    syncDateChips();
-
-    loadIncome();
-  } else {
-    window.location.href = 'index.html';
-  }
+requireUser(user => {
+  currentUser = user;
+  initCurrencySelector(updateIncomeSummaryCards);
+  const dateEl = document.getElementById('inc-date');
+  if (dateEl && !dateEl.value) dateEl.value = todayStr();
+  syncDateChips();
+  loadIncome();
 });
-
-// ── Profile Menu ──────────────────────────────────────────────────────────────
-window.toggleProfileMenu = (e) => {
-  if (e) e.stopPropagation();
-  const dropdown = document.getElementById('profile-dropdown');
-  if (dropdown) dropdown.classList.toggle('hidden');
-};
-
-document.addEventListener('click', (e) => {
-  const menu = document.getElementById('profile-menu');
-  const dropdown = document.getElementById('profile-dropdown');
-  if (dropdown && !dropdown.classList.contains('hidden')) {
-    if (!menu || !menu.contains(e.target)) {
-      dropdown.classList.add('hidden');
-    }
-  }
-});
-
-window.handleLogout = async () => {
-  await signOut(auth);
-  window.location.href = 'index.html';
-};
-
-// ── Mobile Menu ──────────────────────────────────────────────────────────────
-window.toggleMobileMenu = () => {
-  const overlay = document.getElementById('mobile-menu-overlay');
-  const panel = document.getElementById('mobile-menu-panel');
-  if (overlay && panel) {
-    overlay.classList.toggle('open');
-    panel.classList.toggle('open');
-  }
-};
-
-window.closeMobileMenu = () => {
-  const overlay = document.getElementById('mobile-menu-overlay');
-  const panel = document.getElementById('mobile-menu-panel');
-  if (overlay) overlay.classList.remove('open');
-  if (panel) panel.classList.remove('open');
-};
-
-window.navigateTo = (url) => {
-  closeMobileMenu();
-  const allowed = ['index.html', 'expense.html', 'income.html', 'history.html', 'debt.html', 'insights.html'];
-  const clean = url.split('#')[0].split('?')[0];
-  if (allowed.includes(clean)) {
-    window.location.href = url;
-  }
-};
-
-// ── Currency ────────────────────────────────────────────────────────────────
-function initCurrencySelector() {
-  const sel = document.getElementById('currency-select');
-  if (!sel) return;
-  sel.innerHTML = buildCurrencyOptions(getCurrency());
-  requestAnimationFrame(() => {
-    updateCurrencyDisplay();
-  });
-}
-
-window.handleCurrencyChange = (code) => {
-  setCurrency(code);
-  updateCurrencyDisplay();
-  if (currentUser) {
-    updateIncomeSummaryCards();
-  }
-};
 
 // ── Load Income ───────────────────────────────────────────────────────────────
 async function loadIncome() {

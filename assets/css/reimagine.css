@@ -97,6 +97,8 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   /* Centre +: a raised gold coin. Tap adds an expense, hold opens voice (nav.js). */
   .bottom-nav .bottom-nav-add, [data-theme="dark"] .bottom-nav .bottom-nav-add,
   .bottom-nav .bottom-nav-add.active, [data-theme="dark"] .bottom-nav .bottom-nav-add.active { background: none; box-shadow: none; color: var(--gold-on); }
+  /* fixed slot: the raised coin and its ring are wider than a shared slot on 320px phones */
+  .bottom-nav .bottom-nav-add { flex: 0 0 72px; }
   .bottom-nav-add span {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; /* name for screen readers only */
   }
@@ -129,6 +131,8 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   /* content and the mic button clear the dock; the mic stays above the fade */
   .main-content { padding-bottom: calc(104px + var(--safe-bottom)); }
   .voice-fab { bottom: calc(88px + var(--safe-bottom)); z-index: 98; }
+  /* Expense's pinned Add row sits above the dock and over the fade, never under it */
+  #add-expense-section .form-actions { bottom: calc(84px + var(--safe-bottom)); z-index: 96; }
 }
 
 /* Top bar on phones: logo and avatar only; Appearance lives in the profile menu (theme.js) */

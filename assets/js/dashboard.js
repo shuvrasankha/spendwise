@@ -14,7 +14,9 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, dueRecurring, shortDay } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
+import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
@@ -82,35 +84,7 @@ function clearCache(uid) {
   try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
 }
 
-let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, chartInstance = null, editingExpenseId = null;
-
-// ── Page loader ─────────────────────────────────────────────────────────────
-function dismissPageLoader() {
-  const loader = document.getElementById('page-loader');
-  if (!loader) return;
-  loader.classList.add('fade-out');
-  setTimeout(() => loader.remove(), 450);
-}
-
-// ── Avatar helper (XSS-safe) ────────────────────────────────────────────────
-function updateUserAvatar(user) {
-  const avatarEl = document.getElementById("user-avatar");
-  if (!avatarEl) return;
-  // Clear previous content
-  avatarEl.innerHTML = '';
-  if (user.photoURL) {
-    const img = document.createElement('img');
-    img.src = user.photoURL;
-    img.referrerPolicy = 'no-referrer';
-    img.alt = 'Profile';
-    img.addEventListener('error', () => {
-      avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-    });
-    avatarEl.appendChild(img);
-  } else {
-    avatarEl.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
-  }
-}
+let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, editingExpenseId = null;
 
 // ── Card shimmer ─────────────────────────────────────────────────────────────
 function showLoader() {
@@ -149,7 +123,7 @@ onAuthStateChanged(auth, user => {
     updateUserAvatar(user);
 
     setGreeting();
-    initCurrencySelector();
+    initCurrencySelector(refreshMoney);
 
     // ── Cache-first strategy ──
     const cached = loadFromCache(user.uid);
@@ -163,7 +137,7 @@ onAuthStateChanged(auth, user => {
         populateYearPicker();
         initPeriodPicker();
         updatePeriodSummary();
-        requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+        requestAnimationFrame(() => { renderTrendChart(); });
       }
       if (document.getElementById("history-list")) {
         renderHistory();
@@ -240,50 +214,8 @@ window.handleGoogleLogin = async () => {
   catch (e) { showAuthError(friendlyErr(e.code)); }
 };
 
-window.handleLogout = async () => { if (currentUser) clearCache(currentUser.uid); await signOut(auth); allExpenses = []; };
-
-// ── Mobile Menu ──────────────────────────────────────────────────────────────
-window.toggleMobileMenu = () => {
-  const overlay = document.getElementById('mobile-menu-overlay');
-  const panel = document.getElementById('mobile-menu-panel');
-  if (overlay && panel) {
-    overlay.classList.toggle('open');
-    panel.classList.toggle('open');
-  }
-};
-
-window.closeMobileMenu = () => {
-  const overlay = document.getElementById('mobile-menu-overlay');
-  const panel = document.getElementById('mobile-menu-panel');
-  if (overlay) overlay.classList.remove('open');
-  if (panel) panel.classList.remove('open');
-};
-
-window.navigateTo = (url) => {
-  closeMobileMenu();
-  // Only allow navigation to known internal pages
-  const allowed = ['index.html', 'expense.html', 'income.html', 'history.html', 'debt.html', 'insights.html'];
-  const clean = url.split('#')[0].split('?')[0];
-  if (allowed.includes(clean)) {
-    window.location.href = url;
-  }
-};
-
-window.toggleProfileMenu = (e) => {
-  if (e) e.stopPropagation();
-  const dropdown = document.getElementById('profile-dropdown');
-  if (dropdown) dropdown.classList.toggle('hidden');
-};
-
-document.addEventListener('click', (e) => {
-  const menu = document.getElementById('profile-menu');
-  const dropdown = document.getElementById('profile-dropdown');
-  if (dropdown && !dropdown.classList.contains('hidden')) {
-    if (!menu || !menu.contains(e.target)) {
-      dropdown.classList.add('hidden');
-    }
-  }
-});
+// Profile and mobile menus, page links and Logout; this page's sign-in screen takes over after logout
+installMenus({ beforeLogout: () => { if (currentUser) clearCache(currentUser.uid); allExpenses = []; } });
 
 function showAuthError(msg, isSuccess = false) {
   const el = document.getElementById("auth-error");
@@ -310,7 +242,6 @@ window.showPage = (page) => {
     renderDashboardTable();
     // Defer chart rendering to avoid blocking UI interactions
     requestAnimationFrame(() => {
-      renderPieChart();
       renderTrendChart();
     });
   }
@@ -365,7 +296,6 @@ async function loadExpenses(isSilentSync = false) {
 
     // Defer chart rendering to next frame to avoid blocking
     requestAnimationFrame(() => {
-      renderPieChart();
       renderTrendChart();
       hideLoader();
     });
@@ -787,7 +717,7 @@ function refreshExpenseViews() {
   renderDashboardTable();
   renderHistory();
   updateExpenseCards();
-  requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
+  requestAnimationFrame(() => { renderTrendChart(); });
   saveToCache(currentUser.uid, allExpenses);
 }
 
@@ -856,7 +786,6 @@ window.addExpense = async () => {
         renderHistory();
         updateExpenseCards();
         requestAnimationFrame(() => {
-          renderPieChart();
           renderTrendChart();
         });
         saveToCache(currentUser.uid, allExpenses);
@@ -880,7 +809,6 @@ window.addExpense = async () => {
     renderHistory();
     updateExpenseCards();
     requestAnimationFrame(() => {
-      renderPieChart();
       renderTrendChart();
       hideLoader();
     });
@@ -909,7 +837,6 @@ window.addExpense = async () => {
       renderHistory();
       updateExpenseCards();
       requestAnimationFrame(() => {
-        renderPieChart();
         renderTrendChart();
       });
       saveToCache(currentUser.uid, allExpenses);
@@ -964,7 +891,6 @@ window.confirmDelete = async () => {
     updateExpenseCards();
     // Defer chart rendering
     requestAnimationFrame(() => {
-      renderPieChart();
       renderTrendChart();
       hideLoader();
     });
@@ -1093,7 +1019,6 @@ window.saveEditExpense = async () => {
     updateExpenseCards();
     // Defer chart rendering
     requestAnimationFrame(() => {
-      renderPieChart();
       renderTrendChart();
       hideLoader();
     });
@@ -1126,7 +1051,6 @@ window.switchTableTab = (tab) => {
   renderDashboardTable();
   // Defer chart updates to avoid blocking
   requestAnimationFrame(() => {
-    renderPieChart();
     renderTrendChart();
   });
 };
@@ -1239,44 +1163,12 @@ const HISTORY_TABS = {
   },
 };
 
-// Start and end of the "Dates" choice ("" = open-ended)
-function historyRange(key) {
-  const t = new Date(), y = t.getFullYear(), m = t.getMonth(), today = todayStr(t);
-  const day = (Y, M, D) => todayStr(new Date(Y, M, D));
-  switch (key) {
-    case "month": return [day(y, m, 1), today];
-    case "lastMonth": return [day(y, m - 1, 1), day(y, m, 0)];
-    case "quarter": return [day(y, m - 2, 1), today];
-    case "year": return [day(y, 0, 1), today];
-    case "custom": return [document.getElementById("hist-from").value, document.getElementById("hist-to").value];
-    default: return ["", ""];
-  }
-}
-
 // The rows on screen: tab, dates, chips, search and sort applied (also what Download exports)
 function historyRows() {
   const t = HISTORY_TABS[hist.tab];
-  const [from, to] = historyRange(document.getElementById("hist-range")?.value);
-  const q = (document.getElementById("hist-search")?.value || "").toLowerCase().trim();
-  const sort = document.getElementById("hist-sort")?.value;
-  const rows = t.rows().filter(r =>
-    (!from || r.date >= from) && (!to || r.date <= to) &&
-    (!hist.kinds.size || hist.kinds.has(t.kind(r))) &&
-    (!q || t.text(r).some(v => v && String(v).toLowerCase().includes(q))));
-  if (sort === "largest") return rows.sort((a, b) => b.amount - a.amount);
-  if (sort === "oldest") return rows.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  return rows.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-}
-
-function historyDay(ds) {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (ds === todayStr()) return "Today";
-  if (ds === todayStr(yesterday)) return "Yesterday";
-  const d = new Date(ds + "T00:00:00");
-  const opts = { weekday: "short", day: "numeric", month: "short" };
-  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
-  return d.toLocaleDateString("en-IN", opts);
+  const $id = id => document.getElementById(id);
+  const [from, to] = historyRange($id("hist-range")?.value, new Date(), { from: $id("hist-from")?.value, to: $id("hist-to")?.value });
+  return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, sort: $id("hist-sort")?.value });
 }
 
 function renderHistory() {
@@ -1533,175 +1425,24 @@ function exportCSV(rows, name) {
 // Charts read theme colours when drawn, so redraw when theme.js switches appearance
 window.addEventListener("spendwise:themechange", () => {
   if (!document.getElementById("home-spent")) return;
-  renderPieChart();
   renderTrendChart();
 });
 
-function showToast(msg, type) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.className = "toast " + (type || "success");
-  t.classList.remove("hidden");
-  // Errors stay until tapped (accessibility.js); a slow reader must not lose them
-  if (type !== "error") setTimeout(() => t.classList.add("hidden"), 3000);
-}
 
-// fmt() is now provided by currency.js — removed local override
-function pad(n) { return String(n).padStart(2, "0"); }
-function todayStr(d = new Date()) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-function getWeekStart() { const d = new Date(); const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); const m = new Date(d.setDate(diff)); return m.getFullYear() + "-" + pad(m.getMonth() + 1) + "-" + pad(m.getDate()); }
-function formatDate(ds) { return new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 function setGreeting() { const h = new Date().getHours(); const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; const n = (currentUser && currentUser.displayName) ? currentUser.displayName.split(" ")[0] : ""; const el = document.getElementById("dashboard-greeting") || document.getElementById("income-greeting") || document.getElementById("expense-greeting"); if (el) el.textContent = g + (n ? ", " + n : "") + "!"; }
 
-// ── Currency ────────────────────────────────────────────────────────────────
-function initCurrencySelector() {
-  const sel = document.getElementById('currency-select');
-  if (!sel) return;
-  sel.innerHTML = buildCurrencyOptions(getCurrency());
-  // Wait for lucide to render icons, then update currency symbols
-  requestAnimationFrame(() => {
-    updateCurrencyDisplay();
-  });
+// ── Currency: everything shown in money is redrawn ──────────────────────────
+function refreshMoney() {
+  if (!currentUser) return;
+  updateCards();
+  renderDashboardTable();
+  renderHistory();
+  updatePeriodSummary();
+  updateIncomeCards();
+  updateExpenseCards();
+  requestAnimationFrame(() => { renderTrendChart(); });
 }
-
-window.handleCurrencyChange = (code) => {
-  setCurrency(code);
-  updateCurrencyDisplay();
-  // Re-render all currency-dependent UI
-  if (currentUser) {
-    updateCards();
-    renderDashboardTable();
-    renderHistory();
-    updatePeriodSummary();
-    updateIncomeCards();
-    updateExpenseCards();
-    requestAnimationFrame(() => { renderPieChart(); renderTrendChart(); });
-  }
-};
 function showFormMsg(msg, type) { const el = document.getElementById("form-msg"); el.textContent = msg; el.className = "form-msg " + type; el.classList.remove("hidden"); if (type === "success") setTimeout(() => el.classList.add("hidden"), 3000); }
-
-// ============================================================
-//  PIE CHART - SPENDING BY CATEGORY
-// ============================================================
-function getCategoryBreakdown() {
-  // Get current displayed expenses based on both period picker AND active tab
-  const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
-  const y = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
-
-  let periodExpenses = allExpenses.filter(e => {
-    if (!e.date) return false;
-    if (y && e.date.substring(0, 4) !== String(y)) return false;
-    if (m && e.date.substring(5, 7) !== String(m)) return false;
-    return true;
-  });
-
-  // Now filter by active tab
-  const now = new Date();
-  const today = todayStr();
-  let displayExpenses = [];
-
-  if (activeTab === 'daily') {
-    displayExpenses = periodExpenses.filter(e => e.date === today);
-  } else if (activeTab === 'weekly') {
-    // Use allExpenses for weekly to avoid period picker clipping across month boundaries
-    const ws = getWeekStart();
-    displayExpenses = allExpenses.filter(e => e.date >= ws && e.date <= today);
-  } else if (activeTab === 'monthly') {
-    let displayYear = y || now.getFullYear();
-    let displayMonth = m || pad(now.getMonth() + 1);
-    const ms = displayYear + '-' + displayMonth + '-01';
-    const lastDay = new Date(displayYear, parseInt(displayMonth), 0).getDate();
-    const me = displayYear + '-' + displayMonth + '-' + pad(lastDay);
-    displayExpenses = periodExpenses.filter(e => e.date >= ms && e.date <= me);
-  } else {
-    displayExpenses = periodExpenses;
-  }
-
-  // Aggregate by category
-  const categoryTotals = {};
-  displayExpenses.forEach(e => {
-    if (!categoryTotals[e.category]) {
-      categoryTotals[e.category] = 0;
-    }
-    categoryTotals[e.category] += e.amount;
-  });
-
-  return categoryTotals;
-}
-
-function renderPieChart() {
-  if (!document.getElementById("categoryPieChart")) return;
-  const categoryData = getCategoryBreakdown();
-  const labels = Object.keys(categoryData);
-  const data = Object.values(categoryData);
-
-  // Colors for different categories
-  const colors = [
-    '#4a9eff', '#ec4899', '#10b981', '#f59e0b', '#ef4444',
-    '#8b5cf6', '#06b6d4', '#f97316', '#06b6d4', '#14b8a6'
-  ];
-
-  const chartCanvas = document.getElementById('categoryPieChart');
-  if (!chartCanvas) return;
-
-  // Destroy existing chart if it exists
-  if (chartInstance) {
-    chartInstance.destroy();
-  }
-
-  const ctx = chartCanvas.getContext('2d');
-
-  // Use lighter colors for dark mode, darker for light mode
-  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
-  const adjustedColors = colors.slice(0, labels.length);
-
-  chartInstance = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        backgroundColor: adjustedColors,
-        borderColor: isDarkMode ? '#262626' : '#ffffff',
-        borderWidth: 2,
-        hoverOffset: 8
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            padding: 16,
-            font: { size: 12, weight: '500' },
-            color: isDarkMode ? '#b0b0b0' : '#666666',
-            usePointStyle: true,
-            pointStyle: 'circle'
-          }
-        },
-        tooltip: {
-          backgroundColor: isDarkMode ? 'rgba(38, 38, 38, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-          titleColor: isDarkMode ? '#e8e8e8' : '#1a1a1a',
-          bodyColor: isDarkMode ? '#b0b0b0' : '#666666',
-          borderColor: isDarkMode ? '#3a3a3a' : '#e5e5e5',
-          borderWidth: 1,
-          padding: 12,
-          titleFont: { size: 13, weight: '600' },
-          bodyFont: { size: 12 },
-          callbacks: {
-            label: function (context) {
-              const value = context.parsed;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percentage = ((value / total) * 100).toFixed(1);
-              return fmt(value) + ' (' + percentage + '%)';
-            }
-          }
-        }
-      }
-    }
-  });
-}
 
 // ============================================================
 //  LINE CHART - SPENDING TRENDS
@@ -2078,7 +1819,6 @@ window.onPeriodChange = function () {
   renderDashboardTable();
   // Defer chart updates
   requestAnimationFrame(() => {
-    renderPieChart();
     renderTrendChart();
   });
 }

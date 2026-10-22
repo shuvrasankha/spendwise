@@ -219,70 +219,6 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // KEYBOARD NAVIGATION FOR DEBT TYPE TOGGLE
-  // ═══════════════════════════════════════════════════════════════════
-
-  function initDebtTypeKeyboard() {
-    const debtTypeButtons = document.querySelectorAll('.debt-type-btn');
-    if (debtTypeButtons.length === 0) return;
-
-    // Ensure proper ARIA
-    const container = debtTypeButtons[0].parentElement;
-    if (container && !container.getAttribute('role')) {
-      container.setAttribute('role', 'group');
-      container.setAttribute('aria-label', 'Debt type');
-    }
-
-    debtTypeButtons.forEach((btn) => {
-      btn.setAttribute('role', 'radio');
-      btn.setAttribute('aria-checked', btn.classList.contains('active') ? 'true' : 'false');
-      btn.setAttribute('tabindex', btn.classList.contains('active') ? '0' : '-1');
-
-      btn.addEventListener('keydown', function(e) {
-        let targetBtn = null;
-
-        switch (e.key) {
-          case 'ArrowRight':
-          case 'ArrowDown':
-          case 'ArrowLeft':
-          case 'ArrowUp':
-            e.preventDefault();
-            const currentIndex = Array.from(debtTypeButtons).indexOf(btn);
-            const nextIndex = (currentIndex + 1) % debtTypeButtons.length;
-            targetBtn = debtTypeButtons[nextIndex];
-            break;
-          
-          case 'Enter':
-          case ' ':
-            e.preventDefault();
-            btn.click();
-            return;
-        }
-
-        if (targetBtn) {
-          targetBtn.click();
-          targetBtn.focus();
-          debtTypeButtons.forEach(b => {
-            b.setAttribute('tabindex', '-1');
-            b.setAttribute('aria-checked', 'false');
-          });
-          targetBtn.setAttribute('tabindex', '0');
-          targetBtn.setAttribute('aria-checked', 'true');
-        }
-      });
-
-      btn.addEventListener('click', function() {
-        debtTypeButtons.forEach(b => {
-          b.setAttribute('tabindex', '-1');
-          b.setAttribute('aria-checked', 'false');
-        });
-        btn.setAttribute('tabindex', '0');
-        btn.setAttribute('aria-checked', 'true');
-      });
-    });
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
   // ARIA-LIVE REGIONS
   // ═══════════════════════════════════════════════════════════════════
 
@@ -329,64 +265,6 @@
       });
       observer.observe(toast, { attributes: true });
     }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // CHART ACCESSIBILITY
-  // ═══════════════════════════════════════════════════════════════════
-
-  function makeChartsAccessible() {
-    const canvases = document.querySelectorAll('canvas');
-    
-    canvases.forEach(canvas => {
-      // Add image role and label
-      if (!canvas.getAttribute('role')) {
-        canvas.setAttribute('role', 'img');
-        
-        // Generate descriptive label based on canvas ID
-        const canvasId = canvas.id || '';
-        let label = 'Chart';
-        
-        if (canvasId.includes('pie')) {
-          label = 'Category breakdown pie chart';
-        } else if (canvasId.includes('trend') || canvasId.includes('line')) {
-          label = 'Spending trend line chart';
-        } else if (canvasId.includes('income')) {
-          label = 'Income breakdown chart';
-        } else if (canvasId.includes('expense')) {
-          label = 'Expense breakdown chart';
-        }
-        
-        canvas.setAttribute('aria-label', label);
-      }
-
-      // Add tabindex for keyboard users
-      canvas.setAttribute('tabindex', '0');
-
-      // Create text alternative
-      const description = generateChartDescription(canvas);
-      if (description) {
-        // Check if description element already exists
-        let descEl = document.getElementById(canvas.id + '-description');
-        if (!descEl) {
-          descEl = document.createElement('div');
-          descEl.id = canvas.id + '-description';
-          descEl.className = 'sr-only';
-          canvas.parentNode.insertBefore(descEl, canvas.nextSibling);
-        }
-        descEl.textContent = description;
-        canvas.setAttribute('aria-describedby', descEl.id);
-      }
-    });
-  }
-
-  function generateChartDescription(canvas) {
-    // Try to find associated data and create a text description
-    const canvasId = canvas.id || '';
-    
-    // This is a placeholder - actual implementation would read Chart.js data
-    // For now, provide guidance to screen reader users
-    return `A chart is displayed here. For detailed data, please refer to the table below or contact us for a text-only version.`;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -668,8 +546,6 @@
     // Initialize after a short delay to ensure DOM is ready
     setTimeout(() => {
       initCategoryPickerKeyboard();
-      initDebtTypeKeyboard();
-      makeChartsAccessible();
     }, 100);
   }
 

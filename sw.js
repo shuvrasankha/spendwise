@@ -23,7 +23,6 @@ const STATIC_ASSETS = [
   './assets/js/event-delegation.js',
   './assets/js/income.js',
   './assets/js/debt.js',
-  './assets/js/modules/auth.js',
   './assets/js/modules/voice-command.js',
   './assets/js/modules/insights-v2.js',
   './assets/js/modules/network-status.js',
@@ -38,6 +37,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/reminders.js',
   './assets/js/modules/insights-data.js',
   './assets/js/modules/sms-parse.js',
+  './assets/js/modules/history-data.js',
   './assets/images/logo-96.png',
   './assets/images/logo-192.png',
   './manifest.json',
@@ -76,6 +76,9 @@ self.addEventListener('fetch', (e) => {
 
   // Skip non-http/https requests (chrome-extension:, blob:, etc.) and writes (AI proxy, Firestore)
   if (!url.protocol.startsWith('http') || e.request.method !== 'GET') return;
+  // Local development: always the network. The cache name only changes on deploy,
+  // so cached copies here would hide every code change.
+  if (['localhost', '127.0.0.1'].includes(self.location.hostname)) return;
 
   // HTML pages: show the cached page at once and refresh the cache in the background,
   // so switching tabs never waits on the network. A deploy is picked up on the next visit.
