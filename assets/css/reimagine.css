@@ -16,9 +16,14 @@ body::before {
   background: radial-gradient(120% 100% at 0% 0%, var(--gold-bg), transparent 60%);
 }
 h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
-.page-header h2, .ins-head h1, .entry-page > h1, .page > h1 {
+/* every page title: the same serif, size and weight */
+.page-header h2, .ins-head h1, .hist-head h1 {
+  font-size: 1.875rem; line-height: 1.15;
   font-family: var(--font-display); font-weight: 600; font-variation-settings: "opsz" 72;
 }
+
+/* Expenses has no .entry-page wrapper: line its title up with the form card below */
+.expense-head { max-width: 800px; }
 
 /* Every money figure: lining tabular digits */
 .home-spent-amount, .summary-amount, .home-tile-value, .period-summary-value,
