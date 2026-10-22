@@ -1260,6 +1260,7 @@ function initHistory() {
   });
   $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
+  if (location.hash === "#income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click(); // "All income" link
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initHistory);

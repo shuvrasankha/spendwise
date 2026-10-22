@@ -13,7 +13,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize } from './utils/helpers.js';
+import { sanitize, escapeHtml, bindDateChips, shortDay } from './utils/helpers.js';
 
 
 
@@ -98,6 +98,7 @@ onAuthStateChanged(auth, user => {
     // Init date
     const dateEl = document.getElementById('inc-date');
     if (dateEl && !dateEl.value) dateEl.value = todayStr();
+    syncDateChips();
 
     loadIncome();
   } else {
@@ -194,31 +195,46 @@ async function loadIncome() {
   }
 }
 
-// ── Summary Cards ─────────────────────────────────────────────────────────────
+// ── Page: this month, recent entries, and suggestions from past entries ──────
+const RECENT_COUNT = 8;
+const countBy = (rows, key) => {
+  const counts = {};
+  rows.forEach(r => { const k = (r[key] || '').trim(); if (k) counts[k] = (counts[k] || 0) + 1; });
+  return Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+};
+
 function updateIncomeSummaryCards() {
   const now = new Date();
   const ms = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-01';
   const ys = now.getFullYear() + '-01-01';
   const today = todayStr();
-
   const monthly = allIncome.filter(i => i.date >= ms && i.date <= today);
-  const yearly = allIncome.filter(i => i.date >= ys && i.date <= today);
-  const cashAll = allIncome.filter(i => i.paymentType === 'Cash');
-  const onlineAll = allIncome.filter(i => i.paymentType === 'Online');
+  const yearTotal = allIncome.filter(i => i.date >= ys && i.date <= today).reduce((s, i) => s + i.amount, 0);
 
-  const monthTotal = monthly.reduce((s, i) => s + i.amount, 0);
-  const yearTotal = yearly.reduce((s, i) => s + i.amount, 0);
-  const cashTotal = cashAll.reduce((s, i) => s + i.amount, 0);
-  const onlineTotal = onlineAll.reduce((s, i) => s + i.amount, 0);
+  document.getElementById('inc-month-label').textContent = now.toLocaleDateString('en-US', { month: 'long' }) + ' so far';
+  document.getElementById('inc-monthly').textContent = fmt(monthly.reduce((s, i) => s + i.amount, 0));
+  document.getElementById('inc-monthly-sub').textContent =
+    `${monthly.length} ${monthly.length === 1 ? 'entry' : 'entries'} · ${fmt(yearTotal)} this year`;
 
-  document.getElementById('inc-monthly').textContent = fmt(monthTotal);
-  document.getElementById('inc-monthly-count').textContent = monthly.length + ' entr' + (monthly.length !== 1 ? 'ies' : 'y');
-  document.getElementById('inc-yearly').textContent = fmt(yearTotal);
-  document.getElementById('inc-yearly-count').textContent = yearly.length + ' entr' + (yearly.length !== 1 ? 'ies' : 'y');
-  document.getElementById('inc-cash').textContent = fmt(cashTotal);
-  document.getElementById('inc-cash-label').textContent = cashAll.length + ' entr' + (cashAll.length !== 1 ? 'ies' : 'y');
-  document.getElementById('inc-online').textContent = fmt(onlineTotal);
-  document.getElementById('inc-online-label').textContent = onlineAll.length + ' entr' + (onlineAll.length !== 1 ? 'ies' : 'y');
+  // Recent entries; offline ones can't be edited until they sync
+  const list = document.getElementById('inc-recent-list');
+  list.innerHTML = allIncome.length ? allIncome.slice(0, RECENT_COUNT).map(i => {
+    const meta = [shortDay(i.date), i.paymentType === 'Cash' ? 'Cash' : i.bank || 'Online', i.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
+    return `<li><button type="button" class="hist-row" data-income-id="${escapeHtml(i.id)}" ${i.pending ? 'disabled' : ''}>
+      <span class="hist-row-main">
+        <span class="hist-row-title">${escapeHtml(i.source || 'Income')}</span>
+        <span class="hist-row-meta">${escapeHtml(meta)}</span>
+        ${i.notes ? `<span class="hist-row-note">${escapeHtml(i.notes)}</span>` : ''}
+      </span>
+      <span class="hist-row-amount income">+${fmt(i.amount)}</span>
+    </button></li>`;
+  }).join('') : '<li class="hist-empty">No income yet. Add your first one above.</li>';
+
+  // Choices over typing: sources and banks used before
+  document.getElementById('inc-source-chips').innerHTML = countBy(allIncome, 'source').slice(0, 6)
+    .map(src => `<button type="button" class="chip" data-inc-source="${escapeHtml(src)}">${escapeHtml(src)}</button>`).join('');
+  document.getElementById('inc-bank-list').innerHTML = countBy(allIncome, 'bank')
+    .map(b => `<option value="${escapeHtml(b)}"></option>`).join('');
 }
 
 // ── Add Income ────────────────────────────────────────────────────────────────
@@ -294,23 +310,41 @@ window.resetIncomeForm = () => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('inc-payment').value = 'Online';
+  setIncomePayment('Online');
   document.getElementById('inc-date').value = todayStr();
-  document.getElementById('inc-bank-wrap').style.display = '';
+  syncDateChips();
   document.getElementById('income-form-msg').classList.add('hidden');
-  // Reset heading in case it was in edit mode
-  document.getElementById('income-form-heading').textContent = 'Add Income';
-  document.getElementById('income-btn-label').textContent = 'Add Income';
+  document.getElementById('income-form-heading').textContent = 'Add income';
+  document.getElementById('income-btn-label').textContent = 'Add income';
   editingIncomeId = null;
 };
 
-// ── Toggle Bank Field ─────────────────────────────────────────────────────────
-window.toggleBankField = (val) => {
-  const wrap = document.getElementById('inc-bank-wrap');
-  if (!wrap) return;
-  wrap.style.display = val === 'Online' ? '' : 'none';
+// ── Online / Cash ─────────────────────────────────────────────────────────────
+function setIncomePayment(val) {
+  document.getElementById('inc-payment').value = val;
+  document.querySelectorAll('[data-inc-payment]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.incPayment === val)));
+  document.getElementById('inc-bank-wrap').style.display = val === 'Online' ? '' : 'none';
   if (val === 'Cash') document.getElementById('inc-bank').value = '';
-};
+}
+
+// ── Page wiring ───────────────────────────────────────────────────────────────
+const syncDateChips = bindDateChips(document.getElementById('inc-date'), document.getElementById('add-income-section'));
+document.querySelectorAll('[data-inc-payment]').forEach(b => b.addEventListener('click', () => setIncomePayment(b.dataset.incPayment)));
+document.getElementById('inc-source-chips').addEventListener('click', e => {
+  const chip = e.target.closest('[data-inc-source]');
+  if (!chip) return;
+  document.getElementById('inc-source').value = chip.dataset.incSource;
+  // the bank last used with this source is the likely one again
+  const last = allIncome.find(i => i.source === chip.dataset.incSource);
+  if (last) {
+    setIncomePayment(last.paymentType === 'Cash' ? 'Cash' : 'Online');
+    if (last.bank) document.getElementById('inc-bank').value = last.bank;
+  }
+});
+document.getElementById('inc-recent-list').addEventListener('click', e => {
+  const row = e.target.closest('[data-income-id]');
+  if (row && !row.disabled) window.openIncomeEdit(row.dataset.incomeId);
+});
 
 window.toggleEditBankField = (val) => {
   const wrap = document.getElementById('edit-inc-bank-wrap');

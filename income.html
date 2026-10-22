@@ -142,120 +142,84 @@
     </aside>
 
     <main class="main-content" id="main-content">
-      <!-- Page Header -->
-      <div class="page-header">
-        <h2>Track Incomes</h2>
+      <div class="entry-page">
+        <header class="hist-head"><h1>Income</h1></header>
+
+        <!-- This month at a glance; green means money in, as in History -->
+        <section class="home-hero" aria-labelledby="inc-month-label">
+          <h2 class="home-month" id="inc-month-label">This month</h2>
+          <p class="home-spent"><span class="home-spent-amount is-income" id="inc-monthly">₹ 0</span> <span class="home-spent-label">received</span></p>
+          <p class="home-pace" id="inc-monthly-sub"></p>
+        </section>
+
+        <div class="form-card" id="add-income-section">
+          <h2 class="entry-form-title" id="income-form-heading">Add income</h2>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="inc-amount">Amount (<span class="currency-symbol">₹</span>)</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="banknote"></i>
+                <input type="number" id="inc-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal" enterkeyhint="next" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inc-date">Date</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="calendar"></i>
+                <input type="date" id="inc-date" />
+              </div>
+              <div class="date-chips" role="group" aria-label="Quick date">
+                <button type="button" class="date-chip" data-date-offset="0">Today</button>
+                <button type="button" class="date-chip" data-date-offset="1">Yesterday</button>
+              </div>
+            </div>
+            <div class="form-group full-width">
+              <label for="inc-source">From</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="briefcase"></i>
+                <input type="text" id="inc-source" placeholder="e.g. Salary, Freelance, Business" autocomplete="off" />
+              </div>
+              <!-- Sources used before, most frequent first (income.js) -->
+              <div class="chips entry-chips" id="inc-source-chips" role="group" aria-label="Recent sources"></div>
+            </div>
+            <div class="form-group">
+              <span class="entry-label" id="inc-payment-label">Received as</span>
+              <input type="hidden" id="inc-payment" value="Online" />
+              <div class="seg" role="group" aria-labelledby="inc-payment-label">
+                <button type="button" class="seg-btn" data-inc-payment="Online" aria-pressed="true">Online</button>
+                <button type="button" class="seg-btn" data-inc-payment="Cash" aria-pressed="false">Cash</button>
+              </div>
+            </div>
+            <div class="form-group" id="inc-bank-wrap">
+              <label for="inc-bank">Bank or wallet</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="building-2"></i>
+                <input type="text" id="inc-bank" placeholder="e.g. HDFC, SBI, Paytm" list="inc-bank-list" autocomplete="off" />
+              </div>
+              <datalist id="inc-bank-list"></datalist>
+            </div>
+            <div class="form-group full-width">
+              <label for="inc-notes">Notes <span class="optional-tag">optional</span></label>
+              <textarea id="inc-notes" rows="2" placeholder="Anything to remember about it"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-secondary" data-action="resetIncomeForm">
+              <i data-lucide="rotate-ccw"></i> Clear
+            </button>
+            <button class="btn-income-primary btn-add" id="btn-add-income" data-action="addIncome">
+              <i data-lucide="plus-circle"></i> <span id="income-btn-label">Add income</span>
+            </button>
+          </div>
+          <div id="income-form-msg" class="form-msg hidden" role="status"></div>
+        </div>
+
+        <!-- Recent entries: tap one to edit or delete it -->
+        <section class="hist-day" aria-labelledby="inc-recent-title">
+          <h2 class="hist-day-head entry-list-head"><span id="inc-recent-title">Recent</span><a href="history.html#income">All income</a></h2>
+          <ul class="hist-rows" id="inc-recent-list"><li class="hist-empty">Loading…</li></ul>
+        </section>
       </div>
-
-      <!-- Income Summary Cards -->
-      <div class="summary-cards income-summary-cards">
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">This Month</span>
-            <div class="summary-icon"><i data-lucide="trending-up"></i></div>
-          </div>
-          <div class="summary-amount" id="inc-monthly"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="inc-monthly-count">0 entries</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">This Year</span>
-            <div class="summary-icon"><i data-lucide="calendar"></i></div>
-          </div>
-          <div class="summary-amount" id="inc-yearly"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="inc-yearly-count">0 entries</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Cash Income</span>
-            <div class="summary-icon"><i data-lucide="banknote"></i></div>
-          </div>
-          <div class="summary-amount" id="inc-cash"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="inc-cash-label">All time</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Online Income</span>
-            <div class="summary-icon"><i data-lucide="building-2"></i></div>
-          </div>
-          <div class="summary-amount" id="inc-online"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="inc-online-label">All time</div>
-        </div>
-      </div>
-
-      <!-- Add Income Card -->
-      <div class="form-card" id="add-income-section">
-        <div class="income-form-header">
-          <div class="income-form-title-wrap">
-            <div class="income-form-icon"><i data-lucide="plus-circle"></i></div>
-            <div>
-              <h3 id="income-form-heading">Add Income</h3>
-              <p>Record a new income entry</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Amount (<span class="currency-symbol">₹</span>) *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="banknote"></i>
-              <input type="number" id="inc-amount" placeholder="0.00" min="0" step="0.01" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Date *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="calendar"></i>
-              <input type="date" id="inc-date" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Source / From *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="briefcase"></i>
-              <input type="text" id="inc-source" placeholder="e.g. Salary, Freelance, Business" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Payment Type *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="credit-card"></i>
-              <select id="inc-payment" data-change="toggleBankField">
-                <option value="Online">Online</option>
-                <option value="Cash">Cash</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group" id="inc-bank-wrap">
-            <label>Bank / Wallet *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="building-2"></i>
-              <input type="text" id="inc-bank" placeholder="e.g. HDFC, SBI, Paytm" />
-            </div>
-          </div>
-
-          <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="inc-notes" rows="2" placeholder="Any additional notes..."></textarea>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button class="btn-secondary" data-action="resetIncomeForm">
-            <i data-lucide="rotate-ccw"></i> Clear
-          </button>
-          <button class="btn-income-primary btn-add" id="btn-add-income" data-action="addIncome">
-            <i data-lucide="plus-circle"></i> <span id="income-btn-label">Add Income</span>
-          </button>
-        </div>
-        <div id="income-form-msg" class="form-msg hidden"></div>
-      </div>
-
     </main>
   </div>
 
@@ -421,13 +385,13 @@
         <div id="edit-inc-error" class="form-msg error hidden"></div>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel-icon" data-action="closeIncomeEditModal" title="Cancel">
+        <button class="btn-cancel-icon" data-action="closeIncomeEditModal" title="Cancel" aria-label="Cancel">
           <i data-lucide="x-circle"></i>
         </button>
-        <button class="btn-delete-icon" data-action="deleteFromIncomeEdit" title="Delete">
+        <button class="btn-delete-icon" data-action="deleteFromIncomeEdit" title="Delete" aria-label="Delete">
           <i data-lucide="trash-2"></i>
         </button>
-        <button class="btn-save-icon" data-action="saveEditIncome" title="Save Changes">
+        <button class="btn-save-icon" data-action="saveEditIncome" title="Save Changes" aria-label="Save changes">
           <i data-lucide="check-circle"></i>
         </button>
       </div>

@@ -11,6 +11,33 @@ export function todayStr(d = new Date()) {
 // Money put into Investment is saved, not spent: every spending total, chart and projection leaves it out
 export const isSpending = e => e.category !== 'Investment';
 
+// "21 Oct", or "21 Oct 2025" outside the current year: short enough for a list row
+export function shortDay(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  const opts = { day: 'numeric', month: 'short' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString('en-IN', opts);
+}
+
+// Today / Yesterday buttons ([data-date-offset] inside `scope`) that set and mirror a date input
+export function bindDateChips(input, scope = document) {
+  const chips = [...scope.querySelectorAll('[data-date-offset]')];
+  const sync = () => chips.forEach(chip => {
+    const d = new Date(); d.setDate(d.getDate() - Number(chip.dataset.dateOffset));
+    const on = input.value === todayStr(d);
+    chip.classList.toggle('active', on);
+    chip.setAttribute('aria-pressed', String(on));
+  });
+  chips.forEach(chip => chip.addEventListener('click', () => {
+    const d = new Date(); d.setDate(d.getDate() - Number(chip.dataset.dateOffset));
+    input.value = todayStr(d);
+    sync();
+  }));
+  input.addEventListener('change', sync);
+  sync();
+  return sync; // call after setting the date in code
+}
+
 export function getWeekStart() {
   const d = new Date();
   const day = d.getDay();

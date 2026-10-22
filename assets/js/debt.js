@@ -13,7 +13,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr } from './utils/helpers.js';
+import { sanitize, friendlyErr, escapeHtml, bindDateChips, shortDay } from './utils/helpers.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
@@ -97,6 +97,7 @@ onAuthStateChanged(auth, user => {
     // Init date
     const dateEl = document.getElementById('debt-date');
     if (dateEl && !dateEl.value) dateEl.value = todayStr();
+    syncDateChips();
 
     loadDebts();
   } else {
@@ -196,167 +197,80 @@ async function loadDebts() {
   }
 }
 
-// ── Summary Cards ────────────────────────────────────────────────────────────
+// ── Summary: net balance and each direction ──────────────────────────────────
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
 function updateDebtSummary() {
   const active = allDebts.filter(d => !d.settled);
-  const settled = allDebts.filter(d => d.settled);
-
-  const owedToYou = active.filter(d => d.type === 'they-owe').reduce((s, d) => s + d.amount, 0);
-  const youOwe = active.filter(d => d.type === 'i-owe').reduce((s, d) => s + d.amount, 0);
-  const settledTotal = settled.reduce((s, d) => s + d.amount, 0);
-
-  const owedCount = active.filter(d => d.type === 'they-owe').length;
-  const oweCount = active.filter(d => d.type === 'i-owe').length;
-
-  document.getElementById('debt-owed-to-you').textContent = fmt(owedToYou);
-  document.getElementById('debt-owed-count').textContent = owedCount + ' pending';
-  document.getElementById('debt-you-owe').textContent = fmt(youOwe);
-  document.getElementById('debt-owe-count').textContent = oweCount + ' pending';
-  document.getElementById('debt-net-balance').textContent = fmt(owedToYou - youOwe);
-  document.getElementById('debt-settled-total').textContent = fmt(settledTotal);
-  document.getElementById('debt-settled-count').textContent = settled.length + ' settled';
-
-  // Color net balance
-  const netEl = document.getElementById('debt-net-balance');
+  const owed = active.filter(d => d.type === 'they-owe');
+  const owe = active.filter(d => d.type === 'i-owe');
+  const owedToYou = owed.reduce((s, d) => s + d.amount, 0);
+  const youOwe = owe.reduce((s, d) => s + d.amount, 0);
   const net = owedToYou - youOwe;
-  netEl.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  const netEl = document.getElementById('debt-net-balance');
+  netEl.textContent = fmt(Math.abs(net));
+  netEl.classList.toggle('is-income', net > 0);
+  netEl.classList.toggle('is-owe', net < 0);
+  document.getElementById('debt-net-word').textContent = net > 0 ? 'in your favour' : net < 0 ? 'you owe overall' : 'all square';
+  const people = new Set(active.map(d => d.person)).size;
+  document.getElementById('debt-net-sub').textContent = active.length
+    ? `${plural(active.length, 'open debt', 'open debts')} with ${plural(people, 'person', 'people')}`
+    : 'No open debts';
+  document.getElementById('debt-owed-to-you').textContent = fmt(owedToYou);
+  document.getElementById('debt-you-owe').textContent = fmt(youOwe);
+  document.getElementById('debt-owe-count').textContent = `${owe.length} open`;
+  document.getElementById('debt-owed-count').textContent = `${owed.length} open`;
+
+  // Names used before, so a repeat person is picked rather than retyped
+  document.getElementById('debt-person-list').innerHTML = [...new Set(allDebts.map(d => d.person).filter(Boolean))]
+    .map(p => `<option value="${escapeHtml(p)}"></option>`).join('');
 }
 
-// ── Render Active Debts ──────────────────────────────────────────────────────
+// One row: who, which way, when, the amount, then the row's actions
+function debtRow(d, meta, actions) {
+  return `<li class="debt-row">
+    <div class="hist-row-main">
+      <span class="hist-row-title">${escapeHtml(d.person)}</span>
+      <span class="hist-row-meta">${escapeHtml(meta)}</span>
+      ${d.notes ? `<span class="hist-row-note">${escapeHtml(d.notes)}</span>` : ''}
+    </div>
+    <span class="hist-row-amount ${d.type === 'they-owe' ? 'income' : 'owe'}">${fmt(d.amount)}</span>
+    ${actions}
+  </li>`;
+}
+
+// ── Open debts ───────────────────────────────────────────────────────────────
 function renderDebts() {
-  const tbody = document.getElementById('debt-body');
+  const list = document.getElementById('debt-body');
   const active = allDebts.filter(d => !d.settled);
-
+  document.getElementById('debt-open-total').textContent = active.length ? String(active.length) : '';
   if (!active.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">No debts recorded yet.</td></tr>`;
+    list.innerHTML = '<li class="hist-empty">No open debts. Add one above when someone borrows or lends.</li>';
     return;
   }
-
-  tbody.innerHTML = '';
-  active.forEach(d => {
-    const tr = document.createElement('tr');
-
-    // Type badge
-    const tdType = document.createElement('td');
-    tdType.dataset.label = 'Type';
-    const badge = document.createElement('span');
-    badge.className = d.type === 'they-owe' ? 'debt-badge-green' : 'debt-badge-red';
-    badge.textContent = d.type === 'they-owe' ? 'They owe me' : 'I owe them';
-    tdType.appendChild(badge);
-    tr.appendChild(tdType);
-
-    // Person
-    const tdPerson = document.createElement('td');
-    tdPerson.dataset.label = 'Person';
-    tdPerson.textContent = d.person;
-    tr.appendChild(tdPerson);
-
-    // Date
-    const tdDate = document.createElement('td');
-    tdDate.dataset.label = 'Date';
-    tdDate.textContent = formatDate(d.date);
-    tr.appendChild(tdDate);
-
-    // Notes
-    const tdNotes = document.createElement('td');
-    tdNotes.dataset.label = 'Notes';
-    tdNotes.textContent = d.notes || '-';
-    tr.appendChild(tdNotes);
-
-    // Amount
-    const tdAmt = document.createElement('td');
-    tdAmt.dataset.label = 'Amount';
-    tdAmt.className = 'text-right';
-    tdAmt.textContent = fmt(d.amount);
-    tr.appendChild(tdAmt);
-
-    // Actions
-    const tdAct = document.createElement('td');
-    tdAct.dataset.label = 'Actions';
-    tdAct.className = 'text-center';
-    tdAct.innerHTML = `
-      <div class="action-buttons">
-        <button class="btn-action settle" data-action="openDebtSettleModal" data-debt-id="${d.id}" title="Settle">
-          <i data-lucide="check-circle"></i>
-        </button>
-        <button class="btn-action delete" data-action="openDebtDeleteModal" data-debt-id="${d.id}" title="Delete">
-          <i data-lucide="trash-2"></i>
-        </button>
-      </div>
-    `;
-    tr.appendChild(tdAct);
-
-    tbody.appendChild(tr);
-  });
-
+  list.innerHTML = active.map(d => {
+    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
+    const who = escapeHtml(d.person);
+    // offline entries have no record to update until they sync
+    const actions = d.pending ? '' : `
+      <button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Settle ${fmt(d.amount)} with ${who}">Settle</button>
+      <button type="button" class="icon-btn" data-action="openDebtDeleteModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Delete debt with ${who}" title="Delete"><i data-lucide="trash-2"></i></button>`;
+    return debtRow(d, meta, actions);
+  }).join('');
   if (window.lucide) lucide.createIcons();
 }
 
-// ── Render Settled Debt History ──────────────────────────────────────────────
+// ── Settled debts (collapsed until opened) ───────────────────────────────────
 function renderDebtHistory() {
-  const tbody = document.getElementById('debt-history-body');
   const settled = allDebts.filter(d => d.settled).sort((a, b) => (b.settledDate || '').localeCompare(a.settledDate || ''));
-
-  if (!settled.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">No settled debts yet.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = '';
-  settled.forEach(d => {
-    const tr = document.createElement('tr');
-
-    // Type badge
-    const tdType = document.createElement('td');
-    tdType.dataset.label = 'Type';
-    const badge = document.createElement('span');
-    badge.className = d.type === 'they-owe' ? 'debt-badge-green' : 'debt-badge-red';
-    badge.textContent = d.type === 'they-owe' ? 'They owe me' : 'I owe them';
-    tdType.appendChild(badge);
-    tr.appendChild(tdType);
-
-    // Person
-    const tdPerson = document.createElement('td');
-    tdPerson.dataset.label = 'Person';
-    tdPerson.textContent = d.person;
-    tr.appendChild(tdPerson);
-
-    // Date
-    const tdDate = document.createElement('td');
-    tdDate.dataset.label = 'Date';
-    tdDate.textContent = formatDate(d.date);
-    tr.appendChild(tdDate);
-
-    // Settled Date
-    const tdSettled = document.createElement('td');
-    tdSettled.dataset.label = 'Settled On';
-    tdSettled.textContent = d.settledDate ? formatDate(d.settledDate) : '-';
-    tr.appendChild(tdSettled);
-
-    // Amount
-    const tdAmt = document.createElement('td');
-    tdAmt.dataset.label = 'Amount';
-    tdAmt.className = 'text-right';
-    tdAmt.textContent = fmt(d.amount);
-    tr.appendChild(tdAmt);
-
-    // Actions
-    const tdAct = document.createElement('td');
-    tdAct.dataset.label = 'Actions';
-    tdAct.className = 'text-center';
-    tdAct.innerHTML = `
-      <div class="action-buttons">
-        <button class="btn-action reactivate" data-action="openDebtReactivateModal" data-debt-id="${d.id}" title="Reactivate">
-          <i data-lucide="refresh-cw"></i>
-        </button>
-      </div>
-    `;
-    tr.appendChild(tdAct);
-
-    tbody.appendChild(tr);
-  });
-
-  if (window.lucide) lucide.createIcons();
+  document.getElementById('debt-settled').classList.toggle('hidden', !settled.length);
+  document.getElementById('debt-settled-count').textContent = `Settled · ${settled.length}`;
+  document.getElementById('debt-settled-total').textContent = fmt(settled.reduce((s, d) => s + d.amount, 0));
+  document.getElementById('debt-history-body').innerHTML = settled.map(d => {
+    const meta = [d.type === 'they-owe' ? 'Paid you back' : 'You paid back', d.settledDate ? shortDay(d.settledDate) : ''].filter(Boolean).join(' · ');
+    return debtRow(d, meta, `<button type="button" class="debt-action" data-action="openDebtReactivateModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Reopen debt with ${escapeHtml(d.person)}">Reopen</button>`);
+  }).join('');
 }
 
 // ── Add Debt ─────────────────────────────────────────────────────────────────
@@ -440,15 +354,18 @@ window.resetDebtForm = () => {
   document.getElementById('debt-form-msg').classList.add('hidden');
   setDebtType('they-owe');
   editingDebtId = null;
-  document.getElementById('debt-form-heading').textContent = 'Add Debt';
-  document.getElementById('debt-btn-label').textContent = 'Add Debt';
+  syncDateChips();
+  document.getElementById('debt-form-heading').textContent = 'Add a debt';
+  document.getElementById('debt-btn-label').textContent = 'Add debt';
 };
+
+const syncDateChips = bindDateChips(document.getElementById('debt-date'), document.getElementById('add-debt-section'));
 
 // ── Debt Type Toggle ─────────────────────────────────────────────────────────
 window.setDebtType = (type) => {
   currentDebtType = type;
-  document.querySelectorAll('.debt-type-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.type === type);
+  document.querySelectorAll('#add-debt-section [data-type]').forEach(btn => {
+    btn.setAttribute('aria-pressed', String(btn.dataset.type === type));
   });
 };
 
@@ -483,7 +400,7 @@ window.openDebtSettleModal = (id) => {
   settleDebtTarget = id;
   const debt = allDebts.find(d => d.id === id);
   if (debt) {
-    document.getElementById('debt-settle-msg').textContent = `Settle ${fmt(debt.amount)} with ${debt.person}?`;
+    document.getElementById('debt-settle-msg').textContent = `${fmt(debt.amount)} with ${debt.person} moves to Settled. You can reopen it later.`;
   }
   document.getElementById('debt-settle-modal').classList.remove('hidden');
 };
@@ -521,7 +438,7 @@ window.openDebtReactivateModal = (id) => {
   reactivateDebtTarget = id;
   const debt = allDebts.find(d => d.id === id);
   if (debt) {
-    document.getElementById('debt-reactivate-msg').textContent = `Reactivate ${fmt(debt.amount)} with ${debt.person}?`;
+    document.getElementById('debt-reactivate-msg').textContent = `${fmt(debt.amount)} with ${debt.person} moves back to Open.`;
   }
   document.getElementById('debt-reactivate-modal').classList.remove('hidden');
 };
