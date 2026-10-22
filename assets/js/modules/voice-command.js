@@ -5,7 +5,7 @@ import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
 import { parseSms } from './sms-parse.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -442,6 +442,9 @@ async function parseVoiceCommand(text) {
   }
 }
 
+// Each entry gets its document id once, so a retry after an unclear failure overwrites instead of duplicating
+const refFor = (entry, coll) => doc(db, coll, entry.docId ??= doc(collection(db, coll)).id);
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  SAVE TO FIRESTORE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -454,10 +457,12 @@ async function saveEntry() {
   if (window.lucide) lucide.createIcons();
 
   try {
+    // One batch: all entries save or none do, so "try again" can't add some twice
+    const batch = writeBatch(db);
     let savedCount = 0;
     for (const entry of parsedData) {
       if (entry.type === 'expense') {
-        await addDoc(collection(db, 'expenses'), {
+        batch.set(refFor(entry, 'expenses'), {
           uid: currentUser.uid,
           amount: entry.amount,
           category: entry.category,
@@ -470,7 +475,7 @@ async function saveEntry() {
           createdAt: serverTimestamp()
         });
       } else if (entry.type === 'income') {
-        await addDoc(collection(db, 'income'), {
+        batch.set(refFor(entry, 'income'), {
           uid: currentUser.uid,
           amount: entry.amount,
           date: entry.date,
@@ -483,7 +488,7 @@ async function saveEntry() {
         });
       } else {
         // Debt
-        await addDoc(collection(db, 'debts'), {
+        batch.set(refFor(entry, 'debts'), {
           uid: currentUser.uid,
           amount: entry.amount,
           type: entry.debtType,
@@ -498,6 +503,7 @@ async function saveEntry() {
       }
       savedCount++;
     }
+    await batch.commit();
 
     const totalAmount = parsedData.reduce((sum, e) => sum + e.amount, 0);
     const debtCount = parsedData.filter(e => e.type === 'debt').length;
