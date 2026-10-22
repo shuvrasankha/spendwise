@@ -12,8 +12,11 @@ const GOOGLE_JWKS = createRemoteJWKSet(new URL(
 const ALLOWED_MODELS = new Set([
   '@cf/qwen/qwen2.5-coder-32b-instruct',      // voice-command.js, csv-upload.js
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast', // insights-v2.js
+  '@cf/meta/llama-4-scout-17b-16e-instruct',   // voice-command.js: receipt photos
 ]);
 const MAX_TOKENS = 4096;
+// A receipt photo arrives shrunk to ~200 KB; this leaves room for one and refuses anything far larger
+const MAX_MESSAGES_CHARS = 1_500_000;
 // The free AI allowance is shared by every user and resets at 00:00 UTC, so each user gets a share of it
 const AI_DAILY_LIMIT = 100;
 
@@ -23,6 +26,13 @@ export function userFrom(payload) {
   if (!payload?.sub) return { status: 401, error: 'Not signed in' };
   if (payload.email_verified !== true) return { status: 403, error: 'Verify your email first' };
   return { uid: payload.sub };
+}
+
+// Why an AI request body is refused, or null when it's fine: [status, message]
+export function aiBodyError(body) {
+  if (!body || !ALLOWED_MODELS.has(body.model) || !Array.isArray(body.messages)) return [400, 'Model or messages not allowed'];
+  if (JSON.stringify(body.messages).length > MAX_MESSAGES_CHARS) return [413, 'Request too large'];
+  return null;
 }
 
 // Counts this request and says whether the user is still within today's share.
@@ -81,9 +91,8 @@ export default {
       const [status, result] = await handlePushRoute(path, body, uid, env);
       return json(status, result, cors);
     }
-    if (!body || !ALLOWED_MODELS.has(body.model) || !Array.isArray(body.messages)) {
-      return json(400, { error: 'Model or messages not allowed' }, cors);
-    }
+    const bad = aiBodyError(body);
+    if (bad) return json(bad[0], { error: bad[1] }, cors);
     // 429 is what the app already shows as "today's AI limit is used up"
     let allowed;
     try { allowed = await takeAiQuota(env, uid); } catch { return json(503, { error: 'Usage check failed' }, cors); }
