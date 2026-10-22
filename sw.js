@@ -31,6 +31,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/backup.js',
   './assets/js/modules/accessibility.js',
   './assets/js/modules/reminders.js',
+  './assets/js/modules/insights-data.js',
   './assets/images/logo2.png',
   './manifest.json',
   'https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js',

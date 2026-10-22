@@ -225,46 +225,107 @@
     <main class="main-content" id="main-content">
 
       <div id="page-dashboard" class="page active">
-        <div class="page-header">
-          <h2>Welcome Back</h2>
-          <p id="dashboard-greeting">Good morning!</p>
-          <p class="daily-spending-text" id="daily-spending-text"></p>
+        <!-- This month at a glance: the one bold element on the page (gold = money) -->
+        <section class="home-hero" aria-labelledby="home-month-label">
+          <p class="home-greeting" id="dashboard-greeting">Good morning!</p>
+          <h2 class="home-month" id="home-month-label">This month</h2>
+          <p class="home-spent"><span class="home-spent-amount" id="home-spent">₹ 0</span> <span class="home-spent-label">spent</span></p>
+          <div class="home-meter" id="home-meter" role="img" aria-label="">
+            <span class="home-meter-fill" id="home-meter-fill"></span>
+          </div>
+          <p class="home-meter-text" id="home-meter-text"></p>
+          <p class="home-pace" id="home-pace"></p>
+          <a class="btn-primary btn-add home-add" href="expense.html"><i data-lucide="plus"></i> Add expense</a>
+        </section>
+
+        <section class="home-section" aria-labelledby="home-today-title">
+          <div class="home-section-head">
+            <h3 id="home-today-title">Today</h3>
+            <span class="home-section-total" id="home-today-total"></span>
+          </div>
+          <ul class="home-list" id="home-today-list"></ul>
+          <a class="home-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
+        </section>
+
+        <div class="home-tiles">
+          <a class="home-tile" href="income.html">
+            <span class="home-tile-label">Income</span>
+            <span class="home-tile-value" id="home-income">—</span>
+            <span class="home-tile-sub" id="home-income-sub"></span>
+          </a>
+          <div class="home-tile">
+            <span class="home-tile-label">Saved</span>
+            <span class="home-tile-value" id="home-saved">—</span>
+            <span class="home-tile-sub" id="home-saved-sub"></span>
+          </div>
+          <a class="home-tile home-tile-wide" href="debt.html">
+            <span class="home-tile-label">Debts</span>
+            <span class="home-tile-debts">
+              <span>You owe <strong id="home-owe">—</strong></span>
+              <span>Owed to you <strong id="home-owed">—</strong></span>
+            </span>
+          </a>
         </div>
-        <div class="summary-cards">
-          <div class="summary-card summary-card-clickable" id="card-monthly" onclick="window.location.href='expense.html'">
-            <div class="summary-card-top">
-              <span class="summary-label">Monthly Expense</span>
-              <div class="summary-icon"><i data-lucide="wallet"></i></div>
-            </div>
-            <div class="summary-amount" id="sum-monthly"><span class="currency-symbol">₹</span> 0.00</div>
-            <div class="summary-sub" id="sum-monthly-count">0 transactions this month</div>
+
+        <section class="home-section" aria-labelledby="home-cats-title">
+          <div class="home-section-head">
+            <h3 id="home-cats-title">Where it went</h3>
+            <span class="home-section-total">This month</span>
           </div>
-          <div class="summary-card summary-card-clickable" id="card-income" onclick="window.location.href='income.html'">
-            <div class="summary-card-top">
-              <span class="summary-label">Monthly Income</span>
-              <div class="summary-icon"><i data-lucide="circle-arrow-down"></i></div>
+          <ul class="glance-cats" id="home-categories"></ul>
+        </section>
+
+
+
+        <!-- Line Chart Card -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-header-text">
+              <h3>Spending over time</h3>
+              <p>Follows the Daily / Weekly / Monthly / Yearly choice below</p>
             </div>
-            <div class="summary-amount" id="sum-income"><span class="currency-symbol">₹</span> 0.00</div>
-            <div class="summary-sub" id="sum-income-sub">0 entries this month</div>
           </div>
-          <div class="summary-card summary-card-clickable" id="card-debt" onclick="window.location.href='debt.html'">
-            <div class="summary-card-top">
-              <span class="summary-label">Total Debt</span>
-              <div class="summary-icon"><i data-lucide="hand-coins"></i></div>
+          <div class="line-chart-scroll-wrap" id="trend-scroll-wrap">
+            <div class="line-chart-container" id="trend-chart-inner" data-tab="weekly">
+              <canvas id="trendLineChart"></canvas>
             </div>
-            <div class="summary-amount" id="sum-debt"><span class="currency-symbol">₹</span> 0.00</div>
-            <div class="summary-sub" id="sum-debt-count">0 active debts</div>
-          </div>
-          <div class="summary-card" id="card-savings">
-            <div class="summary-card-top">
-              <span class="summary-label">Net Savings</span>
-              <div class="summary-icon"><i data-lucide="piggy-bank"></i></div>
-            </div>
-            <div class="summary-amount" id="sum-savings"><span class="currency-symbol">₹</span> 0.00</div>
-            <div class="summary-sub" id="sum-savings-sub">Income − Expenses (this month)</div>
           </div>
         </div>
-        <!-- Month / Year Picker -->
+
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-tabs">
+              <button class="table-tab" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
+              <button class="table-tab active" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
+              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
+              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
+            </div>
+            <button class="btn-download" data-action="downloadCSV">
+              <i data-lucide="download"></i> Download CSV
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-col="date">Date</th>
+                  <th data-col="category">Category</th>
+                  <th data-col="description">Description</th>
+                  <th data-col="payment">Payment</th>
+                  <th class="text-right" data-col="amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="table-body">
+                <tr>
+                  <td colspan="5" class="empty-row">No expenses yet. Add your first one!</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
+        </div>
+
+        <!-- Look back at any month -->
         <div class="period-picker-card">
           <div class="period-picker-left">
             <div class="period-picker-icon"><i data-lucide="calendar-search"></i></div>
@@ -301,8 +362,6 @@
             </button>
           </div>
         </div>
-
-        <!-- Period Summary Bar -->
         <div class="period-summary-bar" id="period-summary-bar">
           <div class="period-summary-item">
             <span class="period-summary-label">Total Spent</span>
@@ -324,67 +383,6 @@
             <span class="period-summary-label">Highest Spend</span>
             <span class="period-summary-value" id="period-max"><span class="currency-symbol">₹</span> 0.00</span>
           </div>
-        </div>
-
-        <!-- Pie Chart Card -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <div class="chart-header-text">
-              <h3>Spending by Category</h3>
-              <p>Distribution of expenses across categories</p>
-            </div>
-          </div>
-          <div class="chart-container">
-            <canvas id="categoryPieChart"></canvas>
-          </div>
-        </div>
-
-        <!-- Line Chart Card -->
-        <div class="chart-card">
-          <div class="chart-header">
-            <div class="chart-header-text">
-              <h3>Spending Trends</h3>
-              <p>Your spending over time</p>
-            </div>
-          </div>
-          <div class="line-chart-scroll-wrap" id="trend-scroll-wrap">
-            <div class="line-chart-container" id="trend-chart-inner" data-tab="daily">
-              <canvas id="trendLineChart"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-tabs">
-              <button class="table-tab active" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
-              <button class="table-tab" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
-              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
-              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
-            </div>
-            <button class="btn-download" data-action="downloadCSV">
-              <i data-lucide="download"></i> Download CSV
-            </button>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th data-col="date">Date</th>
-                  <th data-col="category">Category</th>
-                  <th data-col="description">Description</th>
-                  <th data-col="payment">Payment</th>
-                  <th class="text-right" data-col="amount">Amount</th>
-                </tr>
-              </thead>
-              <tbody id="table-body">
-                <tr>
-                  <td colspan="5" class="empty-row">No expenses yet. Add your first one!</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
         </div>
       </div>
     </main>

@@ -215,7 +215,7 @@
               </div>
               <div>
                 <h1>AI Insights</h1>
-                <p>Get personalized financial analysis powered by AI</p>
+                <p>See where your money went, then ask the AI coach about it</p>
               </div>
             </div>
           </div>
@@ -251,7 +251,7 @@
             <div class="selector-section">
               <label class="selector-label" id="analysis-type-label">
                 <i data-lucide="target"></i>
-                <span>Analysis Type</span>
+                <span>Ask the coach about</span>
               </label>
               <div class="analysis-type-grid" id="analysis-type-grid" role="radiogroup" aria-labelledby="analysis-type-label">
                 <button class="analysis-type-card selected" data-type="overview" role="radio" aria-checked="true" aria-label="Overview: Complete financial snapshot">
@@ -286,14 +286,6 @@
                   </div>
                   <div class="type-check"><i data-lucide="check"></i></div>
                 </button>
-                <button class="analysis-type-card" data-type="goals" role="radio" aria-checked="false" aria-label="Goals: Progress tracking">
-                  <div class="type-icon"><i data-lucide="target"></i></div>
-                  <div class="type-info">
-                    <span class="type-name">Goals</span>
-                    <span class="type-desc">Progress tracking</span>
-                  </div>
-                  <div class="type-check"><i data-lucide="check"></i></div>
-                </button>
                 <button class="analysis-type-card" data-type="debt" role="radio" aria-checked="false" aria-label="Debt: Debt management">
                   <div class="type-icon"><i data-lucide="hand-coins"></i></div>
                   <div class="type-info">
@@ -307,19 +299,15 @@
 
             <div class="analyze-action">
               <button class="analyze-btn" id="analyze-btn" aria-describedby="analyze-btn-desc">
-                <span id="analyze-btn-desc" class="sr-only">Click to generate AI-powered financial insights based on selected period and analysis type</span>
+                <span id="analyze-btn-desc" class="sr-only">Shows your numbers for the selected period, then asks the AI coach about the selected topic</span>
                 <div class="btn-content">
                   <i data-lucide="sparkles"></i>
-                  <span>Generate Insights</span>
+                  <span>Show insights</span>
                 </div>
               <div class="btn-loader hidden">
                 <div class="spinner"></div>
               </div>
             </button>
-            <span id="cached-indicator" class="cached-indicator hidden">
-              <i data-lucide="database"></i>
-              Cached
-            </span>
           </div>
         </div>
 
@@ -345,8 +333,8 @@
               </div>
             </div>
           </div>
-          <h3>Start a Conversation</h3>
-          <p>Select a topic and tap <strong>Generate Insights</strong> to chat with your personal AI financial advisor.</p>
+          <h3>Your money, explained</h3>
+          <p>Pick a period and a topic, then tap <strong>Show insights</strong>. You'll see your numbers right away, and the AI coach will answer questions about them.</p>
         </div>
 
         <div id="insights-loading" class="insights-loading hidden">
@@ -366,6 +354,9 @@
             </div>
           </div>
         </div>
+
+        <!-- Numbers worked out on the device (insights-v2.js renderGlance); no AI needed -->
+        <section id="insights-glance" class="insights-glance hidden" aria-live="polite"></section>
 
         <div id="insights-results" class="insights-results hidden"></div>
       </div>

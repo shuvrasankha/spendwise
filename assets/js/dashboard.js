@@ -80,7 +80,7 @@ function clearCache(uid) {
   try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
 }
 
-let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "daily", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
+let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, filteredExpenses = null, chartInstance = null, editingExpenseId = null;
 
 // ── Page loader ─────────────────────────────────────────────────────────────
 function dismissPageLoader() {
@@ -155,7 +155,7 @@ onAuthStateChanged(auth, user => {
       // Render from cache instantly — no skeleton delay
       allExpenses = cached;
       // Only update elements that exist on this page
-      if (document.getElementById("sum-monthly")) {
+      if (document.getElementById("home-spent")) {
         updateCards();
         renderDashboardTable();
         populateYearPicker();
@@ -349,7 +349,7 @@ async function loadExpenses(isSilentSync = false) {
     saveToCache(currentUser.uid, allExpenses);
 
     // Render lightweight content immediately — only if elements exist
-    if (document.getElementById("sum-monthly")) {
+    if (document.getElementById("home-spent")) {
       updateCards();
       renderDashboardTable();
       populateYearPicker();
@@ -415,59 +415,115 @@ async function loadDebts() {
   } catch (e) { console.error("Debt load error:", e); }
 }
 
-// ── Update Debt Cards ────────────────────────────────────────────────────────
-function updateDebtCards() {
-  if (!document.getElementById("sum-debt")) {
-    console.warn('sum-debt element not found');
-    return;
-  }
-
-  const activeDebts = allDebts.filter(d => !d.settled);
-  const totalDebt = activeDebts.reduce((s, d) => s + d.amount, 0);
-  
-  document.getElementById("sum-debt").textContent = fmt(totalDebt);
-  document.getElementById("sum-debt-count").textContent = activeDebts.length + " active debt" + (activeDebts.length !== 1 ? "s" : "");
+// ── Home: this month at a glance (expenses, income and debts together) ──────
+// Every loader calls this, so the numbers agree whichever data arrives first.
+function moneyWhole(n) {
+  const c = getCurrencyInfo(getCurrency());
+  return `${c.symbol} ${Math.round(n).toLocaleString(c.locale)}`;
 }
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-function updateIncomeCards() {
-  if (!document.getElementById("sum-income")) return;
-  const incomeEl = document.getElementById("sum-income");
-  const savingsEl = document.getElementById("sum-savings");
-  const savingsCard = document.getElementById("card-savings");
-  if (!incomeEl || !savingsEl) return;
-
+function renderHome() {
+  const spentEl = document.getElementById("home-spent");
+  if (!spentEl) return;
   const now = new Date();
-  const ms = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
   const today = todayStr();
+  const ms = today.slice(0, 8) + "01";
+  const monthExp = allExpenses.filter(e => e.date >= ms && e.date <= today);
+  const monthInc = allIncome.filter(i => i.date >= ms && i.date <= today);
+  const spent = monthExp.reduce((sum, e) => sum + e.amount, 0);
+  const income = monthInc.reduce((sum, i) => sum + i.amount, 0);
+  const day = now.getDate();
+  const monthDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthName = now.toLocaleDateString("en-US", { month: "long" });
 
-  const monthlyIncome = allIncome
-    .filter(i => i.date >= ms && i.date <= today)
-    .reduce((s, i) => s + i.amount, 0);
-
-  const monthlyExpenses = allExpenses
-    .filter(e => e.date >= ms && e.date <= today)
-    .reduce((s, e) => s + e.amount, 0);
-
-  const netSavings = monthlyIncome - monthlyExpenses;
-
-  incomeEl.textContent = fmt(monthlyIncome);
-  document.getElementById("sum-income-sub").textContent = monthlyIncome > 0 
-    ? allIncome.filter(i => i.date >= ms && i.date <= today).length + " entries this month"
-    : "0 entries this month";
-
-  savingsEl.textContent = fmt(Math.abs(netSavings));
-  // Color the savings card based on positive/negative
-  if (savingsCard) {
-    savingsCard.classList.remove("savings-negative");
-    if (netSavings < 0) savingsCard.classList.add("savings-negative");
+  // Hero: spent so far, against income, and the pace
+  document.getElementById("home-month-label").textContent = `${monthName} so far`;
+  spentEl.textContent = moneyWhole(spent);
+  const meter = document.getElementById("home-meter");
+  const meterText = document.getElementById("home-meter-text");
+  if (income > 0) {
+    const ratio = spent / income;
+    meter.classList.remove("hidden");
+    meter.classList.toggle("over", ratio > 1);
+    document.getElementById("home-meter-fill").style.width = `${Math.min(ratio, 1) * 100}%`;
+    meterText.textContent = ratio > 1
+      ? `${moneyWhole(spent - income)} more than your ${moneyWhole(income)} income`
+      : `${Math.round(ratio * 100)}% of your ${moneyWhole(income)} income · ${moneyWhole(income - spent)} left`;
+    meter.setAttribute("aria-label", meterText.textContent);
+  } else {
+    meter.classList.add("hidden");
+    meterText.textContent = "Add this month's income to see how much is left.";
   }
-  const savingsSubEl = document.getElementById("sum-savings-sub");
-  if (savingsSubEl) {
-    savingsSubEl.textContent = netSavings < 0
-      ? "Overspent this month"
-      : "Income − Expenses (this month)";
+  document.getElementById("home-pace").textContent = spent > 0
+    ? `${moneyWhole(spent / day)} a day · on track for ${moneyWhole((spent / day) * monthDays)} by the end of ${monthName}`
+    : "";
+
+  // Today
+  const todays = allExpenses.filter(e => e.date === today);
+  const todayTotal = todays.reduce((sum, e) => sum + e.amount, 0);
+  document.getElementById("home-today-total").textContent = todays.length ? `${moneyWhole(todayTotal)} · ${plural(todays.length, "entry", "entries")}` : "";
+  const list = document.getElementById("home-today-list");
+  if (!todays.length) {
+    const li = document.createElement("li");
+    li.className = "home-empty";
+    li.textContent = "Nothing added today yet.";
+    list.replaceChildren(li);
+  } else {
+    list.replaceChildren(...todays.slice(0, 5).map(e => {
+      const li = document.createElement("li");
+      li.className = "home-row";
+      const main = document.createElement("div");
+      main.className = "home-row-main";
+      const title = document.createElement("span");
+      title.className = "home-row-title";
+      title.textContent = e.description && e.description !== "-" ? e.description : e.category;
+      const meta = document.createElement("span");
+      meta.className = "home-row-meta";
+      meta.textContent = [e.category, e.payment].filter(Boolean).join(" · ") + (e.pending ? " · waiting to sync" : "");
+      main.append(title, meta);
+      const amount = document.createElement("span");
+      amount.className = "home-row-amount";
+      amount.textContent = fmt(e.amount);
+      li.append(main, amount);
+      return li;
+    }));
   }
+
+  // Tiles: income, saved, debts (owe and owed are separate directions)
+  document.getElementById("home-income").textContent = income > 0 ? moneyWhole(income) : "—";
+  document.getElementById("home-income-sub").textContent = monthInc.length ? `${plural(monthInc.length, "entry", "entries")} this month` : "None this month";
+  const savedEl = document.getElementById("home-saved");
+  const savedSub = document.getElementById("home-saved-sub");
+  if (income > 0) {
+    const saved = income - spent;
+    savedEl.textContent = saved < 0 ? `−${moneyWhole(-saved)}` : moneyWhole(saved);
+    savedSub.textContent = saved < 0 ? "Overspent this month" : `${Math.round((saved / income) * 100)}% of income`;
+  } else {
+    savedEl.textContent = "—";
+    savedSub.textContent = "Needs income entries";
+  }
+  const active = allDebts.filter(d => !d.settled);
+  document.getElementById("home-owe").textContent = moneyWhole(active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0));
+  document.getElementById("home-owed").textContent = moneyWhole(active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0));
+
+  // Where it went: this month's top categories, as labelled bars (readable without a chart)
+  const byCat = {};
+  monthExp.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  document.getElementById("home-categories").innerHTML = cats.length ? cats.map(([category, amount]) => {
+    const share = spent > 0 ? (amount / spent) * 100 : 0;
+    return `<li class="glance-cat">
+      <div class="glance-cat-row"><span class="glance-cat-name">${escapeHtml(category)}</span><span class="glance-cat-amount">${moneyWhole(amount)}</span></div>
+      <div class="glance-bar" aria-hidden="true"><span style="width:${Math.max(share, 2).toFixed(1)}%"></span></div>
+      <div class="glance-cat-meta">${share.toFixed(0)}% of this month's spending</div>
+    </li>`;
+  }).join("") : `<li class="home-empty">No expenses this month yet.</li>`;
 }
+
+// The old card updaters (still called by loaders and save paths) now redraw the home summary
+function updateDebtCards() { renderHome(); }
+function updateIncomeCards() { renderHome(); }
 
 // ── Update Expense Summary Cards (expense page) ─────────────────────────────
 function updateExpenseCards() {
@@ -937,40 +993,7 @@ window.deleteFromEdit = async () => {
   document.getElementById("modal").classList.remove("hidden");
 };
 
-function updateCards() {
-  if (!document.getElementById("sum-monthly")) {
-    console.warn('sum-monthly element not found');
-    return;
-  }
-  const now = new Date();
-  const today = todayStr();
-  const ms = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
-
-  // Monthly expenses
-  const monthlyExpenses = allExpenses.filter(e => e.date >= ms && e.date <= today);
-  const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
-  
-  document.getElementById("sum-monthly").textContent = fmt(monthTotal);
-  document.getElementById("sum-monthly-count").textContent = monthlyExpenses.length + " transaction" + (monthlyExpenses.length !== 1 ? "s" : "") + " this month";
-
-  // Daily spending text
-  updateDailySpending();
-}
-
-function updateDailySpending() {
-  const el = document.getElementById("daily-spending-text");
-  if (!el) return;
-  
-  const today = todayStr();
-  const todayExpenses = allExpenses.filter(e => e.date === today);
-  const todayTotal = todayExpenses.reduce((s, e) => s + e.amount, 0);
-  
-  if (todayTotal === 0) {
-    el.textContent = "Nothing spent yet today";
-  } else {
-    el.innerHTML = `Spent today <span class="amount">${fmt(todayTotal)}</span>`;
-  }
-}
+function updateCards() { renderHome(); }
 
 window.switchTableTab = (tab) => {
   activeTab = tab;
@@ -1582,7 +1605,7 @@ function exportCSV(rows, name) {
 
 // Charts read theme colours when drawn, so redraw when theme.js switches appearance
 window.addEventListener("spendwise:themechange", () => {
-  if (!document.getElementById("sum-monthly")) return;
+  if (!document.getElementById("home-spent")) return;
   renderPieChart();
   renderTrendChart();
 });
@@ -1884,17 +1907,16 @@ function renderTrendChart() {
   }
 
   trendChartInstance = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
       labels: labels,
       datasets: [{
         label: 'Spending',
         data: data,
         borderColor: '#4a9eff',
-        backgroundColor: 'rgba(74, 158, 255, 0.08)',
-        borderWidth: isMobile ? 2.5 : 3,
-        fill: true,
-        tension: 0.4,
+        backgroundColor: '#4a9eff',
+        borderRadius: 4,
+        borderWidth: 0,
         pointRadius: isMobile ? 4 : 5,
         pointHoverRadius: isMobile ? 6 : 7,
         pointBackgroundColor: '#4a9eff',
