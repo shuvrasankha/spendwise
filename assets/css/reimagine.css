@@ -336,6 +336,54 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .voice-confirm-btn:hover { opacity: 1; filter: brightness(1.08); }
 .voice-cancel-btn { min-height: 48px; border-radius: var(--radius-full); padding: 0 20px; font-weight: 600; }
 
+/* Speech language: a pill that opens an in-app list (voice-command.js),
+   replacing the phone's own <select> sheet */
+.voice-lang-picker { flex-wrap: wrap; }
+.voice-lang-trigger {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface2);
+  color: var(--text); font-size: 0.9375rem; font-weight: 600;
+}
+.voice-lang-trigger:hover { border-color: var(--text2); }
+.voice-lang-trigger svg {
+  width: 16px; height: 16px; fill: none; stroke: var(--text2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--transition);
+}
+.voice-lang-trigger[aria-expanded="true"] { border-color: var(--gold); background: var(--gold-bg); }
+.voice-lang-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+.voice-lang-panel {
+  flex-basis: 100%; margin-top: 10px; padding: 12px; text-align: left;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface2);
+  animation: voiceLangIn 0.18s ease-out;
+}
+.voice-lang-panel[hidden] { display: none; }
+@keyframes voiceLangIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.voice-lang-panel-title {
+  margin: 0 4px 10px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2);
+}
+.voice-lang-list { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; outline: none; }
+.voice-lang-option {
+  position: relative; display: flex; flex-direction: column; justify-content: center; gap: 1px;
+  min-height: 52px; padding: 6px 36px 6px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; transition: border-color var(--transition), background var(--transition);
+}
+.voice-lang-option:hover { border-color: var(--text2); }
+.voice-lang-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.voice-lang-native { font-size: 1.0625rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+.voice-lang-name { font-size: 0.75rem; color: var(--text2); }
+.voice-lang-name:empty { display: none; }
+.voice-lang-option[aria-selected="true"] { background: var(--hero-bg); border-color: var(--hero-bg); }
+.voice-lang-option[aria-selected="true"] .voice-lang-native { color: var(--hero-text); }
+.voice-lang-option[aria-selected="true"] .voice-lang-name { color: var(--hero-text2); }
+.voice-lang-option[aria-selected="true"]::after {
+  /* check mark */
+  content: ""; position: absolute; right: 16px; top: 50%; width: 6px; height: 11px; margin-top: -7px;
+  border: solid var(--gold-bright); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+[data-theme="dark"] .voice-lang-option[aria-selected="true"] { background: var(--gold-bg); border-color: var(--gold); }
+[data-theme="dark"] .voice-lang-option[aria-selected="true"] .voice-lang-native { color: var(--gold); }
+[data-theme="dark"] .voice-lang-option[aria-selected="true"]::after { border-color: var(--gold); }
+
 /* CSV import */
 .csv-phase { padding: 20px; }
 .csv-drop-zone {

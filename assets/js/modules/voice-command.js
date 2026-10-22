@@ -29,17 +29,17 @@ const DEBT_TYPES = ['they-owe', 'i-owe'];
 
 // ── Supported Languages ──────────────────────────────────────────────────────
 const VOICE_LANGUAGES = [
-  { code: 'en-IN', label: 'English', flag: '🇬🇧' },
-  { code: 'hi-IN', label: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'bn-IN', label: 'বাংলা', flag: '🇮🇳' },
-  { code: 'ta-IN', label: 'தமிழ்', flag: '🇮🇳' },
-  { code: 'te-IN', label: 'తెలుగు', flag: '🇮🇳' },
-  { code: 'kn-IN', label: 'ಕನ್ನಡ', flag: '🇮🇳' },
-  { code: 'ml-IN', label: 'മലയാളം', flag: '🇮🇳' },
-  { code: 'mr-IN', label: 'मराठी', flag: '🇮🇳' },
-  { code: 'gu-IN', label: 'ગુજરાતી', flag: '🇮🇳' },
-  { code: 'pa-IN', label: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
-  { code: 'or-IN', label: 'ଓଡ଼ିଆ', flag: '🇮🇳' }
+  { code: 'en-IN', label: 'English', flag: '🇬🇧', name: 'English' },
+  { code: 'hi-IN', label: 'हिन्दी', flag: '🇮🇳', name: 'Hindi' },
+  { code: 'bn-IN', label: 'বাংলা', flag: '🇮🇳', name: 'Bengali' },
+  { code: 'ta-IN', label: 'தமிழ்', flag: '🇮🇳', name: 'Tamil' },
+  { code: 'te-IN', label: 'తెలుగు', flag: '🇮🇳', name: 'Telugu' },
+  { code: 'kn-IN', label: 'ಕನ್ನಡ', flag: '🇮🇳', name: 'Kannada' },
+  { code: 'ml-IN', label: 'മലയാളം', flag: '🇮🇳', name: 'Malayalam' },
+  { code: 'mr-IN', label: 'मराठी', flag: '🇮🇳', name: 'Marathi' },
+  { code: 'gu-IN', label: 'ગુજરાતી', flag: '🇮🇳', name: 'Gujarati' },
+  { code: 'pa-IN', label: 'ਪੰਜਾਬੀ', flag: '🇮🇳', name: 'Punjabi' },
+  { code: 'or-IN', label: 'ଓଡ଼ିଆ', flag: '🇮🇳', name: 'Odia' }
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -804,6 +804,109 @@ async function pasteSms() {
   handleTextSubmit(text);
 }
 
+// ── Language picker ──────────────────────────────────────────────────────────
+// The phone's own <select> sheet can't be styled, so a button opens an in-app
+// list instead. The hidden <select> stays the source of truth: picking a
+// language sets its value and fires 'change', which the handler above uses.
+function initLangPicker(select) {
+  const wrap = select.closest('.voice-lang-picker');
+  if (!wrap) return;
+  select.hidden = true;
+
+  const current = () => VOICE_LANGUAGES.find(l => l.code === select.value) || VOICE_LANGUAGES[0];
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'voice-lang-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  const panel = document.createElement('div');
+  panel.className = 'voice-lang-panel';
+  panel.hidden = true;
+  panel.innerHTML = '<p class="voice-lang-panel-title" id="voice-lang-title">Speech language</p>';
+  const list = document.createElement('ul');
+  list.className = 'voice-lang-list';
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-labelledby', 'voice-lang-title');
+  list.tabIndex = -1;
+
+  VOICE_LANGUAGES.forEach(lang => {
+    const li = document.createElement('li');
+    li.className = 'voice-lang-option';
+    li.setAttribute('role', 'option');
+    li.dataset.code = lang.code;
+    li.tabIndex = -1;
+    li.lang = lang.code;
+    li.innerHTML = `<span class="voice-lang-native"></span><span class="voice-lang-name"></span>`;
+    li.querySelector('.voice-lang-native').textContent = lang.label;
+    li.querySelector('.voice-lang-name').textContent = lang.name === lang.label ? '' : lang.name;
+    list.appendChild(li);
+  });
+  panel.appendChild(list);
+  wrap.append(trigger, panel);
+
+  const options = () => [...list.children];
+  function render() {
+    const lang = current();
+    trigger.innerHTML = '<span class="voice-lang-trigger-text"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+    trigger.querySelector('.voice-lang-trigger-text').textContent = lang.label;
+    trigger.setAttribute('aria-label', `Speech language: ${lang.name}`);
+    options().forEach(o => o.setAttribute('aria-selected', String(o.dataset.code === lang.code)));
+  }
+  function open() {
+    panel.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    (list.querySelector('[aria-selected="true"]') || options()[0]).focus();
+  }
+  function close(refocus) {
+    if (panel.hidden) return;
+    panel.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (refocus) trigger.focus();
+  }
+  function choose(code) {
+    if (select.value !== code) {
+      select.value = code;
+      select.dispatchEvent(new Event('change'));
+    }
+    render();
+    close(true);
+  }
+
+  trigger.addEventListener('click', () => (panel.hidden ? open() : close(true)));
+  list.addEventListener('click', (e) => {
+    const opt = e.target.closest('.voice-lang-option');
+    if (opt) choose(opt.dataset.code);
+  });
+  list.addEventListener('keydown', (e) => {
+    const all = options();
+    const i = all.indexOf(document.activeElement);
+    const cols = getComputedStyle(list).gridTemplateColumns.split(' ').length || 1;
+    const move = { ArrowDown: cols, ArrowUp: -cols, ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (move) {
+      e.preventDefault();
+      all[Math.min(all.length - 1, Math.max(0, i + move))].focus();
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      all[e.key === 'Home' ? 0 : all.length - 1].focus();
+    } else if ((e.key === 'Enter' || e.key === ' ') && i >= 0) {
+      e.preventDefault();
+      choose(all[i].dataset.code);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close(true);
+    }
+  });
+  // Tap or focus anywhere else closes it
+  document.addEventListener('pointerdown', (e) => { if (!wrap.contains(e.target)) close(false); });
+  wrap.addEventListener('focusout', (e) => { if (e.relatedTarget && !wrap.contains(e.relatedTarget)) close(false); });
+  document.getElementById('voice-close-btn')?.addEventListener('click', () => close(false));
+
+  render();
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  INIT — Wire up events
 // ══════════════════════════════════════════════════════════════════════════════
@@ -879,6 +982,7 @@ function initVoiceUI() {
       }
       recognition = initSpeechRecognition();
     });
+    initLangPicker(langSelect);
   }
 
   // Hide FAB initially (shown when auth resolves)
