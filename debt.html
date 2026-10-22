@@ -215,161 +215,86 @@
     </aside>
 
     <main class="main-content" id="main-content">
-      <!-- Page Header -->
-      <div class="page-header">
-        <h2>Track Debts</h2>
-      </div>
+      <div class="entry-page">
+        <header class="hist-head"><h1>Debts</h1></header>
 
-      <!-- Debt Summary Cards -->
-      <div class="summary-cards">
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Owed to You</span>
-            <div class="summary-icon"><i data-lucide="arrow-down-left"></i></div>
+        <!-- Where you stand overall; the colour follows the words, never replaces them -->
+        <section class="home-hero" aria-labelledby="debt-net-label">
+          <h2 class="home-month" id="debt-net-label">Net balance</h2>
+          <p class="home-spent"><span class="home-spent-amount" id="debt-net-balance">₹ 0</span> <span class="home-spent-label" id="debt-net-word">all square</span></p>
+          <p class="home-pace" id="debt-net-sub"></p>
+        </section>
+        <div class="home-tiles">
+          <div class="home-tile">
+            <span class="home-tile-label">Owed to you</span>
+            <span class="home-tile-value" id="debt-owed-to-you">₹ 0</span>
+            <span class="home-tile-sub" id="debt-owed-count"></span>
           </div>
-          <div class="summary-amount" id="debt-owed-to-you"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="debt-owed-count">0 pending</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">You Owe</span>
-            <div class="summary-icon"><i data-lucide="arrow-up-right"></i></div>
-          </div>
-          <div class="summary-amount" id="debt-you-owe"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="debt-owe-count">0 pending</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Net Balance</span>
-            <div class="summary-icon"><i data-lucide="scale"></i></div>
-          </div>
-          <div class="summary-amount" id="debt-net-balance"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="debt-net-sub">Positive = you're ahead</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-card-top">
-            <span class="summary-label">Settled</span>
-            <div class="summary-icon"><i data-lucide="check-circle"></i></div>
-          </div>
-          <div class="summary-amount" id="debt-settled-total"><span class="currency-symbol">₹</span> 0.00</div>
-          <div class="summary-sub" id="debt-settled-count">0 settled</div>
-        </div>
-      </div>
-
-      <!-- Add Debt Form -->
-      <div class="form-card" id="add-debt-section">
-        <div class="debt-form-header">
-          <div class="debt-form-icon"><i data-lucide="hand-coins"></i></div>
-          <div>
-            <h3 id="debt-form-heading">Add Debt</h3>
-            <p>Record a new debt entry</p>
+          <div class="home-tile">
+            <span class="home-tile-label">You owe</span>
+            <span class="home-tile-value" id="debt-you-owe">₹ 0</span>
+            <span class="home-tile-sub" id="debt-owe-count"></span>
           </div>
         </div>
 
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Type *</label>
-            <div class="debt-type-toggle">
-              <button type="button" class="debt-type-btn active" data-type="they-owe" data-action="setDebtTypeTheyOwe">
-                <i data-lucide="arrow-down-left"></i> They owe me
-              </button>
-              <button type="button" class="debt-type-btn" data-type="i-owe" data-action="setDebtTypeIOwe">
-                <i data-lucide="arrow-up-right"></i> I owe them
-              </button>
+        <div class="form-card" id="add-debt-section">
+          <h2 class="entry-form-title" id="debt-form-heading">Add a debt</h2>
+          <div class="seg" role="group" aria-label="Who owes whom">
+            <button type="button" class="seg-btn" data-type="they-owe" data-action="setDebtTypeTheyOwe" aria-pressed="true">They owe me</button>
+            <button type="button" class="seg-btn" data-type="i-owe" data-action="setDebtTypeIOwe" aria-pressed="false">I owe them</button>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="debt-person">Person</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="user"></i>
+                <input type="text" id="debt-person" placeholder="e.g. Ravi, Mom" list="debt-person-list" autocomplete="off" />
+              </div>
+              <datalist id="debt-person-list"></datalist>
+            </div>
+            <div class="form-group">
+              <label for="debt-amount">Amount (<span class="currency-symbol">₹</span>)</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="banknote"></i>
+                <input type="number" id="debt-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="debt-date">Date</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="calendar"></i>
+                <input type="date" id="debt-date" />
+              </div>
+              <div class="date-chips" role="group" aria-label="Quick date">
+                <button type="button" class="date-chip" data-date-offset="0">Today</button>
+                <button type="button" class="date-chip" data-date-offset="1">Yesterday</button>
+              </div>
+            </div>
+            <div class="form-group full-width">
+              <label for="debt-notes">Notes <span class="optional-tag">optional</span></label>
+              <textarea id="debt-notes" rows="2" placeholder="e.g. Dinner split, loan for rent"></textarea>
             </div>
           </div>
-
-          <div class="form-group">
-            <label>Amount (<span class="currency-symbol">₹</span>) *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="banknote"></i>
-              <input type="number" id="debt-amount" placeholder="0.00" min="0" step="0.01" />
-            </div>
+          <div class="form-actions">
+            <button class="btn-secondary" data-action="resetDebtForm">
+              <i data-lucide="rotate-ccw"></i> Clear
+            </button>
+            <button class="btn-debt-primary btn-add" id="btn-add-debt" data-action="addDebt">
+              <i data-lucide="plus-circle"></i> <span id="debt-btn-label">Add debt</span>
+            </button>
           </div>
-
-          <div class="form-group">
-            <label>Person Name *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="user"></i>
-              <input type="text" id="debt-person" placeholder="e.g. John, Mom, Bank" />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Date *</label>
-            <div class="input-icon-wrap">
-              <i data-lucide="calendar"></i>
-              <input type="date" id="debt-date" />
-            </div>
-          </div>
-
-          <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="debt-notes" rows="2" placeholder="e.g. Borrowed for dinner, loan for rent..."></textarea>
-          </div>
+          <div id="debt-form-msg" class="form-msg hidden" role="status"></div>
         </div>
 
-        <div class="form-actions">
-          <button class="btn-secondary" data-action="resetDebtForm">
-            <i data-lucide="rotate-ccw"></i> Clear
-          </button>
-          <button class="btn-debt-primary btn-add" id="btn-add-debt" data-action="addDebt">
-            <i data-lucide="plus-circle"></i> <span id="debt-btn-label">Add Debt</span>
-          </button>
-        </div>
-        <div id="debt-form-msg" class="form-msg hidden"></div>
-      </div>
+        <section class="hist-day" aria-labelledby="debt-open-title">
+          <h2 class="hist-day-head entry-list-head"><span id="debt-open-title">Open</span><span id="debt-open-total"></span></h2>
+          <ul class="hist-rows" id="debt-body"><li class="hist-empty">Loading…</li></ul>
+        </section>
 
-      <!-- Active Debts Table -->
-      <div class="table-card" style="margin-top: 20px;">
-        <div class="table-header">
-          <span class="result-count">Active Debts</span>
-        </div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th data-col="type">Type</th>
-                <th data-col="person">Person</th>
-                <th data-col="date">Date</th>
-                <th data-col="notes">Notes</th>
-                <th class="text-right" data-col="amount">Amount</th>
-                <th class="text-center" data-col="actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="debt-body">
-              <tr>
-                <td colspan="6" class="empty-row">No debts recorded yet.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Settled Debts History -->
-      <div class="table-card" style="margin-top: 20px;">
-        <div class="table-header">
-          <span class="result-count">Settlement History</span>
-        </div>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th data-col="type">Type</th>
-                <th data-col="person">Person</th>
-                <th data-col="date">Date</th>
-                <th data-col="settled-date">Settled On</th>
-                <th class="text-right" data-col="amount">Amount</th>
-                <th class="text-center" data-col="actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="debt-history-body">
-              <tr>
-                <td colspan="6" class="empty-row">No settled debts yet.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <details class="debt-settled" id="debt-settled">
+          <summary><span id="debt-settled-count">Settled</span><span id="debt-settled-total"></span></summary>
+          <ul class="hist-rows" id="debt-history-body"></ul>
+        </details>
       </div>
     </main>
   </div>
@@ -378,15 +303,11 @@
   <div id="debt-delete-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-icon"><i data-lucide="trash-2"></i></div>
-      <h3>Delete Debt Entry?</h3>
-      <p>This action cannot be undone.</p>
+      <h3>Delete this debt?</h3>
+      <p>This can't be undone. To close a debt that was paid back, settle it instead.</p>
       <div class="modal-actions">
-        <button class="btn-cancel-icon" data-action="closeDebtDeleteModal" title="Cancel">
-          <i data-lucide="x-circle"></i>
-        </button>
-        <button class="btn-delete-icon" data-action="confirmDebtDelete" title="Delete">
-          <i data-lucide="trash-2"></i>
-        </button>
+        <button class="btn-secondary" data-action="closeDebtDeleteModal">Cancel</button>
+        <button class="btn-danger" data-action="confirmDebtDelete">Delete</button>
       </div>
     </div>
   </div>
@@ -395,15 +316,11 @@
   <div id="debt-settle-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-icon" style="background: var(--success-bg); color: var(--success);"><i data-lucide="check-circle"></i></div>
-      <h3>Mark as Settled?</h3>
-      <p id="debt-settle-msg">This debt will be moved to settlement history.</p>
+      <h3>Mark as settled?</h3>
+      <p id="debt-settle-msg">It moves to Settled. You can reopen it later.</p>
       <div class="modal-actions">
-        <button class="btn-cancel-icon" data-action="closeDebtSettleModal" title="Cancel">
-          <i data-lucide="x-circle"></i>
-        </button>
-        <button class="btn-save-icon" data-action="confirmDebtSettle" title="Confirm Settlement">
-          <i data-lucide="check-circle"></i>
-        </button>
+        <button class="btn-secondary" data-action="closeDebtSettleModal">Cancel</button>
+        <button class="btn-primary" data-action="confirmDebtSettle">Settle</button>
       </div>
     </div>
   </div>
@@ -412,15 +329,11 @@
   <div id="debt-reactivate-modal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-icon" style="background: var(--accent-bg); color: var(--accent);"><i data-lucide="refresh-cw"></i></div>
-      <h3>Reactivate Debt?</h3>
-      <p id="debt-reactivate-msg">This debt will be moved back to active debts.</p>
+      <h3>Reopen this debt?</h3>
+      <p id="debt-reactivate-msg">It moves back to Open.</p>
       <div class="modal-actions">
-        <button class="btn-cancel-icon" data-action="closeDebtReactivateModal" title="Cancel">
-          <i data-lucide="x-circle"></i>
-        </button>
-        <button class="btn-save-icon" data-action="confirmDebtReactivate" title="Reactivate Debt">
-          <i data-lucide="refresh-cw"></i>
-        </button>
+        <button class="btn-secondary" data-action="closeDebtReactivateModal">Cancel</button>
+        <button class="btn-primary" data-action="confirmDebtReactivate">Reopen</button>
       </div>
     </div>
   </div>

@@ -3079,75 +3079,6 @@ img {
    FORM ACCESSIBILITY
 ===================== */
 /* =====================
-   DEBT TRACKER
-===================== */
-.debt-form-header {
-  display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
-  padding-bottom: 16px; border-bottom: 1px solid var(--border);
-}
-
-.debt-form-icon {
-  width: 42px; height: 42px; border-radius: var(--radius-xs);
-  background: var(--accent-bg); color: var(--accent);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-
-.debt-form-icon i { width: 22px; height: 22px; }
-
-.debt-form-header h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 2px; }
-.debt-form-header p { font-size: 0.84rem; color: var(--text2); }
-
-.debt-type-toggle {
-  display: flex; gap: 8px;
-}
-
-.debt-type-btn {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 10px 12px; border-radius: var(--radius-xs);
-  background: var(--surface2); border: 1px solid var(--border);
-  color: var(--text2); font-size: 0.8125rem; font-weight: 500;
-  cursor: pointer; transition: all var(--transition);
-}
-
-.debt-type-btn i { width: 15px; height: 15px; }
-
-.debt-type-btn.active {
-  background: var(--accent-bg); border-color: var(--accent); color: var(--accent);
-}
-
-.debt-type-btn:hover:not(.active) {
-  background: var(--bg2); color: var(--text);
-}
-
-.debt-badge-green {
-  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
-  background: var(--success-bg); color: var(--success); border-radius: 10px;
-  font-size: 0.6875rem; font-weight: 600; white-space: nowrap;
-}
-
-.debt-badge-red {
-  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
-  background: var(--danger-bg); color: var(--danger); border-radius: 10px;
-  font-size: 0.6875rem; font-weight: 600; white-space: nowrap;
-}
-
-.btn-action.settle {
-  background: var(--success-bg); border-color: rgba(52, 199, 89, 0.3); color: var(--success);
-}
-
-.btn-action.settle:hover {
-  background: var(--success); color: white; border-color: var(--success);
-}
-
-.btn-action.reactivate {
-  background: var(--accent-bg); border-color: rgba(0, 122, 255, 0.3); color: var(--accent);
-}
-
-.btn-action.reactivate:hover {
-  background: var(--accent); color: white; border-color: var(--accent);
-}
-
-/* =====================
    BACKUP & RESTORE
 ===================== */
 .profile-currency-wrap {
@@ -3983,7 +3914,7 @@ img {
 .icon-btn svg { width: 18px; height: 18px; }
 
 .home-hero .glance-change { margin: -8px 0 4px; }
-.ins-page .home-month { margin-top: 0; } /* home spaces it from the greeting, which this page lacks */
+.ins-page .home-month, .entry-page .home-month { margin-top: 0; } /* home spaces it from the greeting, which this page lacks */
 .ins-none { margin-top: 8px; color: var(--text2); }
 .ins-none a { color: var(--accent); }
 
@@ -4176,6 +4107,49 @@ img {
 @media (prefers-reduced-motion: no-preference) {
   .hist-skeleton span { animation: insPulse 1s ease-in-out infinite alternate; }
 }
+
+/* =====================
+   INCOME AND DEBTS: add form, then the entries it made
+===================== */
+.entry-page { max-width: 720px; margin: 0 auto; }
+.entry-page .form-card { margin-bottom: 16px; }
+.entry-form-title { font-size: 1rem; font-weight: 600; margin-bottom: 14px; }
+.entry-label { display: block; font-size: 0.8125rem; font-weight: 500; color: var(--text2); }
+.entry-page .form-card .seg { margin-bottom: 14px; }
+.entry-page .form-group .seg { margin: 0; }
+/* the segment track is --bg2, which matches --surface in dark: lift both a step inside a card */
+[data-theme="dark"] .form-card .seg { background: var(--border); }
+[data-theme="dark"] .form-card .seg-btn[aria-pressed="true"] { background: #48484a; }
+/* room for the floating mic button below the last row */
+@media (max-width: 767px) { .entry-page { padding-bottom: 72px; } }
+.entry-chips { margin-top: 8px; }
+.entry-chips:empty { display: none; }
+.entry-list-head a { display: inline-flex; align-items: center; min-height: 44px; margin: -12px 0; color: var(--accent); font-weight: 500; text-decoration: none; }
+/* green = money in, red = money you owe: the words next to them say the same */
+.home-spent-amount.is-income { color: var(--success); }
+.home-spent-amount.is-owe { color: var(--danger); }
+.hist-row-amount.owe { color: var(--danger); }
+.hist-row:disabled { cursor: default; }
+.hist-row:disabled::after { content: none; }
+.debt-row { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 8px 4px 8px 16px; }
+.debt-action {
+  flex-shrink: 0; min-height: 44px; padding: 0 14px; border: none; border-radius: var(--radius-full);
+  background: var(--accent-bg); color: var(--accent); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.debt-action:hover { background: var(--accent-bg-hover); }
+.debt-row > .debt-action:last-child { margin-right: 8px; }
+.debt-settled { margin-bottom: 16px; }
+.debt-settled summary {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; list-style: none;
+  font-size: 0.8125rem; font-weight: 600; color: var(--text2); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.debt-settled summary::-webkit-details-marker { display: none; }
+.debt-settled summary::before {
+  content: ""; width: 6px; height: 6px; border: solid var(--text2); border-width: 0 2px 2px 0;
+  transform: rotate(-45deg); transition: transform var(--transition);
+}
+.debt-settled[open] summary::before { transform: rotate(45deg); }
+.debt-settled summary span:last-child { margin-left: auto; }
 
 /* =====================
    Category bars and change line (home and insights)
