@@ -261,6 +261,117 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .modal-box, .edit-modal-box, .voice-modal-sheet, .insights-consent-box { border-radius: var(--radius-lg); }
 .toast { border-radius: var(--radius-full); }
 
+/* One pop-up language: warm scrim, serif title beside a gold badge, round close button */
+.modal-overlay, .voice-modal-overlay, .csv-overlay { background: rgba(15, 14, 12, 0.5); }
+.modal-box, .voice-modal-sheet, .csv-modal { border-color: var(--border); box-shadow: var(--shadow-2xl); }
+.voice-modal-sheet { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+@media (min-width: 768px) { .voice-modal-sheet { border-radius: var(--radius-xl); } }
+.csv-modal { border-radius: var(--radius-xl); }
+.csv-modal::before { content: none; }
+
+.modal-box h3, .modal-header h3, .voice-modal-title, .csv-modal-title, .csv-done-content h3 {
+  font-family: var(--font-display); font-weight: 600; font-size: 1.375rem; letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 48; color: var(--text);
+}
+.voice-modal-title, .csv-modal-title { gap: 12px; }
+.voice-modal-title svg, .voice-modal-title i, .csv-modal-title svg {
+  box-sizing: content-box; width: 18px; height: 18px; padding: 9px; border-radius: 50%;
+  background: var(--gold-bg); color: var(--gold);
+}
+.voice-modal-header { padding: 18px 20px 0; }
+.csv-modal-header { padding: 18px 20px 16px; border-bottom-color: var(--border-light); }
+.voice-close-btn, .csv-close-btn, .modal-close-btn {
+  width: 40px; height: 40px; min-width: 40px; border-radius: 50%; padding: 0;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text2);
+}
+.voice-close-btn:hover, .csv-close-btn:hover, .modal-close-btn:hover { background: var(--bg2); color: var(--text); }
+.voice-close-btn svg, .csv-close-btn svg { width: 18px; height: 18px; }
+
+/* Voice: the mic matches the floating mic button, ink with a gold glyph */
+.voice-mic-wrap { width: 96px; height: 96px; }
+.voice-mic-btn {
+  width: 72px; height: 72px; background: var(--hero-bg); color: var(--gold-bright);
+  border: 1px solid var(--hero-line); box-shadow: 0 0 0 8px var(--gold-bg), var(--shadow-md);
+}
+.voice-mic-btn svg { width: 28px; height: 28px; }
+.voice-mic-btn.recording { background: var(--danger); color: #fff; border-color: transparent; box-shadow: 0 0 0 8px var(--danger-bg), var(--shadow-md); }
+.voice-pulse-rings { inset: 12px; }
+.voice-pulse-rings .ring { border-color: var(--gold); }
+.voice-mic-label { color: var(--text2); font-size: 0.875rem; font-weight: 600; }
+.voice-lang-picker { gap: 8px; margin-bottom: 16px; }
+.voice-lang-picker svg, .voice-lang-picker i { width: 16px; height: 16px; color: var(--text2); }
+.voice-lang-picker select {
+  min-height: 36px; padding: 6px 30px 6px 14px; border-radius: var(--radius-full);
+  background-color: var(--surface2); font-size: 0.875rem; font-weight: 600;
+}
+.voice-lang-picker select:hover { border-color: var(--text2); }
+.voice-lang-picker select:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.voice-transcript {
+  background: var(--surface2); border: 1px dashed var(--border); border-radius: var(--radius);
+  color: var(--text2); text-align: center; padding: 16px;
+}
+.voice-paste-btn {
+  min-height: 48px; border-radius: var(--radius-full); background: var(--surface); color: var(--text);
+  border: 1px solid var(--border);
+}
+.voice-paste-btn svg { color: var(--gold); }
+.voice-paste-btn:hover { background: var(--surface2); border-color: var(--text2); }
+.voice-text-input-wrap { align-items: center; }
+.voice-text-input-wrap input {
+  min-height: 48px; padding: 0 18px; border-radius: var(--radius-full); background: var(--surface2);
+}
+.voice-text-input-wrap input:focus { background: var(--surface); box-shadow: var(--focus-ring); }
+.voice-send-btn {
+  width: 48px; height: 48px; border-radius: 50%; background: var(--gold); color: var(--gold-on);
+}
+.voice-send-btn:hover { opacity: 1; filter: brightness(1.08); }
+.voice-status { border-radius: var(--radius-sm); }
+.voice-status-loading { border-color: var(--accent-bg-hover); }
+.voice-parsing-dots span { background: var(--gold); }
+.voice-preview { background: var(--surface2); }
+.voice-preview-count { background: var(--gold-bg); color: var(--gold); }
+.voice-confirm-btn {
+  min-height: 48px; border-radius: var(--radius-full); background: var(--gold); color: var(--gold-on); font-weight: 700;
+}
+.voice-confirm-btn:hover { opacity: 1; filter: brightness(1.08); }
+.voice-cancel-btn { min-height: 48px; border-radius: var(--radius-full); padding: 0 20px; font-weight: 600; }
+
+/* CSV import */
+.csv-phase { padding: 20px; }
+.csv-drop-zone {
+  border: 1.5px dashed var(--border); border-radius: var(--radius); background: var(--surface2); padding: 32px 20px;
+}
+.csv-drop-zone:hover, .csv-drop-zone.drag-over { border-color: var(--gold); background: var(--gold-bg); }
+.csv-drop-icon { display: inline-flex; margin-bottom: 14px; }
+.csv-drop-icon svg {
+  box-sizing: content-box; width: 28px; height: 28px; padding: 14px; border-radius: 50%;
+  background: var(--hero-bg); color: var(--gold-bright); opacity: 1; box-shadow: 0 0 0 8px var(--gold-bg);
+}
+.csv-drop-text { font-size: 1rem; font-weight: 700; }
+.csv-drop-sub { color: var(--text2); font-size: 0.875rem; }
+.csv-file-name { margin-top: 14px; padding: 6px 14px; border-radius: var(--radius-full); color: var(--text2); font-size: 0.8125rem; }
+.csv-file-name.has-file { color: var(--gold); border-color: var(--gold); background: var(--gold-bg); font-weight: 600; }
+.csv-upload-info { gap: 12px; margin: 20px 0 22px; }
+.csv-info-item { font-size: 0.875rem; gap: 12px; }
+.csv-info-item svg { width: 16px; height: 16px; color: var(--gold); }
+.csv-action-btn { min-height: 52px; border-radius: var(--radius-full); font-size: 1rem; font-weight: 700; }
+.csv-action-btn.btn-primary { background: var(--gold); color: var(--gold-on); }
+.csv-action-btn.btn-primary:hover { background: var(--gold); filter: brightness(1.08); }
+.csv-back-btn { border-radius: var(--radius-full); }
+.csv-orb-ring { border-top-color: var(--gold); }
+.csv-orb-ring:nth-child(2) { border-top-color: var(--accent); }
+.csv-orb-ring:nth-child(3) { border-top-color: var(--text2); }
+.csv-orb-core { background: var(--hero-bg); box-shadow: 0 0 0 6px var(--gold-bg); }
+.csv-orb-core svg { color: var(--gold-bright); }
+.csv-proc-step { color: var(--text2); }
+.csv-proc-step.active { color: var(--text); font-weight: 600; }
+.csv-proc-step.active .csv-step-dot { background: var(--gold); box-shadow: 0 0 0 4px var(--gold-bg); }
+.csv-spinner { border-top-color: var(--gold); }
+.csv-stat, .csv-type-badge { border-radius: var(--radius-full); }
+.csv-preview-table-wrap { border-radius: var(--radius-sm); }
+.csv-preview-table th { background: var(--surface2); }
+.csv-preview-table input[type="checkbox"] { accent-color: var(--gold); }
+
 @media (prefers-reduced-motion: reduce) {
   a.home-tile:hover, .cat-tile:hover { transform: none; }
 }
