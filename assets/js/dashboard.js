@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending } from './utils/helpers.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -425,9 +425,11 @@ function renderHome() {
   const now = new Date();
   const today = todayStr();
   const ms = today.slice(0, 8) + "01";
-  const monthExp = allExpenses.filter(e => e.date >= ms && e.date <= today);
+  const monthAll = allExpenses.filter(e => e.date >= ms && e.date <= today);
+  const monthExp = monthAll.filter(isSpending);
   const monthInc = allIncome.filter(i => i.date >= ms && i.date <= today);
   const spent = monthExp.reduce((sum, e) => sum + e.amount, 0);
+  const invested = monthAll.reduce((sum, e) => sum + e.amount, 0) - spent;
   const income = monthInc.reduce((sum, i) => sum + i.amount, 0);
   const day = now.getDate();
   const monthDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -499,6 +501,7 @@ function renderHome() {
     savedEl.textContent = "—";
     savedSub.textContent = "Needs income entries";
   }
+  if (invested > 0) savedSub.textContent += ` · ${moneyWhole(invested)} invested`;
   const active = allDebts.filter(d => !d.settled);
   document.getElementById("home-owe").textContent = moneyWhole(active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0));
   document.getElementById("home-owed").textContent = moneyWhole(active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0));
@@ -539,7 +542,8 @@ function updateExpenseCards() {
   const yearStr = String(thisYear);
   
   // This month
-  const monthlyExpenses = allExpenses.filter(e => e.date >= ms && e.date <= todayStr());
+  const spending = allExpenses.filter(isSpending);
+  const monthlyExpenses = spending.filter(e => e.date >= ms && e.date <= todayStr());
   const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
   
   if (monthlyEl) monthlyEl.textContent = fmt(monthTotal);
@@ -547,7 +551,7 @@ function updateExpenseCards() {
   if (monthCountEl) monthCountEl.textContent = monthlyExpenses.length + ' entr' + (monthlyExpenses.length !== 1 ? 'ies' : 'y');
   
   // This year
-  const yearlyExpenses = allExpenses.filter(e => e.date && e.date.startsWith(yearStr));
+  const yearlyExpenses = spending.filter(e => e.date && e.date.startsWith(yearStr));
   const yearTotal = yearlyExpenses.reduce((s, e) => s + e.amount, 0);
   
   if (yearlyEl) yearlyEl.textContent = fmt(yearTotal);
@@ -555,10 +559,10 @@ function updateExpenseCards() {
   if (yearCountEl) yearCountEl.textContent = yearlyExpenses.length + ' entr' + (yearlyExpenses.length !== 1 ? 'ies' : 'y');
   
   // Total
-  const totalAmount = allExpenses.reduce((s, e) => s + e.amount, 0);
+  const totalAmount = spending.reduce((s, e) => s + e.amount, 0);
   if (totalEl) totalEl.textContent = fmt(totalAmount);
   const totalCountEl = document.getElementById("exp-total-count");
-  if (totalCountEl) totalCountEl.textContent = allExpenses.length + ' entr' + (allExpenses.length !== 1 ? 'ies' : 'y');
+  if (totalCountEl) totalCountEl.textContent = spending.length + ' entr' + (spending.length !== 1 ? 'ies' : 'y');
   
   // Daily average
   const today = new Date();
@@ -1578,11 +1582,12 @@ function renderPieChart() {
 let trendChartInstance = null;
 
 function getTrendData() {
+  const spending = allExpenses.filter(isSpending);
   // Get current displayed expenses based on period picker
   const m = document.getElementById('picker-month') ? document.getElementById('picker-month').value : '';
   const y = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
 
-  let periodExpenses = allExpenses.filter(e => {
+  let periodExpenses = spending.filter(e => {
     if (!e.date) return false;
     if (y && e.date.substring(0, 4) !== String(y)) return false;
     if (m && e.date.substring(5, 7) !== String(m)) return false;
@@ -1616,7 +1621,7 @@ function getTrendData() {
       const dateStr = date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
       const label = shortDay(dateStr) + ' ' + date.getDate();
       labels.push(label);
-      const dayExpenses = allExpenses.filter(e => e.date === dateStr);
+      const dayExpenses = spending.filter(e => e.date === dateStr);
       dateGroups[label] = dayExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'weekly') {
@@ -1640,20 +1645,20 @@ function getTrendData() {
         : weekStart.getDate() + ' ' + startMonth + '–' + weekEnd.getDate() + ' ' + endMonth;
       labels.push(label);
 
-      const weekExpenses = allExpenses.filter(e => {
+      const weekExpenses = spending.filter(e => {
         return e.date >= wStartStr && e.date <= wEndStr;
       });
       dateGroups[label] = weekExpenses.reduce((s, e) => s + e.amount, 0);
     }
   } else if (activeTab === 'monthly') {
-    // Show all months in the year (use allExpenses filtered by year only, not month)
+    // Show all months in the year (use spending filtered by year only, not month)
     let displayYear = y || now.getFullYear();
     for (let month = 1; month <= 12; month++) {
       const monthStr = pad(month);
       const monthLabel = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
       labels.push(monthLabel);
 
-      const monthExpenses = allExpenses.filter(e => {
+      const monthExpenses = spending.filter(e => {
         return e.date && e.date.substring(0, 4) === String(displayYear) && e.date.substring(5, 7) === monthStr;
       });
       dateGroups[monthLabel] = monthExpenses.reduce((s, e) => s + e.amount, 0);
@@ -1661,13 +1666,13 @@ function getTrendData() {
   } else {
     // Yearly view - show all years from all expenses
     const years = new Set();
-    allExpenses.forEach(e => {
+    spending.forEach(e => {
       if (e.date) years.add(e.date.substring(0, 4));
     });
     const sortedYears = Array.from(years).sort();
     sortedYears.forEach(year => {
       labels.push(year);
-      const yearExpenses = allExpenses.filter(e => e.date.substring(0, 4) === year);
+      const yearExpenses = spending.filter(e => e.date.substring(0, 4) === year);
       dateGroups[year] = yearExpenses.reduce((s, e) => s + e.amount, 0);
     });
   }
@@ -1974,7 +1979,7 @@ function getPeriodExpenses() {
 
 function updatePeriodSummary() {
   if (!document.getElementById("period-total")) return;
-  const rows = getPeriodExpenses();
+  const rows = getPeriodExpenses().filter(isSpending); // the table below still lists investments
   const total = rows.reduce((s, e) => s + e.amount, 0);
   const max = rows.length ? Math.max(...rows.map(e => e.amount)) : 0;
   const uniqueDays = new Set(rows.map(e => e.date)).size;

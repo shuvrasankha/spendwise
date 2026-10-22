@@ -79,6 +79,26 @@ test('summary: totals, per-day average over elapsed days, comparison, projection
   assert.deepEqual(s.biggest.map(b => b.amount), [15000, 3200, 600]);
 });
 
+test('investments count as saved, not spent', () => {
+  const r = periodRange('month', today);
+  const withSip = {
+    ...data,
+    expenses: [...data.expenses,
+      { amount: 10000, category: 'Investment', date: '2026-10-05' },
+      { amount: 7000, category: 'Investment', date: '2026-09-05' }], // in the comparison days
+  };
+  const s = summarize(withSip, r);
+  assert.equal(s.spent, 19200);    // unchanged by the SIP
+  assert.equal(s.invested, 10000);
+  assert.equal(s.saved, 40800);    // income minus spending: the SIP is part of what was saved
+  assert.equal(s.prevSpent, 15500);
+  assert.ok(!s.categories.some(c => c.category === 'Investment'));
+  assert.ok(!s.biggest.some(b => b.category === 'Investment'));
+  assert.match(factsText(s, r, money), /INVESTED: Rs 10000/);
+  // a period with only an investment still has something to show
+  assert.equal(hasData(summarize({ expenses: [{ amount: 500, category: 'Investment', date: '2026-10-02' }] }, r)), true);
+});
+
 test('debts count every unsettled debt, not just ones created in the period', () => {
   const s = summarize(data, periodRange('month', today));
   assert.equal(s.debts.youOwe, 5000);
