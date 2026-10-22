@@ -582,3 +582,103 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
   .sw-pick-panel, .sw-pick-layer.is-sheet .sw-pick-panel, .sw-pick-layer.is-sheet .sw-pick-scrim { animation: none; }
 }
 .sw-pick-layer.via-pointer :focus-visible { outline: none; }
+
+/* =====================
+   HOME: transactions card, period browser and its totals
+   One rhythm: 16px between cards, 20px inside them, hairline dividers, no boxes in boxes.
+===================== */
+#page-dashboard .table-card, .period-picker-card, .period-summary-bar { margin-bottom: 16px; }
+/* the pager is given an inline display:flex, so :empty alone didn't hide the blank strip */
+.pagination-row:empty { display: none !important; }
+.pagination-row { background: var(--surface); border-top-color: var(--border-light); }
+.page-btn { border-radius: var(--radius-full); }
+
+.table-card .table-header { padding: 14px 16px 14px 20px; border-bottom-color: var(--border-light); flex-wrap: nowrap; gap: 12px; }
+.table-card .table-tabs { flex: 0 1 auto; min-width: 0; }
+.table-card .table-tab { padding: 8px 14px; }
+.btn-download {
+  flex-shrink: 0; min-height: 40px; border-radius: var(--radius-full); padding: 0 16px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600;
+}
+.btn-download svg { color: var(--gold); width: 16px; height: 16px; }
+.btn-download:hover { background: var(--surface2); color: var(--text); border-color: var(--text2); }
+.data-table tbody td.text-right { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.category-badge { border-radius: var(--radius-full); }
+
+@media (max-width: 768px) {
+  /* tabs fill the row; Download shrinks to an icon (its text is still read out) */
+  .table-card .table-header { flex-direction: row; align-items: center; padding: 12px 12px 12px 16px; }
+  .table-card .table-header .table-tabs { flex: 1 1 auto; width: auto; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  .table-card .table-tab { padding: 8px 4px; text-align: center; }
+  .table-card .btn-download { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; font-size: 0; gap: 0; align-self: center; }
+  .table-card .btn-download svg { width: 18px; height: 18px; }
+
+  /* each expense: description and amount on top, category · date · payment below */
+  #table-body tr {
+    display: flex !important; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 6px;
+    margin: 0 !important; padding: 14px 20px !important; border: none !important;
+    border-top: 1px solid var(--border-light) !important; border-radius: 0 !important; background: transparent !important;
+  }
+  #table-body tr:first-child { border-top: none !important; }
+  #table-body tr::after { content: ""; order: 3; flex-basis: 100%; height: 0; }
+  #table-body td { display: block !important; padding: 0 !important; border: none !important; min-width: 0; }
+  #table-body td::before { content: none !important; display: none !important; }
+  #table-body td[data-label="Description"] { order: 1; flex: 1 1 0; font-weight: 600; font-size: 1rem; overflow-wrap: anywhere; }
+  #table-body td[data-label="Amount"] { order: 2; flex: 0 0 auto; font-size: 1rem; white-space: nowrap; }
+  #table-body td[data-label="Category"] { order: 4; }
+  #table-body td[data-label="Date"] { order: 5; }
+  #table-body td[data-label="Payment"] { order: 6; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+  #table-body td[data-label="Date"], #table-body td[data-label="Payment"] { font-size: 0.8125rem; color: var(--text2); }
+  #table-body td[data-label="Date"]::after { content: "·"; margin-left: 8px; color: var(--text2); }
+  #table-body .category-badge { font-size: 0.75rem; padding: 3px 10px; }
+  #table-body td.empty-row { flex-basis: 100%; padding: 28px 0 !important; }
+}
+
+/* Browse by period: title on the left, Month · Year · reset on the right, no inner box */
+.period-picker-card {
+  background: var(--surface); border-color: var(--border); border-radius: var(--radius);
+  padding: 16px 16px 16px 20px; gap: 14px; align-items: center;
+}
+.period-picker-icon { width: 44px; height: 44px; border-radius: 50%; background: var(--gold-bg); color: var(--gold); }
+.period-picker-icon svg, .period-picker-icon i { width: 20px; height: 20px; }
+.period-picker-label { font-size: 1rem; font-weight: 700; }
+.period-picker-sub { font-size: 0.875rem; color: var(--text2); }
+.period-picker-controls {
+  background: none; border: none; padding: 0; flex-wrap: nowrap; gap: 8px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+}
+.period-select-wrap select {
+  width: 100%; min-width: 0; height: 44px; padding: 0 34px 0 16px; border-radius: var(--radius-full);
+  background-color: var(--surface2); border-color: var(--border); font-size: 0.9375rem; font-weight: 600; text-align: left;
+  background-position: right 14px center;
+}
+.btn-period-reset { width: 44px; height: 44px; border-radius: 50%; background: var(--surface2); color: var(--text2); }
+.btn-period-reset svg, .btn-period-reset i { width: 18px; height: 18px; }
+.btn-period-reset:hover { background: var(--bg2); color: var(--text); border-color: var(--text2); }
+@media (min-width: 641px) { .period-picker-controls { width: min(420px, 55%); } }
+@media (max-width: 640px) {
+  .period-picker-card { flex-direction: column; align-items: stretch; }
+  .period-picker-controls { width: 100%; }
+}
+
+/* Period totals: an even 2×2 (phones) or 1×4 grid of tiles with hairline dividers */
+.period-summary-bar {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; padding: 0; overflow: hidden;
+  background: var(--border-light); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.period-summary-divider { display: none; }
+.period-summary-item {
+  background: var(--surface); border: none !important; padding: 16px 12px; gap: 6px; align-items: flex-start; text-align: left;
+}
+.period-summary-item:first-child { padding-left: 20px; }
+.period-summary-label { font-size: 0.75rem; letter-spacing: 0.08em; color: var(--text2); }
+.period-summary-value { color: var(--text); font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.period-summary-item:first-child .period-summary-value { color: var(--gold); }
+@media (max-width: 640px) {
+  .period-summary-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .period-summary-item { padding: 16px 20px; }
+}
+@media (max-width: 360px) { .period-summary-bar { grid-template-columns: 1fr; } }
+@media (min-width: 769px) { .data-table td[data-label="Date"] { white-space: nowrap; } }
+.page-btn.active { background: var(--hero-bg); border-color: var(--hero-bg); color: var(--gold-bright); }
+[data-theme="dark"] .page-btn.active { background: var(--gold); border-color: var(--gold); color: var(--gold-on); }
