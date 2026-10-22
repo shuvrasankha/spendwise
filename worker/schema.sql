@@ -1,4 +1,4 @@
--- Daily reminder subscriptions. Apply with:
+-- Daily reminder subscriptions and per-user AI usage. Apply with:
 --   npx wrangler d1 execute spendwise-push --remote --file schema.sql
 CREATE TABLE IF NOT EXISTS subscriptions (
   endpoint    TEXT PRIMARY KEY,   -- browser push endpoint (unique per device/browser)
@@ -10,3 +10,11 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS subscriptions_uid ON subscriptions (uid);
+
+-- AI requests per user per UTC day (worker/src/index.js takeAiQuota); the cron deletes old days
+CREATE TABLE IF NOT EXISTS ai_usage (
+  uid TEXT NOT NULL,
+  day TEXT NOT NULL,                -- UTC date 'YYYY-MM-DD'
+  n   INTEGER NOT NULL,
+  PRIMARY KEY (uid, day)
+);

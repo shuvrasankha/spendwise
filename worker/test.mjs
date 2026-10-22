@@ -44,3 +44,31 @@ test('forged token is rejected', async () => {
   const res = await worker.fetch(new Request(URL_, { method: 'POST', body, headers: { Authorization: `Bearer ${fake}` } }), env);
   assert.equal(res.status, 401);
 });
+
+// ── Per-user AI share and verified email (fix for one account using up everyone's allowance) ──
+import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import { userFrom, takeAiQuota } from './src/index.js';
+
+// The real schema and upsert, on SQLite in memory, behind D1's prepare/bind/first shape
+function sqliteD1() {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+  return { prepare: sql => ({ bind: (...args) => ({ first: async () => db.prepare(sql.replace(/\?\d/g, '?')).get(...args) }) }) };
+}
+
+test('unverified email accounts are refused; verified ones get their uid', () => {
+  assert.deepEqual(userFrom({ sub: 'u1', email_verified: false }), { status: 403, error: 'Verify your email first' });
+  assert.deepEqual(userFrom({ sub: 'u1' }), { status: 403, error: 'Verify your email first' });
+  assert.deepEqual(userFrom({}), { status: 401, error: 'Not signed in' });
+  assert.deepEqual(userFrom({ sub: 'u1', email_verified: true }), { uid: 'u1' });
+});
+
+test('each user gets 100 AI requests per UTC day, then 429; others and the next day are unaffected', async () => {
+  const env = { DB: sqliteD1() };
+  const day1 = new Date('2026-10-22T10:00:00Z');
+  for (let i = 0; i < 100; i++) assert.equal(await takeAiQuota(env, 'heavy', day1), true);
+  assert.equal(await takeAiQuota(env, 'heavy', day1), false);
+  assert.equal(await takeAiQuota(env, 'other', day1), true);
+  assert.equal(await takeAiQuota(env, 'heavy', new Date('2026-10-23T00:00:01Z')), true);
+});
