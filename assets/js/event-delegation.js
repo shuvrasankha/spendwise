@@ -117,12 +117,6 @@
     'confirmDebtReactivate': function() { if (window.confirmDebtReactivate) window.confirmDebtReactivate(); },
 
     // Insights
-    'runAnalysis': function() { if (window.runAnalysis) window.runAnalysis(); },
-    'refreshAnalysis': function() { if (window.refreshAnalysis) window.refreshAnalysis(); },
-    'dismissInsightsError': function() {
-      const el = document.getElementById('insights-error');
-      if (el) el.classList.add('hidden');
-    },
     'dismissInsightError': function() {
       const el = document.getElementById('insights-error');
       if (el) el.classList.add('hidden');
@@ -133,15 +127,6 @@
     'closeBackupModal': function() { if (window.closeBackupModal) window.closeBackupModal(); },
     'exportData': function() { if (window.exportData) window.exportData(); },
     'handleImportClick': function() { if (window.handleImportClick) window.handleImportClick(); },
-
-    // CSV Import
-    'openCSVImport': function() { if (window.openCSVImport) window.openCSVImport(); },
-    'closeCSVImport': function() { if (window.closeCSVImport) window.closeCSVImport(); },
-    'parseCSV': function() { if (window.parseCSV) window.parseCSV(); },
-    'backToCSVUpload': function() { if (window.backToCSVUpload) window.backToCSVUpload(); },
-    'confirmCSVImport': function() { if (window.confirmCSVImport) window.confirmCSVImport(); },
-    'reloadAfterCSV': function() { if (window.reloadAfterCSV) window.reloadAfterCSV(); },
-    'retryCSVUpload': function() { if (window.retryCSVUpload) window.retryCSVUpload(); },
 
     // Voice
     'openVoiceModal': function() { if (window.openVoiceModal) window.openVoiceModal(); },
