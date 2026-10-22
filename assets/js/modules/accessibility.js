@@ -75,31 +75,24 @@
   // ═══════════════════════════════════════════════════════════════════
 
   function trapFocus(modal) {
-    const focusableElements = getFocusableElements(modal);
-    if (focusableElements.length === 0) return;
+    // Looked up on each Tab: dialogs show and hide fields while open (e.g. the bank field)
+    const visible = () => getFocusableElements(modal).filter(el => el.offsetParent !== null);
+    const first = visible()[0];
+    if (first) setTimeout(() => first.focus(), 100);
 
-    const firstFocusable = focusableElements[0];
-    const lastFocusable = focusableElements[focusableElements.length - 1];
-
-    // Focus first element
-    setTimeout(() => firstFocusable.focus(), 100);
-
-    // Handle tab key
+    if (modal.dataset.focusTrap) return; // one listener per dialog, however often it opens
+    modal.dataset.focusTrap = 'on';
     modal.addEventListener('keydown', function(e) {
       if (e.key !== 'Tab') return;
-
-      if (e.shiftKey) {
-        // Shift+Tab: If on first element, wrap to last
-        if (document.activeElement === firstFocusable) {
-          e.preventDefault();
-          lastFocusable.focus();
-        }
-      } else {
-        // Tab: If on last element, wrap to first
-        if (document.activeElement === lastFocusable) {
-          e.preventDefault();
-          firstFocusable.focus();
-        }
+      const els = visible();
+      if (!els.length) return;
+      const firstEl = els[0], lastEl = els[els.length - 1];
+      if (e.shiftKey && (document.activeElement === firstEl || !modal.contains(document.activeElement))) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && (document.activeElement === lastEl || !modal.contains(document.activeElement))) {
+        e.preventDefault();
+        firstEl.focus();
       }
     });
   }
@@ -561,7 +554,8 @@
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           if (mutation.attributeName === 'class') {
-            const isOpen = modal.classList.contains('open') && !modal.classList.contains('hidden');
+            // App dialogs open by losing .hidden (none of them ever get .open)
+            const isOpen = !modal.classList.contains('hidden');
             
             if (isOpen && modalBox) {
               storeLastFocus();
