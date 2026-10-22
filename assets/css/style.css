@@ -29,7 +29,7 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 /* =====================
    AUTH SCREEN
 ===================== */
-.auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg); }
+.auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .auth-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
   padding: 40px 32px 36px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg);
@@ -228,8 +228,10 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h);
   display: flex; align-items: center; justify-content: space-between; padding: 0 20px 0 24px; z-index: 100;
 }
-[data-theme="dark"] .navbar { background: rgba(28, 28, 30, 0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--border); }
-[data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--border); }
+.navbar {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--border);
+}
 .nav-left, .nav-right { display: flex; align-items: center; gap: 12px; }
 .theme-toggle {
   width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -427,19 +429,13 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 @media (min-width: 768px) {
   .sidebar { display: block; }
   .bottom-nav { display: none; }
-  .main-content { margin-left: var(--sidebar-w); padding: 32px 40px 48px; }
+  /* The one desktop rule for the content area: pages centre themselves inside it */
+  .main-content { margin-left: var(--sidebar-w); padding: 32px clamp(24px, 4vw, 56px) 56px; }
   .auth-card { padding: 44px 40px; }
 }
 
 /* ── Desktop: constrain & center content ── */
 @media (min-width: 1024px) {
-  .main-content {
-    max-width: 1120px;
-    margin-left: calc(var(--sidebar-w) + 24px);
-    margin-right: auto;
-    padding: 36px 0 56px;
-  }
-
   .page-header { margin-bottom: 24px; }
   .page-header h2 { font-size: 1.75rem; }
 
@@ -470,11 +466,6 @@ button { cursor: pointer; border: none; outline: none; background: none; }
 
 /* ── Large desktop: wider content area ── */
 @media (min-width: 1440px) {
-  .main-content {
-    max-width: 1280px;
-    padding: 40px 0 64px;
-  }
-
   .page-header h2 { font-size: 1.875rem; }
 
   .summary-cards { gap: 16px; }
@@ -1632,8 +1623,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* =====================
    DASHBOARD OVERRIDES
 ===================== */
-.summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-@media (max-width: 900px) { .summary-cards { grid-template-columns: repeat(2, 1fr) !important; } }
 .summary-card { height: auto; }
 .summary-amount { font-size: clamp(0.95rem, 1.4vw, 1.375rem) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .page-header { margin-bottom: 16px; }
@@ -1867,10 +1856,6 @@ button:focus-visible {
 @media (min-width: 1920px) {
   html { font-size: 106.25%; }
 
-  .main-content {
-    max-width: 1440px;
-  }
-
   .auth-card { max-width: 440px; }
   .form-card { max-width: 840px; }
   .csv-modal { max-width: 760px; }
@@ -1988,9 +1973,9 @@ button:focus-visible {
     will-change: transform;
   }
 
+  /* not .form-card: will-change makes it a stacking context, trapping Expense's pinned Add row under the dock's fade */
   .chart-card,
-  .table-card,
-  .form-card {
+  .table-card {
     will-change: opacity;
   }
 }
@@ -2777,11 +2762,13 @@ img {
 /* =====================
    SAFE AREA INSETS
 ===================== */
-@supports (padding: max(0px)) {
+@media (max-width: 767px) {
   .main-content {
-    padding-left: max(12px, env(safe-area-inset-left));
-    padding-right: max(12px, env(safe-area-inset-right));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
   }
+}
+@supports (padding: max(0px)) {
 
   .navbar {
     padding-left: max(24px, env(safe-area-inset-left));
@@ -3349,7 +3336,7 @@ img {
 /* =====================
    HOME: this month at a glance
 ===================== */
-#page-dashboard { max-width: 1040px; margin: 0 auto; }
+#page-dashboard { max-width: 1120px; margin: 0 auto; }
 .home-hero, .home-section, .home-tile {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow-xs);
@@ -3425,3 +3412,56 @@ a.home-tile:hover { border-color: var(--accent); }
   #table-body td[data-label="Payment"] { grid-column: 3; }
   #table-body td.empty-row { grid-column: 1 / -1; }
 }
+
+/* =====================
+   PAGE LAYOUT: every page shares one title style and centres in the content area.
+   Entry pages (Expense, Income, Debt) put the form beside their totals on desktop.
+===================== */
+.hist-head h1, .ins-head h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.025em; }
+.hist-head, .ins-head { margin-bottom: 20px; }
+.hist-page, .ins-page { max-width: 760px; }
+
+/* Inside an entry page every block fills the column; older rules capped some at 680px */
+.entry-page > .form-card, .entry-page > .recent-expenses,
+.entry-page > .summary-cards, .entry-page > .csv-import-card { max-width: none; margin: 0 0 16px; }
+
+@media (min-width: 1024px) {
+  .entry-page {
+    max-width: 1120px; display: grid; align-items: start; column-gap: 24px;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    /* The last row is 1fr so a tall form grows it, not the gaps between the right-hand cards */
+    grid-template-rows: auto repeat(5, auto) 1fr;
+  }
+  .entry-page > * { grid-column: 2; }
+  .entry-page > .hist-head { grid-column: 1 / -1; }
+  .entry-page > .form-card { grid-column: 1; grid-row: 2 / -1; }
+  .entry-page > .summary-cards, .entry-page > .home-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Signature: the month's headline card carries a wash of the coin's gold */
+.home-hero {
+  background: radial-gradient(120% 140% at 100% 0%, var(--gold-bg), transparent 60%), var(--surface);
+}
+
+/* Glass tab bar, matching the top bar */
+.bottom-nav {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+
+/* Phones: Clear beside a full-width Add, as on the expense form */
+@media (max-width: 560px) {
+  .entry-page .form-actions { flex-direction: row; }
+  .entry-page .form-actions .btn-add { flex: 1; justify-content: center; }
+}
+
+/* Background: a soft gold and blue glow fixed behind every page. Cards stay opaque, so text contrast is unchanged. */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60vw 50vh at 100% 0%, var(--gold-bg), transparent 70%),
+    radial-gradient(55vw 55vh at 0% 100%, var(--accent-bg), transparent 70%);
+}
+@media print { body::before { display: none; } }
+

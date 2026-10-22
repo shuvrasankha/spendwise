@@ -19,7 +19,7 @@
   
   /* Summary cards */
   .summary-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
   }
   
@@ -157,12 +157,6 @@
    iPad, Android tablets in portrait
 ===================== */
 @media (min-width: 768px) and (max-width: 1023px) {
-  /* Content container */
-  .main-content {
-    max-width: var(--container-xl);
-    margin: 0 auto;
-  }
-  
   /* Summary cards - 2 columns */
   .summary-cards {
     grid-template-columns: repeat(2, 1fr);
@@ -179,25 +173,13 @@
     padding: var(--space-2) var(--space-3);
   }
   
-  /* Sidebar - slightly wider */
   .sidebar {
-    width: 240px;
     padding: var(--space-6) var(--space-4);
-  }
-  
-  /* Main content margin for sidebar */
-  .main-content {
-    margin-left: 240px;
   }
   
   /* Modals - wider */
   .modal {
     max-width: 640px;
-  }
-  
-  /* Voice FAB - sidebar offset */
-  .voice-fab {
-    right: calc(var(--space-6) + 240px);
   }
   
   /* Page header */
@@ -212,11 +194,6 @@
    iPad Pro, Surface, laptops
 ===================== */
 @media (min-width: 1024px) and (max-width: 1366px) {
-  /* Content container */
-  .main-content {
-    max-width: var(--container-2xl);
-  }
-  
   /* Summary cards - 4 columns */
   .summary-cards {
     grid-template-columns: repeat(4, 1fr);
@@ -229,19 +206,10 @@
     padding: var(--space-8) var(--space-5);
   }
   
-  .main-content {
-    margin-left: var(--sidebar-w);
-  }
-  
   /* Tables - full width with good spacing */
   .data-table th,
   .data-table td {
     padding: var(--space-3) var(--space-4);
-  }
-  
-  /* Voice FAB */
-  .voice-fab {
-    right: calc(var(--space-6) + var(--sidebar-w));
   }
   
   /* Page header */
@@ -255,12 +223,6 @@
    Standard laptops and larger
 ===================== */
 @media (min-width: 1367px) {
-  /* Content container */
-  .main-content {
-    max-width: var(--container-2xl);
-    margin-left: var(--sidebar-w);
-  }
-  
   /* Summary cards */
   .summary-cards {
     grid-template-columns: repeat(4, 1fr);
@@ -275,15 +237,6 @@
 @media (min-width: 1920px) {
   :root {
     font-size: 106.25%; /* relative, so the reader's text size still applies */
-  }
-  
-  .main-content {
-    max-width: var(--container-3xl);
-    margin-left: calc(var(--sidebar-w) + 40px);
-  }
-  
-  .sidebar {
-    width: 260px;
   }
   
   .summary-cards {
