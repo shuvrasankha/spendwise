@@ -41,20 +41,7 @@
     width: 18px;
     height: 18px;
   }
-  
-  /* Tables become cards */
-  .table-card__header,
-  .table-card__footer {
-    padding: var(--space-3) var(--space-4);
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
-  }
-  
-  .table-card__actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
+
   
   /* Form actions stack vertically */
   .form-actions {
@@ -101,19 +88,7 @@
   .voice-fab {
     bottom: calc(var(--bottom-nav-h) + var(--space-4) + var(--safe-bottom));
   }
-  
-  /* Filter cards */
-  .filter-card__grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .filter-card__actions {
-    flex-direction: column;
-  }
-  
-  .filter-card__actions .btn {
-    width: 100%;
-  }
+
 }
 
 /* =====================
@@ -170,16 +145,7 @@
   .page-header p {
     display: none;
   }
-  
-  /* Charts - smaller */
-  .chart-card__canvas-wrap {
-    max-height: 250px;
-  }
-  
-  /* Forms - compact spacing */
-  .form-card__grid {
-    gap: var(--space-2);
-  }
+
   
   .form-group {
     margin-bottom: var(--space-2);
@@ -201,11 +167,7 @@
   .summary-cards {
     grid-template-columns: repeat(2, 1fr);
   }
-  
-  /* Charts side by side if space allows */
-  .chart-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+
   
   /* Tables - use more horizontal space */
   .data-table {
@@ -242,17 +204,7 @@
   .page-header {
     padding: var(--space-6) var(--space-8);
   }
-  
-  /* Form grid - 2 columns works well here */
-  .form-card__grid {
-    gap: var(--space-4);
-  }
-  
-  /* Insights */
-  .insight-card,
-  .insight-section {
-    padding: var(--space-5);
-  }
+
 }
 
 /* =====================
@@ -269,11 +221,7 @@
   .summary-cards {
     grid-template-columns: repeat(4, 1fr);
   }
-  
-  /* Charts side by side */
-  .chart-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+
   
   /* Sidebar */
   .sidebar {
@@ -317,12 +265,7 @@
   .summary-cards {
     grid-template-columns: repeat(4, 1fr);
   }
-  
-  /* Charts */
-  .chart-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-5);
-  }
+
 }
 
 /* =====================
@@ -541,12 +484,7 @@
   .insight-card:hover {
     transform: none !important;
   }
-  
-  /* Disable insight card fade-in animation */
-  .insight-card,
-  .insight-section {
-    animation: none !important;
-  }
+
 }
 
 /* =====================
