@@ -210,18 +210,71 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
   background: var(--surface); border-color: var(--accent); box-shadow: var(--focus-ring);
 }
 
-/* Category tiles */
-.cat-tile { background: var(--surface2); border-color: var(--border); border-radius: var(--radius); }
-.cat-icon { border-radius: 50%; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
-.cat-tile span { color: var(--text2); font-weight: 600; }
-.cat-tile:hover { border-color: var(--text2); background: var(--surface); transform: translateY(-1px); }
-.cat-tile:hover .cat-icon { background: var(--surface); color: var(--text); }
+/* Category tiles: 4 across, each category in its own colour.
+   --cat is the icon colour on the card and the fill when selected (4.5:1+ both ways, both themes). */
+.category-picker, .edit-modal-box .category-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 340px) { .category-picker, .edit-modal-box .category-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.cat-tile[data-value="Food & Dining"] { --cat: #b54708; }
+.cat-tile[data-value="Groceries"] { --cat: #2f7d32; }
+.cat-tile[data-value="Transport"] { --cat: #1d5fbf; }
+.cat-tile[data-value="Travel"] { --cat: #0b7285; }
+.cat-tile[data-value="Shopping"] { --cat: #b42563; }
+.cat-tile[data-value="Bills & Utilities"] { --cat: #8a6508; }
+.cat-tile[data-value="Home & Rent"] { --cat: #8b5a2b; }
+.cat-tile[data-value="Health"] { --cat: #c62828; }
+.cat-tile[data-value="Entertainment"] { --cat: #7b3fc4; }
+.cat-tile[data-value="Education"] { --cat: #4338ca; }
+.cat-tile[data-value="Savings & Investments"] { --cat: #0f766e; }
+.cat-tile[data-value="Other"] { --cat: #5f594d; }
+[data-theme="dark"] .cat-tile[data-value="Food & Dining"] { --cat: #ffa25c; }
+[data-theme="dark"] .cat-tile[data-value="Groceries"] { --cat: #6fd47a; }
+[data-theme="dark"] .cat-tile[data-value="Transport"] { --cat: #7fb0ff; }
+[data-theme="dark"] .cat-tile[data-value="Travel"] { --cat: #5fd0e4; }
+[data-theme="dark"] .cat-tile[data-value="Shopping"] { --cat: #ff86b6; }
+[data-theme="dark"] .cat-tile[data-value="Bills & Utilities"] { --cat: #e8b84a; }
+[data-theme="dark"] .cat-tile[data-value="Home & Rent"] { --cat: #d9a36d; }
+[data-theme="dark"] .cat-tile[data-value="Health"] { --cat: #ff7a6e; }
+[data-theme="dark"] .cat-tile[data-value="Entertainment"] { --cat: #c7a2ff; }
+[data-theme="dark"] .cat-tile[data-value="Education"] { --cat: #a5a6ff; }
+[data-theme="dark"] .cat-tile[data-value="Savings & Investments"] { --cat: #4fd1b8; }
+[data-theme="dark"] .cat-tile[data-value="Other"] { --cat: #aaa292; }
+.cat-tile, .edit-modal-box .cat-tile {
+  --cat: var(--text2); --cat-on: #fff;
+  position: relative; gap: 6px; min-height: 84px; padding: 12px 4px 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: none;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+[data-theme="dark"] .cat-tile { --cat-on: #1d1b16; }
+.cat-icon, .edit-modal-box .cat-icon {
+  width: 40px; height: 40px; border-radius: 50%; box-shadow: none;
+  background: color-mix(in srgb, var(--cat) 13%, transparent); color: var(--cat);
+}
+.cat-icon svg, .cat-icon i { width: 20px; height: 20px; stroke-width: 2; }
+.cat-tile span {
+  max-width: 100%; color: var(--text); font-size: 0.8125rem; font-weight: 600; line-height: 1.2; text-align: center;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cat-tile:hover { border-color: var(--cat); background: color-mix(in srgb, var(--cat) 5%, var(--surface)); transform: translateY(-1px); }
+.cat-tile:hover .cat-icon { background: color-mix(in srgb, var(--cat) 18%, transparent); color: var(--cat); }
 .cat-tile:hover span { color: var(--text); }
-.cat-tile.selected { border-color: var(--hero-bg); background: var(--surface); box-shadow: 0 0 0 1px var(--hero-bg), var(--shadow-sm); }
-.cat-tile.selected .cat-icon { background: var(--hero-bg); color: var(--gold-bright); box-shadow: none; }
-.cat-tile.selected span { color: var(--text); font-weight: 700; }
-[data-theme="dark"] .cat-tile.selected { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
-[data-theme="dark"] .cat-tile.selected .cat-icon { background: var(--gold); color: var(--gold-on); }
+/* Selected: the whole tile takes its colour, with a check in the corner */
+.cat-tile.selected, [data-theme="dark"] .cat-tile.selected {
+  background: var(--cat); border-color: var(--cat);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--cat) 30%, transparent);
+}
+.cat-tile.selected .cat-icon, [data-theme="dark"] .cat-tile.selected .cat-icon {
+  background: color-mix(in srgb, var(--cat-on) 18%, transparent); color: var(--cat-on);
+}
+.cat-tile.selected span { color: var(--cat-on); font-weight: 700; }
+.cat-tile.selected::after { /* badge: white (ink in dark), with the tile-coloured check above it */
+  content: ""; position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%; background: var(--cat-on);
+}
+.cat-tile.selected::before {
+  content: ""; position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; z-index: 1; background: var(--cat);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 11px no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 11px no-repeat;
+}
+@media (prefers-reduced-motion: reduce) { .cat-tile:hover { transform: none; } }
 
 /* Mic button: ink with a gold glyph */
 .voice-fab { background: var(--hero-bg); color: var(--gold-bright); box-shadow: var(--shadow-lg); border: 1px solid var(--hero-line); }

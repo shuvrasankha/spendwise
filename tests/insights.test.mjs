@@ -131,3 +131,10 @@ test('markdown: lists, headings, bold, and HTML is escaped', () => {
   const html = renderMarkdown('Based on your data:\n\n1. Cut **Shopping**\n2. Keep *rent*\n\n### Next\n- <script>alert(1)</script>');
   assert.equal(html, '<p>Based on your data:</p><ol><li>Cut <strong>Shopping</strong></li><li>Keep <em>rent</em></li></ol><h4>Next</h4><ul><li>&lt;script&gt;alert(1)&lt;/script&gt;</li></ul>');
 });
+
+test('the new Savings & Investments name is also counted as saved', () => {
+  const r = periodRange('month', today);
+  const s = summarize({ ...data, expenses: [...data.expenses, { amount: 4000, category: 'Savings & Investments', date: '2026-10-06' }] }, r);
+  assert.equal(s.spent, 19200);
+  assert.equal(s.invested, 4000);
+});

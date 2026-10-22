@@ -27,14 +27,14 @@ const CATEGORIES = [
   ['Food & Dining', /swiggy|zomato|domino|pizza|mcdonald|kfc|starbucks|cafe|restaurant|eatsure|burger/],
   ['Travel', /makemytrip|goibibo|indigo|air ?india|vistara|akasa|cleartrip|airbnb|\boyo\b|yatra/],
   ['Transport', /\buber\b|\bola\b|rapido|metro|irctc|redbus|fuel|petrol|hpcl|bpcl|iocl|indian ?oil|fastag|parking/],
-  ['Subscription', /netflix|spotify|hotstar|prime ?video|youtube|apple\.com|google ?play|sonyliv|zee5/],
+  ['Bills & Utilities', /netflix|spotify|hotstar|prime ?video|youtube|apple\.com|google ?play|sonyliv|zee5/],
   ['Shopping', /amazon|flipkart|myntra|ajio|meesho|nykaa|croma|decathlon|ikea/],
   ['Bills & Utilities', /airtel|\bjio\b|vodafone|\bvi\b|bsnl|electricity|bescom|tata ?power|broadband|recharge|\bbill\b/],
   ['Health', /apollo|pharmeasy|netmeds|1mg|medplus|hospital|clinic|pharmacy|practo/],
   ['Entertainment', /bookmyshow|\bpvr\b|inox|steam|playstation/],
-  ['Investment', /zerodha|groww|upstox|kuvera|mutual ?fund|\bsip\b|\bnps\b|\bppf\b/],
+  ['Savings & Investments', /zerodha|groww|upstox|kuvera|mutual ?fund|\bsip\b|\bnps\b|\bppf\b/],
   ['Education', /udemy|coursera|byju|unacademy|school|college|tuition/],
-  ['Rent', /\brent\b|nobroker/],
+  ['Home & Rent', /\brent\b|nobroker/],
 ];
 
 function amountOf(text) {

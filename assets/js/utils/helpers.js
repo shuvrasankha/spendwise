@@ -8,8 +8,29 @@ export function todayStr(d = new Date()) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 
-// Money put into Investment is saved, not spent: every spending total, chart and projection leaves it out
-export const isSpending = e => e.category !== 'Investment';
+// Expense categories, in the order the Add form shows them (until usage reorders them)
+export const EXPENSE_CATEGORIES = [
+  'Food & Dining', 'Groceries', 'Transport', 'Travel', 'Shopping', 'Bills & Utilities',
+  'Home & Rent', 'Health', 'Entertainment', 'Education', 'Savings & Investments', 'Other'
+];
+
+// Older names, merged or renamed. Saved entries keep the old name; they are shown and
+// counted under the new one, and editing an entry saves the new name.
+export const CATEGORY_ALIASES = {
+  'Subscription': 'Bills & Utilities',
+  'Personal Care': 'Shopping',
+  'Gifts': 'Other',
+  'Rent': 'Home & Rent',
+  'Investment': 'Savings & Investments'
+};
+
+export function normalizeCategory(c) {
+  const name = String(c ?? '').trim();
+  return CATEGORY_ALIASES[name] || name || 'Other';
+}
+
+// Money put into savings or investments is saved, not spent: every spending total, chart and projection leaves it out
+export const isSpending = e => normalizeCategory(e.category) !== 'Savings & Investments';
 
 // "21 Oct", or "21 Oct 2025" outside the current year: short enough for a list row
 export function shortDay(ds) {

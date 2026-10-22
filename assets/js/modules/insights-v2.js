@@ -6,7 +6,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
-import { todayStr } from '../utils/helpers.js';
+import { todayStr, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
@@ -86,7 +86,7 @@ async function loadData() {
   const get = async (name, map) =>
     (await getDocs(query(collection(db, name), where('uid', '==', uid)))).docs.map(d => map(d.data()));
   const [expenses, income, debts] = await Promise.all([
-    get('expenses', r => ({ amount: num(r.amount), category: r.category || 'Other', date: r.date || '' })),
+    get('expenses', r => ({ amount: num(r.amount), category: normalizeCategory(r.category), date: r.date || '' })),
     get('income', r => ({ amount: num(r.amount), date: r.date || '' })),
     get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '' })),
   ]);
