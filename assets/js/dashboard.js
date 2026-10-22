@@ -865,7 +865,7 @@ window.confirmDelete = async () => {
 // ============================================================
 window.openEditExpense = (id) => {
   const expense = allExpenses.find(e => e.id === id);
-  if (!expense) return;
+  if (!expense || expense.pending) return; // queued offline: no record to edit or delete until it syncs
 
   editingExpenseId = id;
   document.getElementById("edit-amount").value = expense.amount;
@@ -1199,7 +1199,9 @@ function renderHistory() {
   const row = r => {
     const meta = t.meta(r).filter(Boolean);
     if (!byDate) meta.unshift(formatDate(r.date));
-    return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}">
+    // An offline entry has no record yet: deleting it here would let the queue re-add it later
+    if (r.pending) meta.push("Waiting to sync");
+    return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}"${r.pending ? " disabled" : ""}>
       <span class="hist-row-main">
         <span class="hist-row-title">${escapeHtml(t.title(r))}</span>
         <span class="hist-row-meta">${escapeHtml(meta.join(" · "))}</span>
@@ -2133,7 +2135,7 @@ let editingIncId = null;
 // ── Edit Income (from history page) ──────────────────────────
 window.openIncEdit = (id) => {
   const entry = allIncome.find(i => i.id === id);
-  if (!entry) return;
+  if (!entry || entry.pending) return; // queued offline: no record to edit or delete until it syncs
   editingIncId = id;
 
   document.getElementById('inc-edit-amount').value = entry.amount;
