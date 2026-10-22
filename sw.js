@@ -13,6 +13,7 @@ const STATIC_ASSETS = [
   './assets/css/style.css',
   './assets/css/tokens.css',
   './assets/css/responsive.css',
+  './assets/css/reimagine.css',
   './assets/js/utils/currency.js',
   './assets/js/utils/helpers.js',
   './assets/js/config/firebase.js',
