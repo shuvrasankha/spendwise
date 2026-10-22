@@ -86,6 +86,12 @@
     'closeIncEditModal': function() { if (window.closeIncEditModal) window.closeIncEditModal(); },
     'saveEditIncome': function() { if (window.saveEditIncome) window.saveEditIncome(); },
     'deleteFromIncomeEdit': function() { if (window.deleteFromIncomeEdit) window.deleteFromIncomeEdit(); },
+    'closeIncomeEditModal': function() { if (window.closeIncomeEditModal) window.closeIncomeEditModal(); },
+    'closeIncomeDeleteModal': function() { if (window.closeIncomeDeleteModal) window.closeIncomeDeleteModal(); },
+    'confirmIncomeDelete': function() { if (window.confirmIncomeDelete) window.confirmIncomeDelete(); },
+    // History page's income dialog (dashboard.js); income.html uses the names above (income.js)
+    'saveIncEdit': function() { if (window.saveIncEdit) window.saveIncEdit(); },
+    'deleteFromIncEdit': function() { if (window.deleteFromIncEdit) window.deleteFromIncEdit(); },
     'closeIncDeleteModal': function() { if (window.closeIncDeleteModal) window.closeIncDeleteModal(); },
     'confirmIncDelete': function() { if (window.confirmIncDelete) window.confirmIncDelete(); },
 
