@@ -79,8 +79,17 @@ onAuthStateChanged(auth, user => {
     }
     // On index.html, FAB starts hidden; showPage('add') will reveal it.
   }
-  if (user) openSharedSms();
+  if (user) { openSharedSms(); openFromShortcut(); }
 });
+
+// The "Voice entry" home-screen shortcut (manifest.json) opens expense.html?voice=1
+function openFromShortcut() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('voice') !== '1') return;
+  params.delete('voice');
+  history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
+  openVoiceModal();
+}
 
 // An SMS shared to SpendWise from the Messages app (manifest share_target) arrives as ?text=
 function openSharedSms() {

@@ -14,7 +14,8 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, dueRecurring, shortDay } from './utils/helpers.js';
+import { getBudget } from './modules/budget.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -437,12 +438,26 @@ function renderHome() {
   const monthDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const monthName = now.toLocaleDateString("en-US", { month: "long" });
 
-  // Hero: spent so far, against income, and the pace
+  // Hero: spent so far, against the budget (or else income), and the pace
   document.getElementById("home-month-label").textContent = `${monthName} so far`;
   spentEl.textContent = moneyWhole(spent);
   const meter = document.getElementById("home-meter");
   const meterText = document.getElementById("home-meter-text");
-  if (income > 0) {
+  const budget = getBudget();
+  const limit = budgetState(spent, budget.total);
+  const budgetLink = document.getElementById("home-budget-link");
+  if (budgetLink) budgetLink.textContent = budget.total ? "Change budget" : "Set a monthly budget";
+  meter.classList.remove("near");
+  if (limit) {
+    meter.classList.remove("hidden");
+    meter.classList.toggle("over", limit.state === "over");
+    meter.classList.toggle("near", limit.state === "near");
+    document.getElementById("home-meter-fill").style.width = `${Math.min(limit.ratio, 1) * 100}%`;
+    meterText.textContent = limit.state === "over"
+      ? `${moneyWhole(-limit.left)} over your ${moneyWhole(budget.total)} budget`
+      : `${Math.round(limit.ratio * 100)}% of your ${moneyWhole(budget.total)} budget · ${moneyWhole(limit.left)} left`;
+    meter.setAttribute("aria-label", meterText.textContent);
+  } else if (income > 0) {
     const ratio = spent / income;
     meter.classList.remove("hidden");
     meter.classList.toggle("over", ratio > 1);
@@ -511,16 +526,111 @@ function renderHome() {
   // Where it went: this month's top categories, as labelled bars (readable without a chart)
   const byCat = {};
   monthExp.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
-  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  // Top five, plus any category close to or past its own limit so a warning is never cut off
+  const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  const cats = sorted.filter(([c, amount], i) => i < 5 || (budgetState(amount, budget.cats[c])?.state ?? "ok") !== "ok");
   document.getElementById("home-categories").innerHTML = cats.length ? cats.map(([category, amount]) => {
     const share = spent > 0 ? (amount / spent) * 100 : 0;
+    const cap = budgetState(amount, budget.cats[category]);
+    const width = cap ? Math.min(cap.ratio, 1) * 100 : share;
+    const meta = cap
+      ? (cap.state === "over" ? `${moneyWhole(-cap.left)} over the ${moneyWhole(budget.cats[category])} limit` : `${moneyWhole(amount)} of ${moneyWhole(budget.cats[category])} limit · ${moneyWhole(cap.left)} left`)
+      : `${share.toFixed(0)}% of this month's spending`;
     return `<li class="glance-cat">
       <div class="glance-cat-row"><span class="glance-cat-name">${escapeHtml(category)}</span><span class="glance-cat-amount">${moneyWhole(amount)}</span></div>
-      <div class="glance-bar" aria-hidden="true"><span style="width:${Math.max(share, 2).toFixed(1)}%"></span></div>
-      <div class="glance-cat-meta">${share.toFixed(0)}% of this month's spending</div>
+      <div class="glance-bar${cap && cap.state !== "ok" ? " " + cap.state : ""}" aria-hidden="true"><span style="width:${Math.max(width, 2).toFixed(1)}%"></span></div>
+      <div class="glance-cat-meta">${meta}</div>
     </li>`;
   }).join("") : `<li class="home-empty">No expenses this month yet.</li>`;
+
+  renderDue();
 }
+
+// ── Due this month: repeating expenses waiting for one tap ───────────────────
+const SKIP_KEY = "spendwise_skip:";
+const isSkipped = (key, month) => { try { return localStorage.getItem(SKIP_KEY + key + ":" + month) === "1"; } catch { return false; } };
+let dueItems = [];
+
+function renderDue() {
+  const section = document.getElementById("home-due");
+  if (!section) return;
+  dueItems = dueRecurring(allExpenses, todayStr(), isSkipped);
+  section.classList.toggle("hidden", !dueItems.length);
+  if (!dueItems.length) return;
+  document.getElementById("home-due-total").textContent = moneyWhole(dueItems.reduce((sum, d) => sum + d.template.amount, 0));
+  document.getElementById("home-due-list").innerHTML = dueItems.map((d, i) => {
+    const t = d.template;
+    const title = t.description && t.description !== "-" ? t.description : t.category;
+    return `<li class="home-row due-row">
+      <div class="home-row-main">
+        <span class="home-row-title">${escapeHtml(title)}</span>
+        <span class="home-row-meta">${escapeHtml(t.category)} · due ${escapeHtml(shortDay(d.due))}</span>
+      </div>
+      <span class="home-row-amount">${moneyWhole(t.amount)}</span>
+      <div class="due-actions">
+        <button type="button" class="due-add" data-due-add="${i}" aria-label="Add ${escapeHtml(title)}, ${moneyWhole(t.amount)}">Add</button>
+        <button type="button" class="due-more" data-due-skip="${i}" aria-label="Skip ${escapeHtml(title)} this month">Skip month</button>
+        <button type="button" class="due-more" data-due-stop="${i}" aria-label="Stop repeating ${escapeHtml(title)}">Stop repeating</button>
+      </div>
+    </li>`;
+  }).join("");
+}
+
+async function addDue(item) {
+  const t = item.template;
+  const data = { uid: currentUser.uid, amount: t.amount, category: t.category, date: item.due, payment: t.payment || "UPI",
+    cardName: t.cardName || "", description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain" };
+  const local = { ...data, uid: undefined, encoding: undefined };
+  if (window.isOffline?.() && window.addToOfflineQueue) {
+    const queueId = window.addToOfflineQueue("expense", { ...data, createdAt: serverTimestamp() });
+    const tempId = "offline-" + Date.now();
+    allExpenses.unshift({ ...local, id: tempId, pending: true });
+    allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+    refreshExpenseViews();
+    showUndoToast("Saved offline.", () => { window.removeFromOfflineQueue(queueId); removeLocalExpense(tempId); });
+    return;
+  }
+  const ref = await addDoc(collection(db, "expenses"), { ...data, createdAt: serverTimestamp() });
+  allExpenses.unshift({ ...local, id: ref.id });
+  allExpenses.sort((a, b) => b.date.localeCompare(a.date));
+  refreshExpenseViews();
+  showUndoToast(`${data.description !== "-" ? data.description : data.category} added.`, async () => {
+    await deleteDoc(doc(db, "expenses", ref.id));
+    removeLocalExpense(ref.id);
+  });
+  window.markLoggedToday?.();
+}
+
+document.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest("[data-due-add], [data-due-skip], [data-due-stop]");
+  if (!btn || !currentUser) return;
+  const item = dueItems[+(btn.dataset.dueAdd ?? btn.dataset.dueSkip ?? btn.dataset.dueStop)];
+  if (!item) return;
+  btn.disabled = true;
+  try {
+    if (btn.dataset.dueAdd !== undefined) {
+      await addDue(item);
+    } else if (btn.dataset.dueSkip !== undefined) {
+      try { localStorage.setItem(SKIP_KEY + item.key + ":" + item.due.slice(0, 7), "1"); } catch { /* ignore */ }
+      renderDue();
+    } else {
+      const t = item.template;
+      if (t.pending) { showToast("This one is still waiting to sync. Try again once you're online.", "error"); btn.disabled = false; return; }
+      await updateDoc(doc(db, "expenses", t.id), { repeat: "stopped" });
+      t.repeat = "stopped";
+      saveToCache(currentUser.uid, allExpenses);
+      renderDue();
+      showToast("It won't be suggested again. Past entries stay.", "success");
+    }
+  } catch (e) {
+    console.error(e);
+    btn.disabled = false;
+    showToast("Couldn't do that. Check your connection and try again.", "error");
+  }
+});
+
+// A budget saved from the profile menu redraws Home right away
+window.addEventListener("spendwise:budget", () => renderHome());
 
 // The old card updaters (still called by loaders and save paths) now redraw the home summary
 function updateDebtCards() { renderHome(); }
@@ -718,6 +828,7 @@ window.addExpense = async () => {
   const description = sanitize(document.getElementById("exp-description").value.trim(), 300);
   const notes = sanitize(document.getElementById("exp-notes").value.trim(), 500);
   const tags = getExpenseTags("exp");
+  const repeat = document.getElementById("exp-repeat")?.checked ? "monthly" : null; // "Repeats every month"
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
@@ -731,12 +842,13 @@ window.addExpense = async () => {
   try {
     const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
     const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
+    if (repeat) expenseData.repeat = repeat;
     
     if (window.isOffline && window.isOffline()) {
       if (typeof window.addToOfflineQueue === 'function') {
         const queueId = window.addToOfflineQueue('expense', expenseData);
         const tempId = 'offline-' + Date.now();
-        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
+        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
         dashboardPage = 1;
         updateCards();
@@ -760,7 +872,7 @@ window.addExpense = async () => {
 
     showLoader();
     const ref = await addDoc(collection(db, "expenses"), expenseData);
-    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1;
     updateCards();
@@ -786,9 +898,10 @@ window.addExpense = async () => {
     if (window.addToOfflineQueue && navigator.onLine === false) {
       const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
       const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
+    if (repeat) expenseData.repeat = repeat;
       const queueId = window.addToOfflineQueue('expense', expenseData);
       const tempId = 'offline-' + Date.now();
-      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true });
+      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
       dashboardPage = 1;
       updateCards();
@@ -870,6 +983,8 @@ window.openEditExpense = (id) => {
   if (!expense || expense.pending) return; // queued offline: no record to edit or delete until it syncs
 
   editingExpenseId = id;
+  const editRepeat = document.getElementById("edit-repeat");
+  if (editRepeat) editRepeat.checked = expense.repeat === "monthly";
   document.getElementById("edit-amount").value = expense.amount;
   updateCurrencyDisplay();
   document.getElementById("edit-date").value = expense.date;
@@ -936,6 +1051,10 @@ window.saveEditExpense = async () => {
     const expenseRef = doc(db, "expenses", editingExpenseId);
     const editCardName = document.getElementById("edit-card-name");
     const cardName = sanitize(editCardName ? editCardName.value.trim() : "", 100);
+    // Repeating: tick to start; unticking a repeating entry stops the series (it stays in the list)
+    const before = allExpenses.find(e => e.id === editingExpenseId);
+    const repeatOn = document.getElementById("edit-repeat")?.checked;
+    const repeat = repeatOn ? "monthly" : before?.repeat === "monthly" ? "stopped" : before?.repeat;
     await updateDoc(expenseRef, {
       amount,
       category,
@@ -945,6 +1064,7 @@ window.saveEditExpense = async () => {
       description: description || "-",
       notes: notes,
       tags,
+      ...(repeat && { repeat }),
       encoding: "plain"
     });
 
@@ -960,7 +1080,8 @@ window.saveEditExpense = async () => {
         cardName: document.getElementById("edit-card-name") ? document.getElementById("edit-card-name").value.trim() : "",
         description: description || "-",
         notes,
-        tags
+        tags,
+        ...(repeat && { repeat })
       };
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
@@ -1203,6 +1324,7 @@ function renderHistory() {
     if (!byDate) meta.unshift(formatDate(r.date));
     // An offline entry has no record yet: deleting it here would let the queue re-add it later
     if (r.pending) meta.push("Waiting to sync");
+    if (r.repeat === "monthly") meta.push("Repeats monthly");
     return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}"${r.pending ? " disabled" : ""}>
       <span class="hist-row-main">
         <span class="hist-row-title">${escapeHtml(t.title(r))}</span>
@@ -1919,6 +2041,8 @@ window.resetForm = () => {
   _baseReset();
   document.querySelectorAll('#category-picker .cat-tile').forEach(t => { t.classList.remove('selected'); t.setAttribute('aria-checked', 'false'); });
   document.getElementById('exp-category').value = '';
+  const repeatSwitch = document.getElementById('exp-repeat');
+  if (repeatSwitch) repeatSwitch.checked = false;
   applyLastPayment();
   syncDateChips();
 };

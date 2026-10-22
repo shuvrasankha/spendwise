@@ -32,6 +32,42 @@ export function normalizeCategory(c) {
 // Money put into savings or investments is saved, not spent: every spending total, chart and projection leaves it out
 export const isSpending = e => normalizeCategory(e.category) !== 'Savings & Investments';
 
+// A budget limit against what's been spent: share used, what's left, and whether to warn
+// ('near' from 80%, 'over' past 100%). null when there is no limit.
+export function budgetState(spent, limit) {
+  if (!(limit > 0)) return null;
+  const ratio = spent / limit;
+  return { ratio, left: limit - spent, state: ratio > 1 ? 'over' : ratio >= 0.8 ? 'near' : 'ok' };
+}
+
+// ── Repeating expenses ───────────────────────────────────────────────────────
+// An expense with repeat: 'monthly' starts a series (same category and description).
+// The newest entry carrying a repeat field is the series' template; repeat: 'stopped' ends it.
+export const recurringKey = e => `${normalizeCategory(e.category)}|${String(e.description || '').trim().toLowerCase()}`;
+
+// Series due this month: active, nothing entered for it yet this month, and its day has come
+// (the 31st falls on the month's last day). skipped(key, 'YYYY-MM') hides one for a month.
+export function dueRecurring(expenses, today = todayStr(), skipped = () => false) {
+  const month = today.slice(0, 7);
+  const latest = new Map(), template = new Map();
+  for (const e of expenses) {
+    if (!e || !e.date) continue;
+    const key = recurringKey(e);
+    if (!latest.has(key) || e.date > latest.get(key).date) latest.set(key, e);
+    if (e.repeat && (!template.has(key) || e.date > template.get(key).date)) template.set(key, e);
+  }
+  const [y, m, d] = today.split('-').map(Number);
+  const monthDays = new Date(y, m, 0).getDate();
+  const due = [];
+  for (const [key, t] of template) {
+    if (t.repeat !== 'monthly' || latest.get(key).date.slice(0, 7) >= month || skipped(key, month)) continue;
+    const day = Math.min(Number(t.date.slice(8, 10)), monthDays);
+    if (d < day) continue;
+    due.push({ key, template: t, due: `${month}-${pad(day)}` });
+  }
+  return due.sort((a, b) => a.due.localeCompare(b.due) || b.template.amount - a.template.amount);
+}
+
 // "21 Oct", or "21 Oct 2025" outside the current year: short enough for a list row
 export function shortDay(ds) {
   const d = new Date(ds + 'T00:00:00');

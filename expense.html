@@ -12,6 +12,7 @@
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ea">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
   <script src="assets/js/theme.js"></script>
+  <script src="assets/js/modules/app-lock.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo-192.png">
@@ -353,6 +354,12 @@
                 <textarea id="exp-notes" rows="2" placeholder="Any additional notes..."></textarea>
               </div>
               <div class="form-group full-width">
+                <label class="repeat-row" for="exp-repeat">
+                  <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+                  <input type="checkbox" role="switch" id="exp-repeat" class="reminder-switch">
+                </label>
+              </div>
+              <div class="form-group full-width">
                 <label for="exp-tags">Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
                 <div class="tag-input-wrap">
                   <div id="exp-tags-display" class="tags-display"></div>
@@ -656,6 +663,12 @@
             <textarea id="edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
           </div>
           <div class="form-group full-width">
+            <label class="repeat-row" for="edit-repeat">
+              <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+              <input type="checkbox" role="switch" id="edit-repeat" class="reminder-switch">
+            </label>
+          </div>
+          <div class="form-group full-width">
             <label>Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
             <div class="tag-input-wrap">
               <div id="edit-tags-display" class="tags-display"></div>
@@ -818,6 +831,7 @@
   <script type="module" src="assets/js/modules/csv-upload.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
   <script src="assets/js/modules/pickers.js"></script>
+  <script type="module" src="assets/js/modules/budget.js"></script>
   <script type="module">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));

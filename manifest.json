@@ -20,5 +20,46 @@
       "title": "title",
       "text": "text"
     }
-  }
+  },
+  "shortcuts": [
+    {
+      "name": "Add expense",
+      "short_name": "Add",
+      "description": "Log an expense",
+      "url": "./expense.html?source=shortcut",
+      "icons": [
+        {
+          "src": "assets/images/logo-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Voice entry",
+      "short_name": "Voice",
+      "description": "Say what you spent",
+      "url": "./expense.html?voice=1",
+      "icons": [
+        {
+          "src": "assets/images/logo-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "short_name": "History",
+      "description": "See past transactions",
+      "url": "./history.html",
+      "icons": [
+        {
+          "src": "assets/images/logo-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

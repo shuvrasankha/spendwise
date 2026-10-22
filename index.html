@@ -13,6 +13,7 @@
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ea">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
   <script src="assets/js/theme.js"></script>
+  <script src="assets/js/modules/app-lock.js"></script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="assets/images/logo-192.png">
@@ -242,6 +243,7 @@
           </div>
           <p class="home-meter-text" id="home-meter-text"></p>
           <p class="home-pace" id="home-pace"></p>
+          <button type="button" class="home-budget-link" id="home-budget-link" data-open-budget>Set a monthly budget</button>
           <a class="btn-primary btn-add home-add" href="expense.html"><i data-lucide="plus"></i> Add expense</a>
         </section>
 
@@ -252,6 +254,15 @@
           </div>
           <ul class="home-list" id="home-today-list"></ul>
           <a class="home-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
+        </section>
+
+        <!-- Repeating expenses whose day has come: one tap adds them (dashboard.js renderDue) -->
+        <section class="home-section home-due hidden" id="home-due" aria-labelledby="home-due-title">
+          <div class="home-section-head">
+            <h3 id="home-due-title">Due this month</h3>
+            <span class="home-section-total" id="home-due-total"></span>
+          </div>
+          <ul class="home-list" id="home-due-list"></ul>
         </section>
 
         <div class="home-tiles">
@@ -776,6 +787,12 @@
             <label>Notes <span class="optional-tag">optional</span></label>
             <textarea id="edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
           </div>
+          <div class="form-group full-width">
+            <label class="repeat-row" for="edit-repeat">
+              <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+              <input type="checkbox" role="switch" id="edit-repeat" class="reminder-switch">
+            </label>
+          </div>
         </div>
         <div id="edit-error" class="form-msg error hidden"></div>
       </div>
@@ -845,6 +862,7 @@
   <script type="module" src="assets/js/modules/backup.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
   <script src="assets/js/modules/pickers.js"></script>
+  <script type="module" src="assets/js/modules/budget.js"></script>
 
   <!-- Backup & Restore Modal -->
   <div id="backup-modal" class="modal-overlay hidden">
