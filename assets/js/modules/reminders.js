@@ -43,6 +43,7 @@ async function save(sub) {
     remindAt: timeInput.value || DEFAULT_TIME,
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
+  if (res.status === 409) throw new Error('TOO_MANY_DEVICES'); // worker allows 10 devices per user
   if (!res.ok) throw new Error('SUBSCRIBE_FAILED');
 }
 
@@ -79,7 +80,9 @@ async function onToggle() {
   } catch (e) {
     console.error('Reminder setup failed:', e);
     toggle.checked = !toggle.checked;
-    showNote("Couldn't update the reminder. Check your connection and try again.");
+    showNote(e.message === 'TOO_MANY_DEVICES'
+      ? 'Reminders are already on for 10 devices. Turn them off on one you no longer use, then try again.'
+      : "Couldn't update the reminder. Check your connection and try again.");
   } finally {
     toggle.disabled = false;
   }

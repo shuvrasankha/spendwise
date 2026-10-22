@@ -7,6 +7,10 @@ import { importJWK, SignJWT } from 'jose';
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WINDOW_MINUTES = 60; // send if the cron runs within an hour after the chosen time
+// The cron POSTs to every stored endpoint daily, so only browsers' own push services are accepted
+const PUSH_HOSTS = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'];
+const PUSH_HOST_SUFFIXES = ['.notify.windows.com', '.push.apple.com'];
+const MAX_DEVICES = 10; // per user; a phone, a laptop and a few browsers fit easily
 
 // Local date and HH:MM for `now` in time zone `tz`
 export function localParts(now, tz) {
@@ -30,7 +34,11 @@ export function validTz(tz) {
 }
 
 function validEndpoint(endpoint) {
-  try { return new URL(endpoint).protocol === 'https:' && endpoint.length <= 1024; } catch { return false; }
+  try {
+    const { protocol, hostname } = new URL(endpoint);
+    return protocol === 'https:' && endpoint.length <= 1024 &&
+      (PUSH_HOSTS.includes(hostname) || PUSH_HOST_SUFFIXES.some(suffix => hostname.endsWith(suffix)));
+  } catch { return false; }
 }
 
 // ── HTTP routes (caller already verified the Firebase user) ─────────────────
@@ -38,6 +46,9 @@ export async function handlePushRoute(path, body, uid, env) {
   if (path === '/push/subscribe') {
     const { endpoint, remindAt, tz } = body || {};
     if (!validEndpoint(endpoint) || !TIME.test(remindAt) || !validTz(tz)) return [400, { error: 'Invalid subscription' }];
+    const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM subscriptions WHERE uid = ?1 AND endpoint != ?2')
+      .bind(uid, endpoint).first();
+    if (n >= MAX_DEVICES) return [409, { error: 'Reminders are on for too many devices. Turn them off on one first.' }];
     // ON CONFLICT keeps last_sent/last_logged, so changing the time doesn't resend today
     await env.DB.prepare(
       `INSERT INTO subscriptions (endpoint, uid, remind_at, tz, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
