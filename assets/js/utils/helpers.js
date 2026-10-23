@@ -136,14 +136,6 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// dec: legacy migration decoder only
-// NOTE: XOR key removed for security. Legacy encoded data returned as-is.
-export function dec(encoded) {
-  if (typeof encoded !== "string") return encoded;
-  // No longer decode XOR — return as-is for migration purposes
-  return encoded;
-}
-
 // Abbreviated currency for chart Y-axis
 export function fmtTick(value) {
   return window.fmtCompact ? window.fmtCompact(value) : value;

@@ -23,7 +23,7 @@ import { getBudget } from './modules/budget.js';
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
 // and Firestore Security Rules (uid-scoped data access).
 // To further restrict this key: Firebase Console → Project Settings → API key restrictions
-// → add your production domain (e.g. yourapp.netlify.app) under "Application restrictions".
+// → add shuvrasankha.github.io under "Application restrictions".
 
 
 // ── Security helpers ────────────────────────────────────────────────────────
@@ -39,49 +39,39 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// dec: legacy migration decoder only.
-// Old Firestore records were stored with a XOR+base64 scheme.
-// Numbers (new-format records) need no decoding — return them directly.
-// NOTE: The XOR key has been removed for security. Legacy encoded data
-// will be returned as-is (base64 string). Migrate any remaining legacy
-// records to plain format via the Firebase console.
-function dec(encoded) {
-  if (typeof encoded !== "string") return encoded;  // plain number
-  // No longer decode XOR — return as-is for migration purposes
-  return encoded;
-}
-
 // ── sessionStorage cache helpers ──────────────────────────────────────────────
 // Using sessionStorage instead of localStorage for financial data security.
 // Session storage is cleared when the browser tab is closed, reducing the
 // window of exposure if an XSS vulnerability is exploited.
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
-function getCacheKey(uid) { return 'spendwise_expenses_' + uid; }
+// kind: 'expenses', 'income' or 'debts'
+function getCacheKey(uid, kind = 'expenses') { return 'spendwise_' + kind + '_' + uid; }
 
-function saveToCache(uid, expenses) {
+function saveToCache(uid, list, kind = 'expenses') {
   try {
-    const payload = JSON.stringify({ ts: Date.now(), data: expenses });
-    sessionStorage.setItem(getCacheKey(uid), payload);
+    const payload = JSON.stringify({ ts: Date.now(), data: list });
+    sessionStorage.setItem(getCacheKey(uid, kind), payload);
   } catch (e) { /* quota exceeded or private mode — silently skip */ }
 }
 
-function loadFromCache(uid) {
+function loadFromCache(uid, kind = 'expenses') {
   try {
-    const raw = sessionStorage.getItem(getCacheKey(uid));
+    const raw = sessionStorage.getItem(getCacheKey(uid, kind));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Date.now() - parsed.ts > CACHE_MAX_AGE_MS) {
-      sessionStorage.removeItem(getCacheKey(uid));
+      sessionStorage.removeItem(getCacheKey(uid, kind));
       return null;
     }
+    if (!Array.isArray(parsed.data)) return null;
     // A cache written before categories were merged still has the old names
-    return Array.isArray(parsed.data) ? parsed.data.map(e => ({ ...e, category: normalizeCategory(e.category) })) : parsed.data;
+    return kind === 'expenses' ? parsed.data.map(e => ({ ...e, category: normalizeCategory(e.category) })) : parsed.data;
   } catch { return null; }
 }
 
 function clearCache(uid) {
-  try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
+  try { ['expenses', 'income', 'debts'].forEach(kind => sessionStorage.removeItem(getCacheKey(uid, kind))); } catch { /* ignore */ }
 }
 
 let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, editingExpenseId = null;
@@ -126,6 +116,9 @@ onAuthStateChanged(auth, user => {
     initCurrencySelector(refreshMoney);
 
     // ── Cache-first strategy ──
+    // Income and debts first, so the home totals are complete on the first paint
+    allIncome = loadFromCache(user.uid, 'income') || [];
+    allDebts = loadFromCache(user.uid, 'debts') || [];
     const cached = loadFromCache(user.uid);
     if (cached && cached.length) {
       // Render from cache instantly — no skeleton delay
@@ -149,9 +142,8 @@ onAuthStateChanged(auth, user => {
       if (document.getElementById("table-body")) showTableSkeleton("table-body", 5);
       setTimeout(() => loadExpenses(), 0);
     }
-    // Load income data for dashboard cards (always fresh)
+    // Refresh income and debts in the background
     setTimeout(() => loadIncome(), 0);
-    // Load debt data for dashboard cards
     setTimeout(() => loadDebts(), 0);
 
     // Handle hash-based routing (e.g. index.html#history)
@@ -257,19 +249,15 @@ async function loadExpenses(isSilentSync = false) {
     const snap = await getDocs(q);
     allExpenses = snap.docs.map(d => {
       const raw = d.data();
-      // Detect plain-text records: if amount is a number or a numeric string,
-      // the record was NEVER XOR-encoded (legacy amounts are base64 gibberish).
-      const isPlain = raw.encoding === "plain"
-        || typeof raw.amount === "number"
-        || !isNaN(parseFloat(raw.amount));
-      const amt = isPlain ? parseFloat(raw.amount) : parseFloat(dec(raw.amount));
+      // Very old records hold base64 amounts, which parse as NaN and show as 0
+      const amt = parseFloat(raw.amount);
       return {
         id: d.id, ...raw,
         amount: isNaN(amt) ? 0 : amt,
         category: normalizeCategory(raw.category), // older names show under the merged ones
         cardName: raw.cardName || "",
-        description: isPlain ? (raw.description || "") : dec(raw.description),
-        notes: isPlain ? (raw.notes || "") : dec(raw.notes || "")
+        description: raw.description || "",
+        notes: raw.notes || ""
       };
     });
     // Sort client-side — no Firestore index required
@@ -314,6 +302,7 @@ async function loadIncome() {
       return { id: d.id, ...raw, amount: isNaN(amt) ? 0 : amt };
     });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
+    saveToCache(currentUser.uid, allIncome, 'income');
     updateIncomeCards();
     // If on history page, render income history
     if (document.getElementById("history-list")) {
@@ -340,6 +329,7 @@ async function loadDebts() {
       };
     });
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
+    saveToCache(currentUser.uid, allDebts, 'debts');
     updateDebtCards();
   } catch (e) { console.error("Debt load error:", e); }
 }
@@ -2067,6 +2057,7 @@ window.saveIncEdit = async () => {
       allIncome[idx] = { ...allIncome[idx], amount, date, source, paymentType, bank: bank || '', notes: notes || '' };
       allIncome.sort((a, b) => b.date.localeCompare(a.date));
     }
+    saveToCache(currentUser.uid, allIncome, 'income');
 
     renderIncomeHistory();
     updateIncomeCards();
@@ -2099,6 +2090,7 @@ window.confirmIncDelete = async () => {
     showLoader();
     await deleteDoc(doc(db, 'income', incDeleteTarget));
     allIncome = allIncome.filter(i => i.id !== incDeleteTarget);
+    saveToCache(currentUser.uid, allIncome, 'income');
     renderIncomeHistory();
     updateIncomeCards();
     hideLoader();

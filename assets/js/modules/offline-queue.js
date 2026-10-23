@@ -78,10 +78,6 @@
     return getQueueCount();
   };
 
-  window.getOfflineQueue = function() {
-    return getQueue();
-  };
-
   window.removeFromOfflineQueue = function(id) {
     removeFromQueue(id);
   };

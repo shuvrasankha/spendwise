@@ -211,7 +211,6 @@ async function saveToFirestore(transactions) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  UI — MODAL RENDERING
 // ══════════════════════════════════════════════════════════════════════════════
-function getModal() { return document.getElementById('csv-import-modal'); }
 function getOverlay() { return document.getElementById('csv-import-overlay'); }
 
 function openModal() {

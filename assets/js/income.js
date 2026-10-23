@@ -278,11 +278,6 @@ window.saveEditIncome = async () => {
 };
 
 // ── Delete Income ─────────────────────────────────────────────────────────────
-window.deleteIncomeEntry = (id) => {
-  deleteIncomeTarget = id;
-  document.getElementById('income-delete-modal').classList.remove('hidden');
-};
-
 window.closeIncomeDeleteModal = () => {
   document.getElementById('income-delete-modal').classList.add('hidden');
   deleteIncomeTarget = null;

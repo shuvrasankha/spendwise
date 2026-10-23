@@ -34,7 +34,6 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 
 ### 🔐 Security & Privacy
 - Secure authentication with Email/Password and Google Sign-In
-- Client-side XOR encryption for sensitive fields
 - Firestore rules restrict access to user's own data only
 
 ### 🌐 Offline Support
@@ -57,7 +56,7 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 | **Charts** | Chart.js for data visualization |
 | **Icons** | Lucide Icons |
 | **AI/ML** | Cloudflare Workers AI (via `worker/`) |
-| **Deployment** | Netlify |
+| **Deployment** | GitHub Pages (app), Cloudflare Workers (`worker/`) |
 | **PWA** | Service Worker for offline support |
 
 ## 📱 Pages & Navigation
@@ -142,7 +141,6 @@ npx wrangler deploy
 ## 🔒 Security
 
 - ✅ User data isolated by authentication (uid-based access)
-- ✅ Sensitive fields encrypted client-side (XOR encryption)
 - ✅ Firestore security rules enforce user-level access
 - ✅ No credentials stored in client code (Firebase config is public but rules-protected)
 - ⚠️ Always use Firebase security rules in production
