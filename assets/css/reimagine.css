@@ -1033,21 +1033,19 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .chip:active, .seg-btn:active, .cat-tile:active, .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
 a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
 
-/* Money score: a banknote-style guilloché engraved behind the figure, tinted by how the month is going.
-   Two offset sets of fine rings interfere like the line work on a note; it stays in the top corner and fades out before the text. */
+/* Money score: a soft glow and a fine dot grid in the top corner, tinted by how the month is going;
+   both fade out before the text. */
 .home-tiles .home-score { grid-column: 1 / -1; gap: 0; position: relative; overflow: hidden; isolation: isolate; --tint: var(--text2); }
 .home-score.great, .home-score.good { --tint: var(--success); }
 .home-score.fair { --tint: var(--warning); }
 .home-score.low { --tint: var(--danger); }
 .home-score::before {
   content: ""; position: absolute; inset: 0 0 auto; height: 10rem; z-index: -1; pointer-events: none;
-  --line: color-mix(in srgb, var(--tint) 22%, transparent);
   background:
-    repeating-radial-gradient(circle at 100% 0%, transparent 0 7px, var(--line) 7px 8px),
-    repeating-radial-gradient(circle at 78% 120%, transparent 0 7px, var(--line) 7px 8px),
-    repeating-radial-gradient(circle at 125% 70%, transparent 0 11px, var(--line) 11px 12px);
-  -webkit-mask-image: radial-gradient(120% 140% at 100% 0%, #000 25%, transparent 70%);
-  mask-image: radial-gradient(120% 140% at 100% 0%, #000 25%, transparent 70%);
+    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--tint) 24%, transparent), transparent 70%),
+    radial-gradient(circle, color-mix(in srgb, var(--tint) 36%, transparent) 1.2px, transparent 1.7px) 0 0 / 14px 14px;
+  -webkit-mask-image: radial-gradient(100% 130% at 100% 0%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(100% 130% at 100% 0%, #000 20%, transparent 75%);
 }
 .home-score.empty::before { opacity: 0.6; }
 @media (prefers-contrast: more) { .home-score::before { display: none; } }
