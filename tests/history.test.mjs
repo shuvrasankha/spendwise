@@ -3,7 +3,7 @@ process.env.TZ = 'Asia/Kolkata';
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { historyRange, filterHistory, historyDay } from '../assets/js/modules/history-data.js';
+import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from '../assets/js/modules/history-data.js';
 
 const now = new Date(2026, 9, 22, 12); // 22 Oct 2026, noon
 
@@ -72,4 +72,20 @@ test('day headings', () => {
   assert.equal(historyDay('2026-10-21', now), 'Yesterday');
   assert.equal(historyDay('2026-10-19', now), 'Mon, 19 Oct');
   assert.equal(historyDay('2025-12-30', now), 'Tue, 30 Dec, 2025');
+});
+
+test('a #tag search matches that tag exactly, any case; a plain word still searches text', () => {
+  const trip = [
+    { id: 'h', date: '2026-10-02', amount: 6000, category: 'Travel', description: 'Goa hotel', tags: ['Goa2026'] },
+    { id: 'f', date: '2026-10-03', amount: 900, category: 'Food & Dining', description: 'Beach shack', tags: ['goa2026', 'friends'] },
+    { id: 'g', date: '2026-10-05', amount: 300, category: 'Food & Dining', description: 'Goa sweets for office', tags: [] },
+  ];
+  const run = q => filterHistory(trip, { ...tab, tagsOf: e => e.tags, q }).map(e => e.id).sort().join('');
+  assert.equal(run('#goa2026'), 'fh');
+  assert.equal(run('#goa'), '');      // exact, not a prefix
+  assert.equal(run('goa'), 'fgh');    // plain search unchanged
+  assert.equal(searchTag(' #Goa2026 '), 'goa2026');
+  assert.equal(searchTag('#goa trip'), null);
+  assert.deepEqual(totalsBy(trip, e => e.category), [['Travel', 6000], ['Food & Dining', 1200]]);
+  assert.deepEqual(tagsInUse(trip, e => e.tags), ['Goa2026', 'friends']);
 });

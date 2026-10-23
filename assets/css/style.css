@@ -3224,6 +3224,7 @@ img {
 .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--text-inverse); }
 .hist-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; min-height: 44px; font-size: 0.875rem; color: var(--text2); }
 .hist-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.hist-split { flex-basis: 100%; padding-bottom: 8px; font-variant-numeric: tabular-nums; }
 .hist-clear { min-height: 44px; padding: 0 6px; border: none; background: none; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; }
 
 .hist-day { margin-bottom: 16px; }
