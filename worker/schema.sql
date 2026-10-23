@@ -37,3 +37,27 @@ CREATE TABLE IF NOT EXISTS debt_pushes (
   sent_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS debt_pushes_uid ON debt_pushes (uid, sent_at);
+
+-- Bill-due alerts: each repeating expense's next due date, as the app last sent it (/push/bills).
+-- The cron pushes "<title> due tomorrow" once per due date, at the user's reminder time.
+CREATE TABLE IF NOT EXISTS bills (
+  uid         TEXT NOT NULL,
+  key         TEXT NOT NULL,      -- series key: category|description
+  title       TEXT NOT NULL,
+  amount      REAL NOT NULL,
+  symbol      TEXT NOT NULL,      -- currency sign, or ''
+  due         TEXT NOT NULL,      -- local date 'YYYY-MM-DD'
+  alerted_due TEXT,               -- the due date last alerted
+  PRIMARY KEY (uid, key)
+);
+
+-- Month-end summary: spending per month as the app last sent it (/push/months). On the 1st, at the
+-- reminder time, the cron pushes last month's total against the month before.
+CREATE TABLE IF NOT EXISTS month_totals (
+  uid     TEXT NOT NULL,
+  month   TEXT NOT NULL,          -- 'YYYY-MM'
+  spent   REAL NOT NULL,
+  symbol  TEXT NOT NULL,          -- currency sign, or ''
+  alerted INTEGER,                -- 1 once its summary was pushed
+  PRIMARY KEY (uid, month)
+);

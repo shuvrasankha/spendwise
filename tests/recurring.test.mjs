@@ -1,7 +1,7 @@
 // Run: node --test tests/ — repeating expenses, budget limits and savings goals
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dueRecurring, recurringKey, budgetState, goalPace } from '../assets/js/utils/helpers.js';
+import { dueRecurring, upcomingBills, recurringKey, budgetState, goalPace } from '../assets/js/utils/helpers.js';
 
 const rent = { id: 'r1', amount: 18000, category: 'Rent', description: 'Flat rent', date: '2026-09-01', repeat: 'monthly' };
 const netflix = { id: 'n1', amount: 649, category: 'Subscription', description: 'Netflix', date: '2026-09-25', repeat: 'monthly' };
@@ -51,4 +51,15 @@ test('savings goal: monthly pace counts the current month, then done or late', (
   assert.deepEqual(goalPace(goa, '2027-04-01'), { ratio: 0.2, left: 24000, months: 0, monthly: 0, state: 'late' });
   assert.equal(goalPace({ ...goa, saved: 31000 }, '2026-10-23').state, 'done');
   assert.equal(goalPace({ ...goa, saved: 31000 }, '2026-10-23').left, 0);
+});
+
+test('upcoming bills: this month until entered, skipped or passed, then next month', () => {
+  const dues = (list, today, skipped) => upcomingBills(list, today, skipped).map(b => [b.title, b.due]);
+  assert.deepEqual(dues([rent, netflix], '2026-10-04'), [['Netflix', '2026-10-25'], ['Flat rent', '2026-11-01']]); // rent overdue: Home lists it
+  const paid = { ...netflix, id: 'n2', date: '2026-10-20', repeat: undefined };
+  assert.deepEqual(dues([netflix, paid], '2026-10-04'), [['Netflix', '2026-11-25']]);
+  assert.deepEqual(dues([netflix], '2026-10-04', () => true), [['Netflix', '2026-11-25']]);
+  assert.deepEqual(dues([{ ...netflix, date: '2026-01-31' }], '2026-12-31'), [['Netflix', '2026-12-31']]);
+  assert.deepEqual(dues([{ ...netflix, date: '2026-01-31' }, { ...paid, date: '2026-12-02' }], '2026-12-31'), [['Netflix', '2027-01-31']]);
+  assert.deepEqual(dues([{ ...netflix, repeat: 'stopped' }], '2026-10-04'), []);
 });

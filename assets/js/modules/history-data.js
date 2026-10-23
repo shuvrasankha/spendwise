@@ -17,17 +17,42 @@ export function historyRange(key, now = new Date(), custom = {}) {
   }
 }
 
+// The tag a search names, as '#goa2026' (lowercase, without '#'), or null for a plain search
+export const searchTag = q => /^#\S+$/.test(q.trim()) ? q.trim().slice(1).toLowerCase() : null;
+
 // Rows within the dates, in the chosen kinds (categories or sources), matching the search, sorted.
-// kindOf(row) and textOf(row) come from the tab: expenses and income keep different fields.
-export function filterHistory(rows, { from = '', to = '', kinds = new Set(), kindOf, q = '', textOf, sort = 'newest' }) {
+// kindOf(row), textOf(row) and tagsOf(row) come from the tab: expenses and income keep different fields.
+// A '#tag' search matches that tag exactly, for a trip's or event's entries.
+export function filterHistory(rows, { from = '', to = '', kinds = new Set(), kindOf, q = '', textOf, tagsOf, sort = 'newest' }) {
+  const tag = tagsOf && searchTag(q);
   q = q.toLowerCase().trim();
+  const matches = r => tag
+    ? tagsOf(r).some(t => String(t).toLowerCase() === tag)
+    : textOf(r).some(v => v && String(v).toLowerCase().includes(q));
   const out = rows.filter(r =>
     (!from || r.date >= from) && (!to || r.date <= to) &&
     (!kinds.size || kinds.has(kindOf(r))) &&
-    (!q || textOf(r).some(v => v && String(v).toLowerCase().includes(q))));
+    (!q || matches(r)));
   if (sort === 'largest') return out.sort((a, b) => b.amount - a.amount);
   if (sort === 'oldest') return out.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   return out.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
+// [kind, total] largest first: where a trip's money went
+export function totalsBy(rows, kindOf) {
+  const totals = {};
+  rows.forEach(r => { const k = kindOf(r); totals[k] = (totals[k] || 0) + r.amount; });
+  return Object.entries(totals).sort((a, b) => b[1] - a[1]);
+}
+
+// Tags in use, most used first, as written the first time they were seen
+export function tagsInUse(rows, tagsOf) {
+  const seen = new Map();
+  rows.forEach(r => tagsOf(r).forEach(t => {
+    const k = String(t).toLowerCase();
+    seen.set(k, { tag: seen.get(k)?.tag ?? String(t), n: (seen.get(k)?.n || 0) + 1 });
+  }));
+  return [...seen.values()].sort((a, b) => b.n - a.n).map(x => x.tag);
 }
 
 // Day heading: Today, Yesterday, "Mon, 19 Oct", or "Tue, 30 Dec 2025" outside this year

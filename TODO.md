@@ -11,7 +11,7 @@ Ranked by value for effort. Already shipped: budgets (overall and per category),
   - On the expense form: "Split with Ravi, Asha". Save your share as the expense and a "they owe me" debt for each person.
   - Today a dinner bill has to be entered twice (Expense, then Debts).
   - With an email, the debt also shows (read-only) in that person's account. Needs the updated `firestore.rules` published.
-- [ ] **3. Bill-due alerts** — Small
+- [x] **3. Bill-due alerts** — Small
   - "Netflix ₹649 due tomorrow" for repeating expenses.
   - The worker (`worker/src/push.js`) only sends the daily "log your spending" reminder; reuse its push and cron.
 
@@ -26,5 +26,5 @@ Ranked by value for effort. Already shipped: budgets (overall and per category),
 
 ## Smaller extras
 
-- [ ] **Month-end summary notification:** "You spent ₹24k, 8% less than last month". Reuses the insights code.
-- [ ] **Tags for trips or events** (#goa2026), to see a trip's total across categories.
+- [x] **Month-end summary notification:** "You spent ₹24k, 8% less than last month". Reuses the insights code.
+- [x] **Tags for trips or events** (#goa2026), to see a trip's total across categories.

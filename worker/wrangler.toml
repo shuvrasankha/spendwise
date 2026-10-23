@@ -21,6 +21,6 @@ binding = "DB"
 database_name = "spendwise-push"
 database_id = "4f806c90-1b39-4304-be47-ceec421c94cf"
 
-# Send due daily reminders
+# Send due daily reminders, bill-due alerts and month-end summaries
 [triggers]
 crons = ["*/15 * * * *"]

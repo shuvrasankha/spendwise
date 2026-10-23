@@ -14,9 +14,9 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
-import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
+import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
 import { getGoals } from './modules/goals.js';
 import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
@@ -1140,7 +1140,15 @@ window.deleteFromEdit = async () => {
   document.getElementById("modal").classList.remove("hidden");
 };
 
-function updateCards() { renderHome(); }
+function updateCards() { syncPush(); renderHome(); }
+
+// What the Worker needs for bill-due alerts and the month-end summary (reminders.js)
+function syncPush() {
+  window.syncBills?.(upcomingBills(allExpenses, todayStr(), isSkipped));
+  const month = todayStr().slice(0, 7), prev = addMonths(month, -1);
+  const spentIn = m => Math.round(allExpenses.filter(e => isSpending(e) && e.date.startsWith(m)).reduce((sum, e) => sum + e.amount, 0));
+  window.syncMonthTotals?.({ [month]: spentIn(month), [prev]: spentIn(prev) });
+}
 
 window.switchTableTab = (tab) => {
   activeTab = tab;
@@ -1248,6 +1256,7 @@ const HISTORY_TABS = {
     title: e => e.description || e.category,
     meta: e => [e.category, e.cardName ? `${e.payment} (${e.cardName})` : e.payment, ...(e.tags || []).map(t => "#" + t)],
     text: e => [e.description, e.category, e.notes, e.payment, e.cardName, ...(e.tags || [])],
+    tags: e => e.tags || [],
     attr: "data-edit-expense", kindsLabel: "Categories", one: "expense", many: "expenses",
     empty: 'No expenses yet. <a href="expense.html">Add an expense</a>',
   },
@@ -1267,7 +1276,7 @@ function historyRows() {
   const t = HISTORY_TABS[hist.tab];
   const $id = id => document.getElementById(id);
   const [from, to] = historyRange($id("hist-range")?.value, new Date(), { from: $id("hist-from")?.value, to: $id("hist-to")?.value });
-  return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, sort: $id("hist-sort")?.value });
+  return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, tagsOf: t.tags, sort: $id("hist-sort")?.value });
 }
 
 function renderHistory() {
@@ -1286,10 +1295,20 @@ function renderHistory() {
   chips.classList.toggle("hidden", kinds.length < 2);
   chips.innerHTML = kinds.map(k => `<button type="button" class="chip" data-hist-kind="${escapeHtml(k)}" aria-pressed="${hist.kinds.has(k)}">${escapeHtml(k)}</button>`).join("");
 
+  // Tags (#goa2026): one tap shows that trip's or event's entries
+  const tag = searchTag(document.getElementById("hist-search").value);
+  const tags = t.tags ? tagsInUse(all, t.tags) : [];
+  const tagChips = document.getElementById("hist-tags");
+  tagChips.classList.toggle("hidden", !tags.length);
+  tagChips.innerHTML = tags.map(g => `<button type="button" class="chip" data-hist-tag="${escapeHtml(g)}" aria-pressed="${g.toLowerCase() === tag}">#${escapeHtml(g)}</button>`).join("");
+
   const rows = historyRows();
   const clear = rows.length !== all.length ? ' <button type="button" class="hist-clear" id="hist-clear">Clear filters</button>' : "";
+  // For a tag, where its money went across categories
+  const split = tag && t.tags && rows.length
+    ? `<span class="hist-split">${totalsBy(rows, t.kind).map(([k, v]) => `${escapeHtml(k)} ${fmt(v)}`).join(" · ")}</span>` : "";
   document.getElementById("hist-summary").innerHTML = rows.length
-    ? `${rows.length} ${rows.length === 1 ? t.one : t.many} · <strong>${fmt(rows.reduce((s, r) => s + r.amount, 0))}</strong>${clear}`
+    ? `${rows.length} ${rows.length === 1 ? t.one : t.many} · <strong>${fmt(rows.reduce((s, r) => s + r.amount, 0))}</strong>${clear}${split}`
     : "";
   list.setAttribute("aria-busy", "false");
   const more = document.getElementById("hist-more");
@@ -1374,6 +1393,14 @@ function initHistory() {
     hist.kinds.has(k) ? hist.kinds.delete(k) : hist.kinds.add(k);
     rerender();
     $id("hist-kinds").querySelector(`[data-hist-kind="${CSS.escape(k)}"]`)?.focus(); // the chips were rebuilt
+  });
+  $id("hist-tags").addEventListener("click", e => {
+    const btn = e.target.closest("[data-hist-tag]");
+    if (!btn) return;
+    const g = btn.dataset.histTag;
+    $id("hist-search").value = btn.getAttribute("aria-pressed") === "true" ? "" : "#" + g;
+    rerender();
+    $id("hist-tags").querySelector(`[data-hist-tag="${CSS.escape(g)}"]`)?.focus();
   });
   $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });

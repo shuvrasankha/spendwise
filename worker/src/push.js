@@ -17,6 +17,8 @@ const KEY = /^[A-Za-z0-9_-]{16,128}$/; // base64url subscription keys
 const DOC_ID = /^[A-Za-z0-9]{1,64}$/; // Firestore auto ids
 const DEBT_FRESH_MS = 60 * 60 * 1000; // only a debt created in the last hour can be announced
 const DEBT_PUSHES_PER_DAY = 50; // per sender
+const MAX_BILLS = 50; // repeating expenses per user
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 // Local date and HH:MM for `now` in time zone `tz`
 export function localParts(now, tz) {
@@ -27,13 +29,62 @@ export function localParts(now, tz) {
   return { date: `${p.year}-${p.month}-${p.day}`, minutes: Number(p.hour) * 60 + Number(p.minute) };
 }
 
-// A reminder is due once per local day, in the hour after remind_at, unless the user already logged today
-export function isDue(sub, now) {
-  const { date, minutes } = localParts(now, sub.tz);
+// Whether `now` falls in the hour after the subscription's remind_at, in its time zone
+function inWindow(sub, now) {
+  const { minutes } = localParts(now, sub.tz);
   const [h, m] = sub.remind_at.split(':').map(Number);
   const since = minutes - (h * 60 + m);
-  return since >= 0 && since < WINDOW_MINUTES && sub.last_sent !== date && sub.last_logged !== date;
+  return since >= 0 && since < WINDOW_MINUTES;
 }
+
+// A reminder is due once per local day, in the hour after remind_at, unless the user already logged today
+export function isDue(sub, now) {
+  const { date } = localParts(now, sub.tz);
+  return inWindow(sub, now) && sub.last_sent !== date && sub.last_logged !== date;
+}
+
+// A bill is alerted the day before it's due, at the reminder time, once per due date
+export function billDue(row, now) {
+  const tomorrow = new Date(Date.parse(localParts(now, row.tz).date) + 864e5).toISOString().slice(0, 10);
+  return row.due === tomorrow && row.alerted_due !== row.due && inWindow(row, now);
+}
+
+// A month's summary goes out on the 1st of the next month, at the reminder time
+export function summaryDue(row, now) {
+  const { date } = localParts(now, row.tz);
+  return date.endsWith('-01') && date.slice(0, 7) === nextMonth(row.month) && inWindow(row, now);
+}
+const nextMonth = month => new Date(Date.parse(`${month}-01`) + 32 * 864e5).toISOString().slice(0, 7);
+
+// "October: you spent ₹24,100" / "8% less than September". prev is null when that month wasn't sent.
+export function summaryMessage(row) {
+  const name = m => new Date(`${m}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+  const prevMonth = new Date(Date.parse(`${row.month}-01`) - 864e5).toISOString().slice(0, 7);
+  let body = 'See where it went in Insights';
+  if (row.prev > 0) {
+    const pct = Math.round((row.spent - row.prev) / row.prev * 100);
+    body = pct === 0 ? `About the same as ${name(prevMonth)}` : `${Math.abs(pct)}% ${pct < 0 ? 'less' : 'more'} than ${name(prevMonth)}`;
+  }
+  return JSON.stringify({
+    title: `${name(row.month)}: you spent ${row.symbol}${Math.round(row.spent).toLocaleString('en-IN')}`,
+    body,
+    url: 'insights.html',
+    tag: `summary-${row.month}`,
+  });
+}
+
+export function billMessage(bill) {
+  const amount = `${bill.symbol}${bill.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  return JSON.stringify({
+    title: `${bill.title} due tomorrow`.slice(0, 120),
+    body: `${amount} · Tap to add it when you've paid`,
+    url: 'index.html',
+    tag: `bill-${bill.key}-${bill.due}`.slice(0, 200),
+  });
+}
+
+// A currency sign the app sent, or '' for anything else
+const currencySign = symbol => /^(\p{Sc}|Rs)$/u.test(symbol || '') ? symbol : '';
 
 export function validTz(tz) {
   try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; }
@@ -117,6 +168,43 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
     await env.DB.prepare('UPDATE subscriptions SET last_logged = ?1 WHERE uid = ?2').bind(date, uid).run();
     return [200, { ok: true }];
   }
+  if (path === '/push/bills') {
+    // The whole list replaces the stored one; alerted_due survives so a re-sent list doesn't re-alert
+    const { bills, symbol } = body || {};
+    const ok = Array.isArray(bills) && bills.length <= MAX_BILLS && bills.every(b =>
+      typeof b?.key === 'string' && b.key.length <= 200 && typeof b.title === 'string' && b.title.trim() &&
+      DATE.test(b.due) && Number.isFinite(b.amount) && b.amount > 0 && b.amount < 1e12);
+    if (!ok) return [400, { error: 'Invalid bills' }];
+    const sign = currencySign(symbol);
+    await env.DB.prepare('DELETE FROM bills WHERE uid = ?1 AND key NOT IN (SELECT value FROM json_each(?2))')
+      .bind(uid, JSON.stringify(bills.map(b => b.key))).run();
+    for (const b of bills) {
+      await env.DB.prepare(
+        `INSERT INTO bills (uid, key, title, amount, symbol, due) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(uid, key) DO UPDATE SET title = ?3, amount = ?4, symbol = ?5, due = ?6`
+      ).bind(uid, b.key, b.title.trim().slice(0, 80), b.amount, sign, b.due).run();
+    }
+    return [200, { ok: true }];
+  }
+  if (path === '/push/months') {
+    // { 'YYYY-MM': spent } for this month and last; alerted survives a re-send so a summary goes out once
+    const { totals, symbol } = body || {};
+    const entries = Object.entries(totals && typeof totals === 'object' ? totals : {});
+    if (!entries.length || entries.length > 2 || !entries.every(([m, v]) => MONTH.test(m) && Number.isFinite(v) && v >= 0 && v < 1e12)) {
+      return [400, { error: 'Invalid totals' }];
+    }
+    for (const [month, spent] of entries) {
+      await env.DB.prepare(
+        `INSERT INTO month_totals (uid, month, spent, symbol) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(uid, month) DO UPDATE SET spent = ?3, symbol = ?4`
+      ).bind(uid, month, spent, currencySign(symbol)).run();
+    }
+    // Only last month and the one before are ever read
+    const oldest = entries.map(([m]) => m).sort()[0];
+    await env.DB.prepare('DELETE FROM month_totals WHERE uid = ?1 AND month < ?2')
+      .bind(uid, new Date(Date.parse(`${oldest}-01`) - 864e5).toISOString().slice(0, 7)).run();
+    return [200, { ok: true }];
+  }
   if (path === '/push/debt') {
     const { debtId, symbol } = body || {};
     if (!DOC_ID.test(debtId || '')) return [400, { error: 'Invalid debt' }];
@@ -187,6 +275,53 @@ export async function sendDueReminders(env, now = new Date()) {
       await env.DB.prepare('UPDATE subscriptions SET last_sent = ?1 WHERE endpoint = ?2')
         .bind(localParts(now, sub.tz).date, sub.endpoint).run();
     }
+  }
+  return counts;
+}
+
+// Cron: "Netflix due tomorrow" to each of the owner's devices that can take a message push
+export async function sendBillAlerts(env, now = new Date()) {
+  // shortcut: reads every not-yet-alerted bill each run; fine for thousands of users, filter by due date in SQL beyond that
+  const { results } = await env.DB.prepare(
+    `SELECT b.uid, b.key, b.title, b.amount, b.symbol, b.due, b.alerted_due, s.endpoint, s.remind_at, s.tz, k.p256dh, k.auth
+     FROM bills b JOIN subscriptions s ON s.uid = b.uid JOIN push_keys k ON k.endpoint = s.endpoint
+     WHERE b.alerted_due IS NOT b.due`).all();
+  const counts = { sent: 0, gone: 0, failed: 0 };
+  const alerted = new Map();
+  for (const row of results) {
+    if (!billDue(row, now)) continue;
+    let outcome;
+    try { outcome = await sendPush(row.endpoint, env, await encryptPush(billMessage(row), row)); } catch { outcome = 'failed'; }
+    counts[outcome]++;
+    if (outcome === 'gone') await forget(row.endpoint, env);
+    if (outcome === 'sent') alerted.set(`${row.uid}\n${row.key}`, row);
+  }
+  for (const b of alerted.values()) {
+    await env.DB.prepare('UPDATE bills SET alerted_due = ?1 WHERE uid = ?2 AND key = ?3').bind(b.due, b.uid, b.key).run();
+  }
+  return counts;
+}
+
+// Cron: on the 1st, last month's spending against the month before, to each device that can take a message push
+export async function sendMonthSummaries(env, now = new Date()) {
+  // shortcut: reads every unsent month each run (two rows per user); fine for thousands of users
+  const { results } = await env.DB.prepare(
+    `SELECT m.uid, m.month, m.spent, m.symbol, p.spent AS prev, s.endpoint, s.remind_at, s.tz, k.p256dh, k.auth
+     FROM month_totals m JOIN subscriptions s ON s.uid = m.uid JOIN push_keys k ON k.endpoint = s.endpoint
+     LEFT JOIN month_totals p ON p.uid = m.uid AND p.month = substr(date(m.month || '-01', '-1 month'), 1, 7)
+     WHERE m.alerted IS NULL AND m.spent > 0`).all();
+  const counts = { sent: 0, gone: 0, failed: 0 };
+  const alerted = new Map();
+  for (const row of results) {
+    if (!summaryDue(row, now)) continue;
+    let outcome;
+    try { outcome = await sendPush(row.endpoint, env, await encryptPush(summaryMessage(row), row)); } catch { outcome = 'failed'; }
+    counts[outcome]++;
+    if (outcome === 'gone') await forget(row.endpoint, env);
+    if (outcome === 'sent') alerted.set(`${row.uid}\n${row.month}`, row);
+  }
+  for (const m of alerted.values()) {
+    await env.DB.prepare('UPDATE month_totals SET alerted = 1 WHERE uid = ?1 AND month = ?2').bind(m.uid, m.month).run();
   }
   return counts;
 }

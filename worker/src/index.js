@@ -1,10 +1,10 @@
 // worker/src/index.js — SpendWise backend for signed-in users (verified Firebase ID token):
 //   POST /         AI requests on Cloudflare Workers AI (free daily allowance, no API key)
-//   POST /push/*   push subscriptions and the daily reminder cron; /push/debt tells the person a
+//   POST /push/*   push subscriptions, the daily reminder, bill-due and month-summary crons; /push/debt tells the person a
 //                  bill was split with (see push.js)
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { handlePushRoute, sendDueReminders } from './push.js';
+import { handlePushRoute, sendDueReminders, sendBillAlerts, sendMonthSummaries } from './push.js';
 
 const GOOGLE_JWKS = createRemoteJWKSet(new URL(
   'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
@@ -122,6 +122,8 @@ export default {
   // Cron trigger (wrangler.toml): every 15 minutes, send reminders that are due
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sendDueReminders(env).then(c => console.log('reminders', JSON.stringify(c))));
+    ctx.waitUntil(sendBillAlerts(env).then(c => console.log('bill alerts', JSON.stringify(c))));
+    ctx.waitUntil(sendMonthSummaries(env).then(c => console.log('month summaries', JSON.stringify(c))));
     // usage counts are only needed for the current UTC day
     const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     ctx.waitUntil(env.DB.prepare('DELETE FROM ai_usage WHERE day < ?1').bind(yesterday).run());

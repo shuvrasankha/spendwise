@@ -10,6 +10,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/f
 
 const TIME_KEY = 'spendwise_reminder_time';
 const LOGGED_KEY = 'spendwise_logged_ping_'; // + uid: last date we told the Worker
+const SYNC_KEY = 'spendwise_push_sync:'; // + path:uid: the body the Worker last got
 const DEFAULT_TIME = '21:00';
 
 const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -184,6 +185,27 @@ window.markLoggedToday = async function () {
     if (res.ok) localStorage.setItem(key, today);
   } catch { /* offline: the sync below tries again */ }
 };
+
+// Data the Worker's crons need but can't read from Firestore. Sent only when this device has push on
+// and the body changed since last time; offline, the next redraw tries again.
+async function pushSync(path, body) {
+  const user = auth.currentUser;
+  if (!user || !supported || Notification.permission !== 'granted') return;
+  const payload = JSON.stringify(body);
+  const key = SYNC_KEY + path + ':' + user.uid;
+  try { if (localStorage.getItem(key) === payload) return; } catch { /* ignore */ }
+  try {
+    if (!await currentSubscription()) return;
+    const res = await callWorker(path, body);
+    if (res.ok) localStorage.setItem(key, payload);
+  } catch { /* offline */ }
+}
+const currencySymbol = () => window.getCurrencyInfo?.(window.getCurrency?.())?.symbol;
+
+// upcomingBills(): the Worker pushes "Netflix due tomorrow" at the reminder time
+window.syncBills = bills => pushSync('/push/bills', { bills: bills.slice(0, 50), symbol: currencySymbol() });
+// { 'YYYY-MM': spent } for this month and last: on the 1st the Worker pushes last month's summary
+window.syncMonthTotals = totals => pushSync('/push/months', { totals, symbol: currencySymbol() });
 
 // Entries saved offline count once they sync
 window.addEventListener('spendwise:synced', () => window.markLoggedToday());
