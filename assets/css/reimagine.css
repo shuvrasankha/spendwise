@@ -792,11 +792,19 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .home-hero .home-meter.near .home-meter-fill { background: linear-gradient(90deg, #d9822b, #ffb14a); }
 .glance-bar.near span { background: var(--warning); }
 .glance-bar.over span { background: var(--danger); }
-.home-budget-link {
-  display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0;
-  color: var(--gold-bright); font-weight: 600; font-size: 0.875rem; text-decoration: underline; text-underline-offset: 3px;
+.home-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.home-hero-actions .home-add { margin-top: 0; }
+/* Secondary action on the ink card: an outlined pill beside the gold Add expense */
+.home-budget-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border: 1px solid rgba(240, 195, 90, 0.45); border-radius: var(--radius-full); background: rgba(240, 195, 90, 0.08);
+  color: var(--gold-bright); font-weight: 600; font-size: 0.9375rem; cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
 }
-.home-budget-link + .home-add { margin-top: 8px; }
+.home-budget-btn:hover { background: rgba(240, 195, 90, 0.16); border-color: var(--gold-bright); }
+.home-budget-btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.home-budget-btn svg { width: 18px; height: 18px; }
+@media (max-width: 560px) { .home-hero-actions > * { flex: 1 1 100%; } }
 .budget-box { max-width: 460px; max-height: 90vh; overflow-y: auto; }
 .budget-note { color: var(--text2); font-size: 0.875rem; margin: -8px 0 16px; }
 .budget-money {

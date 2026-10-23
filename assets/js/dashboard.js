@@ -382,7 +382,7 @@ function renderHome() {
   const meterText = document.getElementById("home-meter-text");
   const budget = getBudget();
   const limit = budgetState(spent, budget.total);
-  const budgetLink = document.getElementById("home-budget-link");
+  const budgetLink = document.getElementById("home-budget-label");
   if (budgetLink) budgetLink.textContent = budget.total ? "Change budget" : "Set a monthly budget";
   meter.classList.remove("near");
   if (limit) {
