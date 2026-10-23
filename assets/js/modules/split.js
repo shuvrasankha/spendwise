@@ -4,12 +4,43 @@
 import { auth, db } from '../config/firebase.js';
 import { callWorker } from '../config/ai.js';
 import { collection, getDocs, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, splitAmount, sharedDebtView } from '../utils/helpers.js';
+import { sanitize, splitAmount, sharedDebtView, peopleFrom, escapeHtml } from '../utils/helpers.js';
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MAX_PEOPLE = 10;
 
 const list = () => document.getElementById('split-people');
+
+// Suggestions: people from your debts and from bills split with you (dashboard.js passes its debts).
+// A name's suggestion fills its email, and an email's fills the name.
+let people = [];
+let byName = new Map(); // suggestion value -> person
+export function setKnownPeople(debts) {
+  people = peopleFrom(debts);
+  const counts = people.reduce((m, p) => m.set(p.name.toLowerCase(), (m.get(p.name.toLowerCase()) || 0) + 1), new Map());
+  // Two people with one name are told apart by their email
+  byName = new Map(people.map(p => [counts.get(p.name.toLowerCase()) > 1 ? `${p.name} · ${p.email}` : p.name, p]));
+  const names = document.getElementById('split-name-list');
+  const emails = document.getElementById('split-email-list');
+  if (!names || !emails) return;
+  names.innerHTML = [...byName].map(([value, p]) => `<option value="${escapeHtml(value)}">${escapeHtml(p.email)}</option>`).join('');
+  emails.innerHTML = people.filter(p => p.email).map(p => `<option value="${escapeHtml(p.email)}">${escapeHtml(p.name)}</option>`).join('');
+}
+
+function fillFromSuggestion(input) {
+  const row = input.closest('.split-person');
+  const nameEl = row.querySelector('.split-name');
+  const emailEl = row.querySelector('.split-email');
+  if (input === nameEl) {
+    const p = byName.get(nameEl.value);
+    if (!p) return;
+    nameEl.value = p.name;
+    if (p.email) emailEl.value = p.email;
+  } else {
+    const p = people.find(x => x.email && x.email === emailEl.value.trim().toLowerCase());
+    if (p && !nameEl.value.trim()) nameEl.value = p.name;
+  }
+}
 
 function rows() {
   return [...(list()?.querySelectorAll('.split-person') || [])].map(li => ({
@@ -25,8 +56,8 @@ function addRow() {
   const li = document.createElement('li');
   li.className = 'split-person';
   li.innerHTML = `
-    <input type="text" class="split-name" maxlength="100" placeholder="Name" aria-label="Person ${n} name" autocomplete="off" />
-    <input type="email" class="split-email" maxlength="254" placeholder="Email (optional)" aria-label="Person ${n} email" autocomplete="off" inputmode="email" />
+    <input type="text" class="split-name" maxlength="100" placeholder="Name" aria-label="Person ${n} name" autocomplete="off" list="split-name-list" />
+    <input type="email" class="split-email" maxlength="254" placeholder="Email (optional)" aria-label="Person ${n} email" autocomplete="off" inputmode="email" list="split-email-list" />
     <button type="button" class="icon-btn split-remove" data-split-remove aria-label="Remove person ${n}" title="Remove"><i data-lucide="x"></i></button>`;
   ul.append(li);
   if (window.lucide) lucide.createIcons();
@@ -54,6 +85,7 @@ document.addEventListener('click', e => {
   if (remove) { remove.closest('.split-person').remove(); updateSummary(); }
 });
 document.addEventListener('input', e => {
+  if (e.target.matches('.split-name, .split-email')) fillFromSuggestion(e.target);
   if (e.target.closest('#split-people') || e.target.id === 'exp-amount') updateSummary();
 });
 
@@ -91,7 +123,8 @@ export function splitDebts(people, each, { date, label }) {
     settledDate: '',
     encoding: 'plain',
     createdAt: serverTimestamp(),
-    ...(p.email && { withEmail: p.email, fromName: sanitize(user.displayName || user.email, 100) }),
+    // fromEmail lets them pick you when they split back (firestore.rules checks it's really yours)
+    ...(p.email && { withEmail: p.email, fromName: sanitize(user.displayName || user.email, 100), fromEmail: user.email.toLowerCase() }),
   }));
 }
 

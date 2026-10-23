@@ -118,6 +118,7 @@ export function sharedDebtView(id, raw) {
     amount: Number(raw.amount) || 0,
     type: raw.type === 'they-owe' ? 'i-owe' : 'they-owe',
     person: raw.fromName || 'Someone',
+    email: raw.fromEmail || '',
     date: raw.date || '',
     notes: raw.notes || '',
     settled: raw.settled === true,
@@ -125,6 +126,22 @@ export function sharedDebtView(id, raw) {
     createdAt: raw.createdAt?.toMillis?.() || 0,
     shared: true,
   };
+}
+
+// People you've dealt with, for the split form's suggestions: from your own debts (with the email
+// you split with, if any) and from bills others split with you (their email). Most recent first, one
+// per name and email; a bare name is dropped when the same name is known with an email.
+export function peopleFrom(debts) {
+  const byKey = new Map();
+  for (const d of [...debts].sort((a, b) => (b.date || '').localeCompare(a.date || ''))) {
+    const name = (d.person || '').trim();
+    if (!name) continue;
+    const email = (d.shared ? d.email : d.withEmail) || '';
+    const key = `${name.toLowerCase()}|${email}`;
+    if (!byKey.has(key)) byKey.set(key, { name, email });
+  }
+  const named = new Set([...byKey.values()].filter(p => p.email).map(p => p.name.toLowerCase()));
+  return [...byKey.values()].filter(p => p.email || !named.has(p.name.toLowerCase()));
 }
 
 // The notification centre's events from debts shared with you, newest first: each was split with

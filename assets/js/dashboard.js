@@ -19,7 +19,7 @@ import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, i
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
 import { getGoals } from './modules/goals.js';
-import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceSplit } from './modules/split.js';
+import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceSplit, setKnownPeople } from './modules/split.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -121,6 +121,7 @@ onAuthStateChanged(auth, user => {
     // Income and debts first, so the home totals are complete on the first paint
     allIncome = loadFromCache(user.uid, 'income') || [];
     allDebts = loadFromCache(user.uid, 'debts') || [];
+    setKnownPeople(allDebts);
     const cached = loadFromCache(user.uid);
     if (cached && cached.length) {
       // Render from cache instantly — no skeleton delay
@@ -332,6 +333,7 @@ async function loadDebts() {
     }).concat(shared);
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
     saveToCache(currentUser.uid, allDebts, 'debts');
+    setKnownPeople(allDebts);
     updateDebtCards();
   } catch (e) { console.error("Debt load error:", e); }
 }
