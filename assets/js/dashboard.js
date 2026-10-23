@@ -341,6 +341,9 @@ function moneyWhole(n) {
   const c = getCurrencyInfo(getCurrency());
   return `${c.symbol} ${Math.round(n).toLocaleString(c.locale)}`;
 }
+// Bars and goal rings fill up on Home's first paint only; later redraws (sync, budget, goals) just update them
+let growBars = true;
+
 // The hero total counts up (or down) to its new value; instant when the user prefers less motion
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let spentFrame = 0;
@@ -481,6 +484,9 @@ function renderHome() {
     </li>`;
   }).join("") : `<li class="home-empty">No expenses this month yet.</li>`;
 
+  document.getElementById("home-categories").classList.toggle("grow", growBars);
+  document.getElementById("home-goals")?.classList.toggle("grow", growBars);
+  if (monthAll.length || getGoals().length) growBars = false; // keep it for the first paint that has something to show
   renderDue();
 }
 

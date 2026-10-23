@@ -990,3 +990,39 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
   .goal-card.celebrate, .goal-card.celebrate .goal-ring, .goal-card.celebrate .goal-ring svg { animation: none; }
   .goal-burst { display: none; }
 }
+
+/* =====================
+   MOTION: smooth page changes, Home settling in, tactile presses.
+   The global prefers-reduced-motion rule (style.css) turns all of this off.
+===================== */
+/* Cross-fade between pages (native View Transitions); the bottom nav stays put */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; animation-timing-function: var(--ease-smooth); }
+.bottom-nav { view-transition-name: bottom-nav; }
+
+/* Home: the hero and cards rise in one after another */
+#page-dashboard > * { animation: home-rise 520ms var(--ease-smooth) both; }
+#page-dashboard > :nth-child(2) { animation-delay: 60ms; }
+#page-dashboard > :nth-child(3) { animation-delay: 120ms; }
+#page-dashboard > :nth-child(4) { animation-delay: 180ms; }
+#page-dashboard > :nth-child(5) { animation-delay: 240ms; }
+#page-dashboard > :nth-child(n+6) { animation-delay: 300ms; }
+@keyframes home-rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* First paint only (dashboard.js growBars): bars grow from the left, goal rings fill, one after another */
+@property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
+.grow .glance-bar span { transform-origin: left center; animation: bar-grow 800ms var(--ease-smooth) both; animation-delay: 250ms; }
+.grow .goal-ring { animation: ring-fill 1000ms var(--ease-smooth) both; animation-delay: 300ms; }
+.grow > li:nth-child(2) .glance-bar span, .grow > li:nth-child(2) .goal-ring { animation-delay: 330ms; }
+.grow > li:nth-child(3) .glance-bar span, .grow > li:nth-child(3) .goal-ring { animation-delay: 410ms; }
+.grow > li:nth-child(4) .glance-bar span, .grow > li:nth-child(4) .goal-ring { animation-delay: 490ms; }
+.grow > li:nth-child(n+5) .glance-bar span, .grow > li:nth-child(n+5) .goal-ring { animation-delay: 570ms; }
+@keyframes bar-grow { from { transform: scaleX(0); } }
+@keyframes ring-fill { from { --p: 0; } }
+
+/* Presses: a quick squeeze so taps feel physical */
+.home-add, .home-budget-btn, .goals-new, .due-add, .due-more, a.home-tile, .home-more {
+  transition: transform 120ms var(--ease-out), background var(--transition), border-color var(--transition), box-shadow var(--transition), filter var(--transition);
+}
+.home-add:active, .home-budget-btn:active, .goals-new:active, .due-add:active, .due-more:active { transform: scale(0.97); }
+a.home-tile:active { transform: scale(0.985); }
