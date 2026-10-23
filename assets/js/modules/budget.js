@@ -1,24 +1,54 @@
-// budget.js — A monthly spending limit, overall and per category, kept on this device
-// (like the currency and reminder time). Home reads it through getBudget() and redraws on
-// the 'spendwise:budget' event. Opened from the profile menu or Home's "Set a budget" link.
+// budget.js — A monthly spending limit, overall and per category, saved to the user's
+// settings in Firestore (settings.js) with a local copy so Home can read it at once.
+// Home reads it through getBudget() and redraws on the 'spendwise:budget' event.
+// Opened from the profile menu or Home's "Set a budget" link.
+import { auth } from '../config/firebase.js';
 import { EXPENSE_CATEGORIES } from '../utils/helpers.js';
+import { onSettings, saveSettings } from './settings.js';
+import { showToast } from './page-shell.js';
 
-const KEY = 'spendwise_budget';
+const LEGACY_KEY = 'spendwise_budget'; // before the budget was synced: one per device
+const cacheKey = () => auth.currentUser && LEGACY_KEY + ':' + auth.currentUser.uid;
+const EMPTY = () => ({ total: null, cats: {} });
+
+function normalize(b) {
+  return b && typeof b === 'object' ? { total: b.total > 0 ? b.total : null, cats: b.cats || {} } : EMPTY();
+}
+
+function readLocal(key) {
+  try { return key ? normalize(JSON.parse(localStorage.getItem(key) || 'null')) : EMPTY(); } catch { return EMPTY(); }
+}
 
 export function getBudget() {
+  return readLocal(cacheKey());
+}
+
+function keepLocal(b) {
+  const key = cacheKey();
   try {
-    const b = JSON.parse(localStorage.getItem(KEY) || 'null');
-    return b && typeof b === 'object' ? { total: b.total > 0 ? b.total : null, cats: b.cats || {} } : { total: null, cats: {} };
-  } catch { return { total: null, cats: {} }; }
+    if (!key) return;
+    if (!b.total && !Object.keys(b.cats).length) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(b));
+  } catch { /* storage blocked: Firestore still has it */ }
+  window.dispatchEvent(new CustomEvent('spendwise:budget'));
 }
 
 function saveBudget(b) {
-  try {
-    if (!b.total && !Object.keys(b.cats).length) localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, JSON.stringify(b));
-  } catch { /* storage blocked: the budget just won't stick */ }
-  window.dispatchEvent(new CustomEvent('spendwise:budget'));
+  keepLocal(b);
+  saveSettings({ budget: b }).catch(e => {
+    console.error('Budget save failed:', e);
+    showToast("Couldn't save the budget to your account. Check your connection and try again.", 'error');
+  });
 }
+
+// After sign-in: take the account's budget, or move a budget saved on this device before syncing existed
+onSettings(s => {
+  if (s.budget !== undefined) return keepLocal(normalize(s.budget));
+  const legacy = readLocal(LEGACY_KEY);
+  if (!legacy.total && !Object.keys(legacy.cats).length) return;
+  saveSettings({ budget: legacy }).then(() => { try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ } }, () => {});
+  keepLocal(legacy);
+});
 
 const symbol = () => (window.getCurrencyInfo?.(window.getCurrency?.())?.symbol) || '₹';
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38,7 +68,7 @@ function buildDialog() {
         <h3 id="budget-title">Monthly budget</h3>
         <button type="button" class="modal-close-btn" data-budget-close aria-label="Close"><i data-lucide="x"></i></button>
       </div>
-      <p class="budget-note">Saved on this device. Home shows how much of it you've used.</p>
+      <p class="budget-note">Saved to your account. Home shows how much of it you've used.</p>
       <div class="form-group">
         <label for="budget-total">Monthly limit</label>
         <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="budget-total" placeholder="e.g. 30000" autocomplete="off"></div>
@@ -60,7 +90,7 @@ function buildDialog() {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => {
     if (e.target === overlay || e.target.closest('[data-budget-close]')) return closeDialog();
-    if (e.target.closest('[data-budget-clear]')) { saveBudget({ total: null, cats: {} }); return closeDialog(); }
+    if (e.target.closest('[data-budget-clear]')) { saveBudget(EMPTY()); return closeDialog(); }
     if (e.target.closest('[data-budget-save]')) save();
   });
   overlay.addEventListener('keydown', e => {
