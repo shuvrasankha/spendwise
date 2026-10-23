@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
@@ -344,22 +344,6 @@ function moneyWhole(n) {
 // Bars and goal rings fill up on Home's first paint only; later redraws (sync, budget, goals) just update them
 let growBars = true;
 
-// The hero total counts up (or down) to its new value; instant when the user prefers less motion
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-let spentFrame = 0;
-function countTo(el, value) {
-  const from = Number(el.dataset.value) || 0;
-  el.dataset.value = value;
-  cancelAnimationFrame(spentFrame);
-  if (reduceMotion.matches || document.hidden || from === value) { el.textContent = moneyWhole(value); return; }
-  const start = performance.now();
-  const step = now => {
-    const t = Math.min((now - start) / 700, 1);
-    el.textContent = moneyWhole(from + (value - from) * (1 - (1 - t) ** 3)); // ease-out cubic
-    if (t < 1) spentFrame = requestAnimationFrame(step);
-  };
-  spentFrame = requestAnimationFrame(step);
-}
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function renderHome() {
@@ -380,7 +364,7 @@ function renderHome() {
 
   // Hero: spent so far, against the budget (or else income), and the pace
   document.getElementById("home-month-label").textContent = `${monthName} so far`;
-  countTo(spentEl, spent);
+  countTo(spentEl, spent, moneyWhole);
   const meter = document.getElementById("home-meter");
   const meterText = document.getElementById("home-meter-text");
   const budget = getBudget();
@@ -446,23 +430,26 @@ function renderHome() {
   }
 
   // Tiles: income, saved, debts (owe and owed are separate directions)
-  document.getElementById("home-income").textContent = income > 0 ? moneyWhole(income) : "—";
+  const incomeEl = document.getElementById("home-income");
+  if (income > 0) countTo(incomeEl, income, moneyWhole);
+  else { incomeEl.textContent = "—"; delete incomeEl.dataset.value; }
   document.getElementById("home-income-sub").textContent = monthInc.length ? `${plural(monthInc.length, "entry", "entries")} this month` : "None this month";
   const savedEl = document.getElementById("home-saved");
   const savedSub = document.getElementById("home-saved-sub");
   if (income > 0) {
     const saved = income - spent;
-    savedEl.textContent = saved < 0 ? `−${moneyWhole(-saved)}` : moneyWhole(saved);
+    countTo(savedEl, saved, v => v < 0 ? `−${moneyWhole(-v)}` : moneyWhole(v));
     savedSub.textContent = saved < 0 ? "Overspent this month" : `${Math.round((saved / income) * 100)}% of income`;
   } else {
     savedEl.textContent = "—";
+    delete savedEl.dataset.value;
     savedSub.textContent = "Needs income entries";
   }
   if (invested > 0) savedSub.textContent += ` · ${moneyWhole(invested)} invested`;
   renderGoals(income > 0 ? income - spent : null);
   const active = allDebts.filter(d => !d.settled);
-  document.getElementById("home-owe").textContent = moneyWhole(active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0));
-  document.getElementById("home-owed").textContent = moneyWhole(active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0));
+  countTo(document.getElementById("home-owe"), active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
+  countTo(document.getElementById("home-owed"), active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
 
   // Where it went: this month's top categories, as labelled bars (readable without a chart)
   const byCat = {};
@@ -648,7 +635,7 @@ function updateExpenseCards() {
   const monthlyExpenses = spending.filter(e => e.date >= ms && e.date <= todayStr());
   const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
   
-  if (monthlyEl) monthlyEl.textContent = fmt(monthTotal);
+  if (monthlyEl) countTo(monthlyEl, monthTotal, fmt);
   const monthCountEl = document.getElementById("exp-monthly-count");
   if (monthCountEl) monthCountEl.textContent = monthlyExpenses.length + ' entr' + (monthlyExpenses.length !== 1 ? 'ies' : 'y');
   
@@ -656,13 +643,13 @@ function updateExpenseCards() {
   const yearlyExpenses = spending.filter(e => e.date && e.date.startsWith(yearStr));
   const yearTotal = yearlyExpenses.reduce((s, e) => s + e.amount, 0);
   
-  if (yearlyEl) yearlyEl.textContent = fmt(yearTotal);
+  if (yearlyEl) countTo(yearlyEl, yearTotal, fmt);
   const yearCountEl = document.getElementById("exp-yearly-count");
   if (yearCountEl) yearCountEl.textContent = yearlyExpenses.length + ' entr' + (yearlyExpenses.length !== 1 ? 'ies' : 'y');
   
   // Total
   const totalAmount = spending.reduce((s, e) => s + e.amount, 0);
-  if (totalEl) totalEl.textContent = fmt(totalAmount);
+  if (totalEl) countTo(totalEl, totalAmount, fmt);
   const totalCountEl = document.getElementById("exp-total-count");
   if (totalCountEl) totalCountEl.textContent = spending.length + ' entr' + (spending.length !== 1 ? 'ies' : 'y');
   
@@ -670,7 +657,7 @@ function updateExpenseCards() {
   const today = new Date();
   const dayOfMonth = today.getDate();
   const dailyAvg = dayOfMonth > 0 ? monthTotal / dayOfMonth : 0;
-  if (dailyAvgEl) dailyAvgEl.textContent = fmt(dailyAvg);
+  if (dailyAvgEl) countTo(dailyAvgEl, dailyAvg, fmt);
   const dailySubEl = document.getElementById("exp-daily-sub");
   if (dailySubEl) dailySubEl.textContent = `avg / day this month`;
 }

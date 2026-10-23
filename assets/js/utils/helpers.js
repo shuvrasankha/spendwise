@@ -75,6 +75,26 @@ export function goalPace(goal, today) {
   };
 }
 
+// Counts a money figure from what it shows now (0 the first time) to value, easing out over 700ms.
+// Instant with reduced motion, in a hidden tab, or when the value is unchanged. format: number → text.
+const countFrames = new WeakMap();
+export function countTo(el, value, format) {
+  const from = Number(el.dataset.value) || 0;
+  el.dataset.value = value;
+  cancelAnimationFrame(countFrames.get(el));
+  if (from === value || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.textContent = format(value);
+    return;
+  }
+  const start = performance.now();
+  const step = now => {
+    const t = Math.min((now - start) / 700, 1);
+    el.textContent = format(from + (value - from) * (1 - (1 - t) ** 3)); // ease-out cubic
+    if (t < 1) countFrames.set(el, requestAnimationFrame(step));
+  };
+  countFrames.set(el, requestAnimationFrame(step));
+}
+
 // ── Repeating expenses ───────────────────────────────────────────────────────
 // An expense with repeat: 'monthly' starts a series (same category and description).
 // The newest entry carrying a repeat field is the series' template; repeat: 'stopped' ends it.
