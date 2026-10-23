@@ -5,6 +5,7 @@
 import { auth } from '../config/firebase.js';
 import { callWorker, VAPID_PUBLIC_KEY } from '../config/ai.js';
 import { todayStr } from '../utils/helpers.js';
+import { onSettings, saveSettings } from './settings.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const TIME_KEY = 'spendwise_reminder_time';
@@ -90,6 +91,7 @@ async function onToggle() {
 
 async function onTimeChange() {
   try { localStorage.setItem(TIME_KEY, timeInput.value); } catch { /* ignore */ }
+  saveSettings({ remindAt: timeInput.value }).catch(e => console.error('Reminder time save failed:', e));
   if (!toggle.checked) return;
   try {
     const sub = await currentSubscription();
@@ -122,8 +124,24 @@ function buildUI() {
   return true;
 }
 
+// The account's reminder time wins over this device's; a time picked before syncing existed is uploaded once
+async function syncTime(s) {
+  if (!/^\d{2}:\d{2}$/.test(s.remindAt || '')) {
+    let local = null;
+    try { local = localStorage.getItem(TIME_KEY); } catch { /* ignore */ }
+    if (local) saveSettings({ remindAt: local }).catch(() => {});
+    return;
+  }
+  if (s.remindAt === timeInput.value) return;
+  timeInput.value = s.remindAt;
+  try { localStorage.setItem(TIME_KEY, s.remindAt); } catch { /* ignore */ }
+  const sub = toggle.checked && await currentSubscription();
+  if (sub) save(sub).catch(() => {});
+}
+
 async function init() {
   if (!buildUI()) return;
+  onSettings(syncTime);
 
   if (isIOS && !standalone) {
     toggle.disabled = true;
