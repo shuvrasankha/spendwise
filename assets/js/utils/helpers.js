@@ -103,6 +103,29 @@ export function financeScore({ income, spent, invested, budget, monthShare, owe,
   };
 }
 
+// An equal split of total between you and `others` people. Their shares are rounded to 2 places and
+// yours absorbs the rounding, so the parts always add back up to total.
+export function splitAmount(total, others) {
+  const each = Math.round((total / (others + 1)) * 100) / 100;
+  return { each, mine: Math.round((total - each * others) * 100) / 100 };
+}
+
+// A debt someone else recorded against your email, seen from your side: what they're owed, you owe.
+// Read-only here (firestore.rules › debts), so it is flagged shared.
+export function sharedDebtView(id, raw) {
+  return {
+    id,
+    amount: Number(raw.amount) || 0,
+    type: raw.type === 'they-owe' ? 'i-owe' : 'they-owe',
+    person: raw.fromName || 'Someone',
+    date: raw.date || '',
+    notes: raw.notes || '',
+    settled: raw.settled === true,
+    settledDate: raw.settledDate || '',
+    shared: true,
+  };
+}
+
 // Counts a money figure from what it shows now (0 the first time) to value, easing out over 700ms.
 // Instant with reduced motion, in a hidden tab, or when the value is unchanged. format: number → text.
 const countFrames = new WeakMap();

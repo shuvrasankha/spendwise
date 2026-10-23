@@ -4,6 +4,7 @@ import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
+import { fetchSharedDebts } from './modules/split.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -40,7 +41,8 @@ async function loadDebts() {
   if (!currentUser) return;
   try {
     const q = query(collection(db, 'debts'), where('uid', '==', currentUser.uid));
-    const snap = await getDocs(q);
+    // Plus debts others split with this account's email: shown, but only they can change them
+    const [snap, shared] = await Promise.all([getDocs(q), fetchSharedDebts(currentUser)]);
     allDebts = snap.docs.map(d => {
       const raw = d.data();
       const amt = parseFloat(raw.amount);
@@ -50,7 +52,7 @@ async function loadDebts() {
         amount: isNaN(amt) ? 0 : amt,
         settledDate: raw.settledDate || '',
       };
-    });
+    }).concat(shared);
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
     updateDebtSummary();
     renderDebts();
@@ -87,7 +89,7 @@ function updateDebtSummary() {
   document.getElementById('debt-owed-count').textContent = `${owed.length} open`;
 
   // Names used before, so a repeat person is picked rather than retyped
-  document.getElementById('debt-person-list').innerHTML = [...new Set(allDebts.map(d => d.person).filter(Boolean))]
+  document.getElementById('debt-person-list').innerHTML = [...new Set(allDebts.filter(d => !d.shared).map(d => d.person).filter(Boolean))]
     .map(p => `<option value="${escapeHtml(p)}"></option>`).join('');
 }
 
@@ -114,10 +116,10 @@ function renderDebts() {
     return;
   }
   list.innerHTML = active.map(d => {
-    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
+    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : '', d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
     const who = escapeHtml(d.person);
-    // offline entries have no record to update until they sync
-    const actions = d.pending ? '' : `
+    // offline entries have no record to update until they sync; shared ones are theirs to settle
+    const actions = d.pending || d.shared ? '' : `
       <button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Settle ${fmt(d.amount)} with ${who}">Settle</button>
       <button type="button" class="icon-btn" data-action="openDebtDeleteModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Delete debt with ${who}" title="Delete"><i data-lucide="trash-2"></i></button>`;
     return debtRow(d, meta, actions);
@@ -133,6 +135,7 @@ function renderDebtHistory() {
   document.getElementById('debt-settled-total').textContent = fmt(settled.reduce((s, d) => s + d.amount, 0));
   document.getElementById('debt-history-body').innerHTML = settled.map(d => {
     const meta = [d.type === 'they-owe' ? 'Paid you back' : 'You paid back', d.settledDate ? shortDay(d.settledDate) : ''].filter(Boolean).join(' · ');
+    if (d.shared) return debtRow(d, `${meta} · Added by them`, '');
     return debtRow(d, meta, `<button type="button" class="debt-action" data-action="openDebtReactivateModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Reopen debt with ${escapeHtml(d.person)}">Reopen</button>`);
   }).join('');
 }

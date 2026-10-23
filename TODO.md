@@ -7,9 +7,10 @@ Ranked by value for effort. Already shipped: budgets (overall and per category),
 - [x] **1. Budget that syncs across devices** — Small
   - Budgets live in `localStorage` (`assets/js/modules/budget.js`), so a phone budget never reaches the laptop and is lost when site data is cleared.
   - Store it in Firestore with the rest of the user's data.
-- [ ] **2. Split an expense** — Medium
+- [x] **2. Split an expense** — Medium
   - On the expense form: "Split with Ravi, Asha". Save your share as the expense and a "they owe me" debt for each person.
   - Today a dinner bill has to be entered twice (Expense, then Debts).
+  - With an email, the debt also shows (read-only) in that person's account. Needs the updated `firestore.rules` published.
 - [ ] **3. Bill-due alerts** — Small
   - "Netflix ₹649 due tomorrow" for repeating expenses.
   - The worker (`worker/src/push.js`) only sends the daily "log your spending" reminder; reuse its push and cron.

@@ -367,6 +367,14 @@
               </div>
             </div>
           </details>
+          <!-- Split: your share is saved as the expense, each person goes to Debts (modules/split.js) -->
+          <details class="form-more full-width split-more" id="exp-split">
+            <summary>Split with others <span class="form-more-hint" id="exp-split-hint"></span></summary>
+            <ul class="split-people form-group" id="split-people"></ul>
+            <button type="button" class="split-add" data-split-add><i data-lucide="user-plus" aria-hidden="true"></i>Add person</button>
+            <p class="split-summary" id="split-summary" aria-live="polite">Add the people who shared this. It is split equally.</p>
+            <p class="split-help">Add someone's email and, if they use SpendWise with it, the amount shows up in their Debts too.</p>
+          </details>
         </div>
         <div class="form-actions">
           <button class="btn-secondary btn-clear" data-action="resetForm" aria-label="Clear form">

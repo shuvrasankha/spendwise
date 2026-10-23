@@ -1071,3 +1071,24 @@ a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
 .score-part.weak .score-part-bar > span { background: var(--warning); }
 .score-part-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); }
 .score-part.weak .score-part-pct { color: var(--warning); font-weight: 700; }
+
+/* Split an expense: one row per person (name, optional email, remove), then the shares */
+.split-more > :not(summary) { margin-left: 14px; margin-right: 14px; }
+.split-people { list-style: none; padding: 0; margin-top: 4px; display: flex; flex-direction: column; gap: 8px; }
+.split-person { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 44px; gap: 8px; align-items: center; }
+.split-person input { min-height: 44px; width: 100%; }
+.split-person .split-remove { width: 44px; height: 44px; }
+.split-add {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 28px); min-height: 44px; margin-top: 10px;
+  border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--accent); font-weight: 700; font-size: 0.9375rem; cursor: pointer;
+}
+.split-add svg { width: 18px; height: 18px; }
+.split-add:hover { background: var(--accent-bg); border-color: var(--accent); }
+.split-summary { margin-top: 10px; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.split-help { margin-top: 4px; margin-bottom: 14px; font-size: 0.8125rem; color: var(--text2); }
+@media (max-width: 420px) {
+  .split-person { grid-template-columns: minmax(0, 1fr) 44px; }
+  .split-person .split-email { grid-column: 1; grid-row: 2; }
+  .split-person .split-remove { grid-row: 1 / span 2; grid-column: 2; }
+}
