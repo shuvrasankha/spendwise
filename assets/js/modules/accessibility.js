@@ -557,12 +557,4 @@
     initAccessibility();
   }
 
-  // Expose functions for use by other modules
-  window.a11y = {
-    storeLastFocus,
-    restoreFocus,
-    trapFocus,
-    getFocusableElements
-  };
-
 })();

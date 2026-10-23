@@ -4,7 +4,6 @@
 import { auth } from '../config/firebase.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-const PAGES = ['index.html', 'expense.html', 'income.html', 'history.html', 'debt.html', 'insights.html'];
 
 export function showToast(msg, type) {
   const t = document.getElementById('toast');
@@ -78,11 +77,6 @@ export function installMenus({ beforeLogout = () => {}, afterLogout = () => {} }
   window.closeMobileMenu = () => {
     document.getElementById('mobile-menu-overlay')?.classList.remove('open');
     document.getElementById('mobile-menu-panel')?.classList.remove('open');
-  };
-  window.navigateTo = (url) => {
-    window.closeMobileMenu();
-    // Only the app's own pages
-    if (PAGES.includes(url.split('#')[0].split('?')[0])) window.location.href = url;
   };
 }
 

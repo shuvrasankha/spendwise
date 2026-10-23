@@ -23,7 +23,7 @@ import { getBudget } from './modules/budget.js';
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
 // and Firestore Security Rules (uid-scoped data access).
 // To further restrict this key: Firebase Console → Project Settings → API key restrictions
-// → add your production domain (e.g. yourapp.netlify.app) under "Application restrictions".
+// → add shuvrasankha.github.io under "Application restrictions".
 
 
 // ── Security helpers ────────────────────────────────────────────────────────
@@ -37,18 +37,6 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-// dec: legacy migration decoder only.
-// Old Firestore records were stored with a XOR+base64 scheme.
-// Numbers (new-format records) need no decoding — return them directly.
-// NOTE: The XOR key has been removed for security. Legacy encoded data
-// will be returned as-is (base64 string). Migrate any remaining legacy
-// records to plain format via the Firebase console.
-function dec(encoded) {
-  if (typeof encoded !== "string") return encoded;  // plain number
-  // No longer decode XOR — return as-is for migration purposes
-  return encoded;
 }
 
 // ── sessionStorage cache helpers ──────────────────────────────────────────────
@@ -261,19 +249,15 @@ async function loadExpenses(isSilentSync = false) {
     const snap = await getDocs(q);
     allExpenses = snap.docs.map(d => {
       const raw = d.data();
-      // Detect plain-text records: if amount is a number or a numeric string,
-      // the record was NEVER XOR-encoded (legacy amounts are base64 gibberish).
-      const isPlain = raw.encoding === "plain"
-        || typeof raw.amount === "number"
-        || !isNaN(parseFloat(raw.amount));
-      const amt = isPlain ? parseFloat(raw.amount) : parseFloat(dec(raw.amount));
+      // Very old records hold base64 amounts, which parse as NaN and show as 0
+      const amt = parseFloat(raw.amount);
       return {
         id: d.id, ...raw,
         amount: isNaN(amt) ? 0 : amt,
         category: normalizeCategory(raw.category), // older names show under the merged ones
         cardName: raw.cardName || "",
-        description: isPlain ? (raw.description || "") : dec(raw.description),
-        notes: isPlain ? (raw.notes || "") : dec(raw.notes || "")
+        description: raw.description || "",
+        notes: raw.notes || ""
       };
     });
     // Sort client-side — no Firestore index required

@@ -751,10 +751,6 @@ function hidePreview() {
   }
 }
 
-function formatDateShort(ds) {
-  return new Date(ds + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')

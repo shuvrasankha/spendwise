@@ -39,10 +39,6 @@
     'closeMobileMenu': function() { if (window.closeMobileMenu) window.closeMobileMenu(); },
 
     // Dashboard
-    'showPageDashboard': function() { if (window.showPage) window.showPage('dashboard'); },
-    'showPageAdd': function() { if (window.showPage) window.showPage('add'); },
-    'showPageHistory': function() { if (window.showPage) window.showPage('history'); },
-    'showPageInsights': function() { if (window.showPage) window.showPage('insights'); },
     'switchTableTabDaily': function() { if (window.switchTableTab) window.switchTableTab('daily'); },
     'switchTableTabWeekly': function() { if (window.switchTableTab) window.switchTableTab('weekly'); },
     'switchTableTabMonthly': function() { if (window.switchTableTab) window.switchTableTab('monthly'); },
@@ -53,23 +49,11 @@
     // Expense form
     'addExpense': function() { if (window.addExpense) window.addExpense(); },
     'resetForm': function() { if (window.resetForm) window.resetForm(); },
-    'toggleCardNameUPI': function() { if (window.toggleCardName) window.toggleCardName('exp-card-name-wrap', 'UPI'); },
-    'toggleCardNameCash': function() { if (window.toggleCardName) window.toggleCardName('exp-card-name-wrap', 'Cash'); },
-    'toggleCardNameCredit': function() { if (window.toggleCardName) window.toggleCardName('exp-card-name-wrap', 'Credit Card'); },
-    'toggleCardNameDebit': function() { if (window.toggleCardName) window.toggleCardName('exp-card-name-wrap', 'Debit Card'); },
-    'toggleCardNameNet': function() { if (window.toggleCardName) window.toggleCardName('exp-card-name-wrap', 'Net Banking'); },
-    'toggleCardNameOther': function() { if (window.toggleCardName) window.toggleCardName('exp-card-name-wrap', 'Other'); },
 
     // Edit modal
     'closeEditModal': function() { if (window.closeEditModal) window.closeEditModal(); },
     'saveEditExpense': function() { if (window.saveEditExpense) window.saveEditExpense(); },
     'deleteFromEdit': function() { if (window.deleteFromEdit) window.deleteFromEdit(); },
-    'toggleEditCardNameUPI': function() { if (window.toggleCardName) window.toggleCardName('edit-card-name-wrap', 'UPI'); },
-    'toggleEditCardNameCash': function() { if (window.toggleCardName) window.toggleCardName('edit-card-name-wrap', 'Cash'); },
-    'toggleEditCardNameCredit': function() { if (window.toggleCardName) window.toggleCardName('edit-card-name-wrap', 'Credit Card'); },
-    'toggleEditCardNameDebit': function() { if (window.toggleCardName) window.toggleCardName('edit-card-name-wrap', 'Debit Card'); },
-    'toggleEditCardNameNet': function() { if (window.toggleCardName) window.toggleCardName('edit-card-name-wrap', 'Net Banking'); },
-    'toggleEditCardNameOther': function() { if (window.toggleCardName) window.toggleCardName('edit-card-name-wrap', 'Other'); },
 
     // Delete modal
     'closeModal': function() { if (window.closeModal) window.closeModal(); },
@@ -81,8 +65,6 @@
     // Income
     'addIncome': function() { if (window.addIncome) window.addIncome(); },
     'resetIncomeForm': function() { if (window.resetIncomeForm) window.resetIncomeForm(); },
-    'toggleIncEditBankOnline': function() { if (window.toggleIncEditBank) window.toggleIncEditBank('Online'); },
-    'toggleIncEditBankCash': function() { if (window.toggleIncEditBank) window.toggleIncEditBank('Cash'); },
     'closeIncEditModal': function() { if (window.closeIncEditModal) window.closeIncEditModal(); },
     'saveEditIncome': function() { if (window.saveEditIncome) window.saveEditIncome(); },
     'deleteFromIncomeEdit': function() { if (window.deleteFromIncomeEdit) window.deleteFromIncomeEdit(); },
@@ -130,11 +112,6 @@
 
     // Voice
     'openVoiceModal': function() { if (window.openVoiceModal) window.openVoiceModal(); },
-    'closeVoiceModal': function() { if (window.closeVoiceModal) window.closeVoiceModal(); },
-    'startVoiceRecording': function() { if (window.startVoiceRecording) window.startVoiceRecording(); },
-    'sendVoiceCommand': function() { if (window.sendVoiceCommand) window.sendVoiceCommand(); },
-    'cancelVoice': function() { if (window.cancelVoice) window.cancelVoice(); },
-    'confirmVoice': function() { if (window.confirmVoice) window.confirmVoice(); },
   };
 
   // Initialize event delegation
@@ -257,7 +234,4 @@
   } else {
     initEventDelegation();
   }
-
-  // Expose for manual re-initialization if needed
-  window.initEventDelegation = initEventDelegation;
 })();

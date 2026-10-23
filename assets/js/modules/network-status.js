@@ -174,10 +174,6 @@
 
   window.triggerSync = triggerSync;
 
-  window.syncOfflineData = function() {
-    triggerSync();
-  };
-
   document.addEventListener('DOMContentLoaded', initNetworkStatus);
 
   if (document.readyState !== 'loading') {
