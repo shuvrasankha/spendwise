@@ -14,6 +14,25 @@ export const EXPENSE_CATEGORIES = [
   'Home & Rent', 'Health', 'Entertainment', 'Education', 'Savings & Investments', 'Other'
 ];
 
+// What each category covers, for the AI that reads voice commands and receipts. Without it a
+// petrol pump bill had no obvious home and landed in Other.
+export const CATEGORY_EXAMPLES = {
+  'Food & Dining': 'restaurants, cafes, Swiggy, Zomato, takeaway, snacks, tea',
+  'Groceries': 'supermarkets, kirana stores, Blinkit, Zepto, BigBasket, vegetables, milk',
+  'Transport': 'petrol, diesel, CNG, fuel stations, EV charging, parking, tolls, FASTag, cabs, autos, metro, bus, bike or car service',
+  'Travel': 'flights, trains, IRCTC, hotels, holiday bookings',
+  'Shopping': 'clothes, electronics, Amazon, Flipkart, salon, personal care, household items',
+  'Bills & Utilities': 'electricity, water, gas cylinder, mobile recharge, broadband, DTH, subscriptions',
+  'Home & Rent': 'rent, maintenance, repairs, furniture',
+  'Health': 'pharmacy, medicines, doctor, hospital, lab tests, gym',
+  'Entertainment': 'movies, events, games, streaming one-offs',
+  'Education': 'school or college fees, courses, books, stationery',
+  'Savings & Investments': 'SIP, mutual funds, stocks, FD, RD, insurance premiums',
+  'Other': 'only when nothing above fits'
+};
+// One line per category for an AI prompt: "- Transport: petrol, diesel, …"
+export const categoryGuide = () => EXPENSE_CATEGORIES.map(c => `- ${c}: ${CATEGORY_EXAMPLES[c]}`).join('\n');
+
 // Older names, merged or renamed. Saved entries keep the old name; they are shown and
 // counted under the new one, and editing an entry saves the new name.
 export const CATEGORY_ALIASES = {

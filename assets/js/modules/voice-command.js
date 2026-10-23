@@ -4,7 +4,7 @@
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
 import { parseSms } from './sms-parse.js';
-import { EXPENSE_CATEGORIES, normalizeCategory } from '../utils/helpers.js';
+import { EXPENSE_CATEGORIES, normalizeCategory, categoryGuide } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -272,7 +272,8 @@ RULES:
 3. Extract the amount, date, and other relevant fields for EACH transaction separately.
 4. If no date is mentioned, use today's date: ${today}
 5. If the user says "yesterday" (or its equivalent in any language), compute the correct date.
-6. For expenses, pick the best matching category from: ${EXPENSE_CATEGORIES.join(', ')}
+6. For expenses, pick the best matching category, using its exact name from this list:
+${categoryGuide()}
 7. For expenses, pick payment method from: ${PAYMENT_METHODS.join(', ')}. Default to "UPI" if not mentioned.
 8. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), and bank if mentioned.
 9. For debts, determining the type is CRITICAL. You MUST carefully distinguish between:
@@ -808,9 +809,11 @@ async function scanReceipt(file) {
   const today = todayStr();
   const system = `You read shop receipts and bills for an Indian expense tracker. Today is ${today}.
 Reply with ONLY one JSON object, no other text:
-{"type":"expense","amount":<the final total paid, a number>,"date":"YYYY-MM-DD","category":"<one of: ${EXPENSE_CATEGORIES.join(', ')}>","payment":"<one of: ${PAYMENT_METHODS.join(', ')}, or leave out if not shown>","description":"<shop or merchant name, under 60 characters>"}
+{"type":"expense","amount":<the final total paid, a number>,"date":"YYYY-MM-DD","category":"<exact name from the list below>","payment":"<one of: ${PAYMENT_METHODS.join(', ')}, or leave out if not shown>","description":"<shop or merchant name, under 60 characters>"}
 Use the grand total after taxes and discounts, never a subtotal or a single item. If the date can't be read, use null.
-If the photo is not a receipt or bill, reply {"type":"none"}.`;
+If the photo is not a receipt or bill, reply {"type":"none"}.
+Pick the category from what the shop sells, using its exact name:
+${categoryGuide()}`;
   await parseWithAI(RECEIPT_MODEL, [
     { role: 'system', content: system },
     { role: 'user', content: [
@@ -822,9 +825,10 @@ If the photo is not a receipt or bill, reply {"type":"none"}.`;
   entries => entries.filter(e => e.type === 'expense').map(e => (e.date > today ? { ...e, date: today } : e)));
 }
 
-function pickReceipt() {
+// Phones open the camera straight away; desktops ignore `capture` and show the file picker
+function pickReceipt(inputId = 'voice-receipt-camera') {
   openVoiceModal();
-  document.getElementById('voice-receipt-input')?.click();
+  document.getElementById(inputId)?.click();
 }
 
 // ── Manual text submit ───────────────────────────────────────────────────────
@@ -990,11 +994,14 @@ function initVoiceUI() {
   if (sendBtn) sendBtn.addEventListener('click', () => handleTextSubmit());
   document.getElementById('voice-paste-btn')?.addEventListener('click', pasteSms);
   document.getElementById('voice-receipt-btn')?.addEventListener('click', () => document.getElementById('voice-receipt-input')?.click());
-  document.getElementById('btn-scan-receipt')?.addEventListener('click', pickReceipt);
-  document.getElementById('voice-receipt-input')?.addEventListener('change', (e) => {
-    scanReceipt(e.target.files?.[0]);
-    e.target.value = ''; // the same photo can be picked again
-  });
+  document.getElementById('voice-receipt-camera-btn')?.addEventListener('click', () => document.getElementById('voice-receipt-camera')?.click());
+  document.getElementById('btn-scan-receipt')?.addEventListener('click', () => pickReceipt());
+  for (const id of ['voice-receipt-input', 'voice-receipt-camera']) {
+    document.getElementById(id)?.addEventListener('change', (e) => {
+      scanReceipt(e.target.files?.[0]);
+      e.target.value = ''; // the same photo can be picked again
+    });
+  }
 
   // Enter key on text input
   const textInput = document.getElementById('voice-text-input');
