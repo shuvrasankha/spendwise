@@ -28,3 +28,9 @@ test('savings are not spending, under the old name or the new', () => {
   assert.equal(isSpending({ category: 'Savings & Investments' }), false);
   assert.equal(isSpending({ category: 'Rent' }), true);
 });
+
+test('every category tells the AI what it covers, and fuel is Transport', async () => {
+  const { CATEGORY_EXAMPLES, categoryGuide } = await import('../assets/js/utils/helpers.js');
+  for (const c of EXPENSE_CATEGORIES) assert.ok(CATEGORY_EXAMPLES[c], c);
+  assert.match(categoryGuide(), /^- Transport: petrol, diesel/m);
+});
