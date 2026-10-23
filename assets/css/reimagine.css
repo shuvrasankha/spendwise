@@ -186,6 +186,8 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 
 .home-section-head h3, .chart-header h3 { font-size: 1.0625rem; font-weight: 700; }
 .home-more { color: var(--accent); font-weight: 600; }
+.home-empty a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.home-empty a:hover { text-decoration: underline; }
 
 /* =====================
    HERO: the month on an ink card, the total in coin gold

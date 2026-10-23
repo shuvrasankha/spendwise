@@ -408,10 +408,17 @@ function renderHome() {
   const todayTotal = todays.reduce((sum, e) => sum + e.amount, 0);
   document.getElementById("home-today-total").textContent = todays.length ? `${moneyWhole(todayTotal)} · ${plural(todays.length, "entry", "entries")}` : "";
   const list = document.getElementById("home-today-list");
+  // A new account (no expenses even after loading them) is pointed at its first entry
+  const firstTime = expensesFresh && !allExpenses.length;
+  list.parentElement.querySelector(".home-more")?.classList.toggle("hidden", firstTime); // nothing to list yet
   if (!todays.length) {
     const li = document.createElement("li");
     li.className = "home-empty";
-    li.textContent = "Nothing added today yet.";
+    const add = document.createElement("a");
+    add.href = "expense.html";
+    add.textContent = firstTime ? "Add your first expense" : "Add an expense";
+    if (firstTime) li.append(add, " to start tracking. It takes a few seconds.");
+    else li.append("Nothing added today yet. ", add);
     list.replaceChildren(li);
   } else {
     list.replaceChildren(...todays.slice(0, 5).map(e => {
@@ -503,7 +510,7 @@ function renderHome() {
       <div class="glance-bar${cap && cap.state !== "ok" ? " " + cap.state : ""}" aria-hidden="true"><span style="width:${Math.max(width, 2).toFixed(1)}%"></span></div>
       <div class="glance-cat-meta">${meta}</div>
     </li>`;
-  }).join("") : `<li class="home-empty">No expenses this month yet.</li>`;
+  }).join("") : `<li class="home-empty">${firstTime ? "Your top categories show here once you add expenses." : "No expenses this month yet."}</li>`;
 
   document.getElementById("home-categories").classList.toggle("grow", growBars);
   document.getElementById("home-goals")?.classList.toggle("grow", growBars);
