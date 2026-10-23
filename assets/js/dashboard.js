@@ -1274,11 +1274,17 @@ const HISTORY_TABS = {
   },
 };
 
+// [from, to] of the chosen date range
+function historyDates() {
+  const $id = id => document.getElementById(id);
+  return historyRange($id("hist-range")?.value, new Date(), { from: $id("hist-from")?.value, to: $id("hist-to")?.value });
+}
+
 // The rows on screen: tab, dates, chips, search and sort applied (also what Download exports)
 function historyRows() {
   const t = HISTORY_TABS[hist.tab];
   const $id = id => document.getElementById(id);
-  const [from, to] = historyRange($id("hist-range")?.value, new Date(), { from: $id("hist-from")?.value, to: $id("hist-to")?.value });
+  const [from, to] = historyDates();
   return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, tagsOf: t.tags, sort: $id("hist-sort")?.value });
 }
 
@@ -1298,9 +1304,13 @@ function renderHistory() {
   chips.classList.toggle("hidden", kinds.length < 2);
   chips.innerHTML = kinds.map(k => `<button type="button" class="chip" data-hist-kind="${escapeHtml(k)}" aria-pressed="${hist.kinds.has(k)}">${escapeHtml(k)}</button>`).join("");
 
-  // Tags (#goa2026): one tap shows that trip's or event's entries
+  // Tags (#goa2026) used in the chosen dates, plus the one searched for: one tap shows that trip's
+  // or event's entries
   const tag = searchTag(document.getElementById("hist-search").value);
-  const tags = t.tags ? tagsInUse(all, t.tags) : [];
+  const [from, to] = historyDates();
+  const inDates = r => (!from || r.date >= from) && (!to || r.date <= to);
+  const tags = t.tags
+    ? tagsInUse(all.filter(r => inDates(r) || t.tags(r).some(g => String(g).toLowerCase() === tag)), t.tags) : [];
   const tagChips = document.getElementById("hist-tags");
   tagChips.classList.toggle("hidden", !tags.length);
   tagChips.innerHTML = tags.map(g => `<button type="button" class="chip" data-hist-tag="${escapeHtml(g)}" aria-pressed="${g.toLowerCase() === tag}">#${escapeHtml(g)}</button>`).join("");
