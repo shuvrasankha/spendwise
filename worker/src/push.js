@@ -110,7 +110,6 @@ export async function readDebt(id, idToken, env) {
     uid: f.uid?.stringValue,
     type: f.type?.stringValue,
     withEmail: f.withEmail?.stringValue,
-    fromName: f.fromName?.stringValue || 'Someone',
     amount: Number(f.amount?.doubleValue ?? f.amount?.integerValue),
     notes: f.notes?.stringValue || '',
     created: Date.parse(doc.createTime),
@@ -118,12 +117,13 @@ export async function readDebt(id, idToken, env) {
 }
 
 // What the person a debt was shared with sees, from their side: the sender's "they owe me" is
-// "you owe" for them. symbol is the sender's currency sign, if one.
-export function debtMessage(debt, debtId, symbol) {
+// "you owe" for them. symbol is the sender's currency sign, if one. from is the sender's verified
+// sign-in email, never their display name, which anyone can set to "HDFC Bank".
+export function debtMessage(debt, debtId, symbol, from) {
   const amount = `${symbol || ''}${debt.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-  const owed = debt.type === 'i-owe' ? `${debt.fromName} owes you ${amount}` : `You owe ${amount}`;
+  const owed = debt.type === 'i-owe' ? `${from} owes you ${amount}` : `You owe ${amount}`;
   return JSON.stringify({
-    title: `${debt.fromName} ${debt.notes.startsWith('Split:') ? 'split a bill' : 'added a debt'} with you`.slice(0, 120),
+    title: `${from} ${debt.notes.startsWith('Split:') ? 'split a bill' : 'added a debt'} with you`.slice(0, 120),
     body: `${owed}${debt.notes ? ` · ${debt.notes}` : ''}`.slice(0, 200),
     url: 'debt.html',
     tag: `debt-${debtId}`,
@@ -210,14 +210,14 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
     if (!DOC_ID.test(debtId || '')) return [400, { error: 'Invalid debt' }];
     // Only the sender's own, just-created debt that names someone by email
     const debt = await readDebt(debtId, idToken, env);
-    if (!debt || debt.uid !== uid || !debt.withEmail || !(Date.now() - debt.created < DEBT_FRESH_MS)) return [404, { error: 'No such shared debt' }];
+    if (!email || !debt || debt.uid !== uid || !debt.withEmail || !(Date.now() - debt.created < DEBT_FRESH_MS)) return [404, { error: 'No such shared debt' }];
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM debt_pushes WHERE uid = ?1 AND sent_at > ?2')
       .bind(uid, Date.now() - 864e5).first();
     if (n >= DEBT_PUSHES_PER_DAY) return [429, { error: 'Too many notifications today' }];
     const claim = await env.DB.prepare('INSERT OR IGNORE INTO debt_pushes (debt_id, uid, sent_at) VALUES (?1, ?2, ?3)')
       .bind(debtId, uid, Date.now()).run();
     if (!claim.meta?.changes) return [200, { sent: 0 }]; // already announced
-    const message = debtMessage(debt, debtId, /^\p{Sc}$/u.test(symbol || '') ? symbol : '');
+    const message = debtMessage(debt, debtId, /^\p{Sc}$/u.test(symbol || '') ? symbol : '', email);
     const { results } = await env.DB.prepare('SELECT endpoint, p256dh, auth FROM push_keys WHERE email = ?1').bind(debt.withEmail).all();
     let sent = 0;
     for (const device of results) {
