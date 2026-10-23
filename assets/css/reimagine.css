@@ -1000,14 +1000,18 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; animation-timing-function: var(--ease-smooth); }
 .bottom-nav { view-transition-name: bottom-nav; }
 
-/* Home: the hero and cards rise in one after another */
-#page-dashboard > * { animation: home-rise 520ms var(--ease-smooth) both; }
-#page-dashboard > :nth-child(2) { animation-delay: 60ms; }
-#page-dashboard > :nth-child(3) { animation-delay: 120ms; }
-#page-dashboard > :nth-child(4) { animation-delay: 180ms; }
-#page-dashboard > :nth-child(5) { animation-delay: 240ms; }
-#page-dashboard > :nth-child(n+6) { animation-delay: 300ms; }
+/* Every page: the title, hero and cards rise in one after another (Home, Expenses, Income, Debts, History, Insights) */
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > * { animation: home-rise 520ms var(--ease-smooth) both; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(2) { animation-delay: 60ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(3) { animation-delay: 120ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(4) { animation-delay: 180ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(5) { animation-delay: 240ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(n+6) { animation-delay: 300ms; }
 @keyframes home-rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* Content that arrives later (History results after a filter, Insights figures after the skeleton) fades up in place */
+.hist-list > *, #insights-glance > :not(.ins-skeleton) { animation: content-in 280ms var(--ease-smooth) both; }
+@keyframes content-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* First paint only (dashboard.js growBars): bars grow from the left, goal rings fill, one after another */
 @property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
@@ -1020,9 +1024,11 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 @keyframes bar-grow { from { transform: scaleX(0); } }
 @keyframes ring-fill { from { --p: 0; } }
 
-/* Presses: a quick squeeze so taps feel physical */
-.home-add, .home-budget-btn, .goals-new, .due-add, .due-more, a.home-tile, .home-more {
-  transition: transform 120ms var(--ease-out), background var(--transition), border-color var(--transition), box-shadow var(--transition), filter var(--transition);
+/* Presses: a quick squeeze so taps feel physical, on every page */
+.home-add, .home-budget-btn, .goals-new, .due-add, .due-more, a.home-tile, .home-more,
+.chip, .seg-btn, .cat-tile, .hist-row, .btn-primary, .btn-secondary {
+  transition: transform 120ms var(--ease-out), background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition), filter var(--transition), opacity var(--transition);
 }
-.home-add:active, .home-budget-btn:active, .goals-new:active, .due-add:active, .due-more:active { transform: scale(0.97); }
-a.home-tile:active { transform: scale(0.985); }
+.home-add:active, .home-budget-btn:active, .goals-new:active, .due-add:active, .due-more:active,
+.chip:active, .seg-btn:active, .cat-tile:active, .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
+a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
