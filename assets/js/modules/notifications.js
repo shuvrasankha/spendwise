@@ -7,14 +7,16 @@ import { fetchSharedDebts } from './split.js';
 import { notificationsFrom, escapeHtml, shortDay } from '../utils/helpers.js';
 
 const SEEN_KEY = 'spendwise_notif_seen_'; // + uid: ids of items already shown
-let user = null, items = [], seen = new Set(), wrap, btn, panel, list, badge;
+const CLEARED_KEY = 'spendwise_notif_cleared_'; // + uid: ids cleared from the list (the debts stay)
+let user = null, all = [], items = [], seen = new Set(), cleared = new Set(), wrap, btn, panel, list, badge, clearAll;
 
-function loadSeen() {
-  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY + user.uid) || '[]')); } catch { return new Set(); }
+function loadIds(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key + user.uid) || '[]')); } catch { return new Set(); }
 }
-function saveSeen() {
-  try { localStorage.setItem(SEEN_KEY + user.uid, JSON.stringify([...seen].slice(-300))); } catch { /* private mode */ }
+function saveIds(key, ids) {
+  try { localStorage.setItem(key + user.uid, JSON.stringify([...ids].slice(-300))); } catch { /* private mode */ }
 }
+const visible = () => { items = all.filter(i => !cleared.has(i.id)); };
 
 function build() {
   const theme = document.getElementById('theme-btn');
@@ -26,7 +28,10 @@ function build() {
       <i data-lucide="bell" aria-hidden="true"></i><span class="notif-badge hidden" id="notif-badge" aria-hidden="true"></span>
     </button>
     <section class="notif-panel hidden" id="notif-panel" aria-labelledby="notif-title">
-      <h2 class="notif-title" id="notif-title">Notifications</h2>
+      <div class="notif-head">
+        <h2 class="notif-title" id="notif-title">Notifications</h2>
+        <button type="button" class="notif-clear-all" id="notif-clear-all">Clear all</button>
+      </div>
       <ul class="notif-list" id="notif-list"></ul>
     </section>`;
   theme.before(wrap);
@@ -34,8 +39,19 @@ function build() {
   panel = wrap.querySelector('#notif-panel');
   list = wrap.querySelector('#notif-list');
   badge = wrap.querySelector('#notif-badge');
+  clearAll = wrap.querySelector('#notif-clear-all');
+  clearAll.addEventListener('click', () => clear(items.map(i => i.id)));
+  list.addEventListener('click', e => {
+    const x = e.target.closest('[data-notif-clear]');
+    if (!x) return;
+    // keep focus in the panel: on the next item's clear button, else Clear all
+    const next = x.closest('li').nextElementSibling?.querySelector('[data-notif-clear]')?.dataset.notifClear;
+    clear([x.dataset.notifClear]);
+    (next && list.querySelector(`[data-notif-clear="${CSS.escape(next)}"]`) || clearAll).focus();
+  });
   if (window.lucide) lucide.createIcons();
 
+  panel.addEventListener('click', e => e.stopPropagation()); // a removed row isn't "outside"
   btn.addEventListener('click', e => { e.stopPropagation(); panel.classList.contains('hidden') ? open() : close(); });
   document.addEventListener('click', e => { if (!wrap.contains(e.target)) close(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.classList.contains('hidden')) { close(); btn.focus(); } });
@@ -57,6 +73,7 @@ function render() {
     const owed = i.type === 'i-owe' ? `You owe ${money(i.amount)}` : `${i.person} owes you ${money(i.amount)}`;
     const detail = [i.kind === 'split' ? owed : '', i.note].filter(Boolean).join(' · ');
     return `<li class="notif-item${seen.has(i.id) ? '' : ' unread'}">
+      <button type="button" class="notif-clear" data-notif-clear="${escapeHtml(i.id)}" aria-label="Clear: ${escapeHtml(title)}" title="Clear"><i data-lucide="x" aria-hidden="true"></i></button>
       <a href="debt.html">
         <span class="notif-icon ${i.kind}" aria-hidden="true"><i data-lucide="${i.kind === 'split' ? 'users' : 'check'}"></i></span>
         <span class="notif-text">
@@ -66,8 +83,18 @@ function render() {
         </span>
       </a>
     </li>`;
-  }).join('') : `<li class="notif-empty">Nothing yet. When someone splits a bill or adds a debt with your email, it shows up here.</li>`;
+  }).join('') : `<li class="notif-empty">${all.length ? "You're all caught up." : 'Nothing yet. When someone splits a bill or adds a debt with your email, it shows up here.'}</li>`;
+  clearAll.classList.toggle('hidden', !items.length);
   if (window.lucide) lucide.createIcons();
+}
+
+function clear(ids) {
+  ids.forEach(id => { cleared.add(id); seen.add(id); });
+  saveIds(CLEARED_KEY, cleared);
+  saveIds(SEEN_KEY, seen);
+  visible();
+  updateBadge();
+  render();
 }
 
 function open() {
@@ -78,7 +105,7 @@ function open() {
   panel.classList.remove('hidden');
   btn.setAttribute('aria-expanded', 'true');
   items.forEach(i => seen.add(i.id));
-  saveSeen();
+  saveIds(SEEN_KEY, seen);
   updateBadge();
 }
 
@@ -90,7 +117,8 @@ function close() {
 
 async function refresh() {
   if (!user) return;
-  items = notificationsFrom(await fetchSharedDebts(user));
+  all = notificationsFrom(await fetchSharedDebts(user));
+  visible();
   updateBadge();
   if (!panel.classList.contains('hidden')) render();
 }
@@ -99,7 +127,8 @@ onAuthStateChanged(auth, u => {
   user = u;
   if (!u) { wrap?.remove(); wrap = null; return; }
   if (!wrap && !build()) return;
-  seen = loadSeen();
+  seen = loadIds(SEEN_KEY);
+  cleared = loadIds(CLEARED_KEY);
   refresh();
 });
 // Back to the app after a while (or from tapping a push): pick up anything new
