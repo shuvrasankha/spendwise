@@ -6,7 +6,8 @@ import { getSetting, onSettings, saveSettings } from './settings.js';
 import { showToast } from './page-shell.js';
 
 const MAX_GOALS = 20; // the Firestore rule allows this many
-const changed = () => window.dispatchEvent(new CustomEvent('spendwise:goals'));
+// detail.completed: id of a goal this change just took past its target (Home celebrates it once)
+const changed = completed => window.dispatchEvent(new CustomEvent('spendwise:goals', { detail: { completed } }));
 
 export function getGoals() {
   const list = getSetting('goals');
@@ -15,15 +16,15 @@ export function getGoals() {
     : [];
 }
 
-function saveGoals(list) {
+function saveGoals(list, completed = null) {
   saveSettings({ goals: list }).catch(e => {
     console.error('Goals save failed:', e);
     showToast("Couldn't save the goal to your account. Check your connection and try again.", 'error');
   });
-  changed();
+  changed(completed);
 }
 
-onSettings(changed);
+onSettings(() => changed());
 
 const symbol = () => (window.getCurrencyInfo?.(window.getCurrency?.())?.symbol) || '₹';
 const num = v => { const n = parseFloat(String(v).replace(/[^\d.]/g, '')); return n > 0 ? Math.round(n * 100) / 100 : null; };
@@ -96,10 +97,12 @@ function save() {
   const $ = id => overlay.querySelector('#' + id);
   const goals = getGoals();
   const { mode, goal } = editing;
+  const wasDone = goal && goal.saved >= goal.target;
   if (mode === 'add') {
     const amount = num($('goal-add').value);
     if (!amount) return fail('Enter how much you put aside.');
-    saveGoals(goals.map(g => g.id === goal.id ? { ...g, saved: Math.round((g.saved + amount) * 100) / 100 } : g));
+    const saved = Math.round((goal.saved + amount) * 100) / 100;
+    saveGoals(goals.map(g => g.id === goal.id ? { ...g, saved } : g), !wasDone && saved >= goal.target ? goal.id : null);
     return closeDialog();
   }
   const name = $('goal-name').value.trim();
@@ -111,7 +114,7 @@ function save() {
   if (!/^\d{4}-\d{2}$/.test(by)) return fail('Pick the month you want to reach it by.');
   if ($('goal-saved').value.trim() && !saved) return fail('Enter what you have saved as a number, or leave it empty.');
   const next = { id: goal?.id || Date.now().toString(36), name, target, by, saved };
-  saveGoals(goal ? goals.map(g => g.id === goal.id ? next : g) : [...goals, next]);
+  saveGoals(goal ? goals.map(g => g.id === goal.id ? next : g) : [...goals, next], !wasDone && saved >= target ? next.id : null);
   closeDialog();
 }
 

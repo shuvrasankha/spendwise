@@ -957,3 +957,28 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
   .goal-card { grid-template-columns: auto 1fr auto; }
   .goal-actions { grid-column: auto; flex-wrap: nowrap; }
 }
+
+/* Goal reached: ring pops, check draws in, a burst of coins, the card glows green. Once, on the change. */
+.goal-card.celebrate { animation: goal-glow 1.8s ease-out; }
+.goal-card.celebrate .goal-ring { animation: goal-pop 650ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.goal-card.celebrate .goal-ring svg { animation: goal-check 420ms 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.goal-ring > .goal-burst { position: absolute; inset: 0; pointer-events: none; }
+.goal-burst span {
+  position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%;
+  background: var(--gold); opacity: 0; animation: goal-burst 900ms 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.goal-burst span:nth-child(3n+1) { background: var(--success); }
+.goal-burst span:nth-child(3n+2) { background: var(--cyan); width: 4px; height: 9px; border-radius: 2px; }
+@keyframes goal-glow {
+  0%, 30% { background: var(--success-bg); border-color: var(--success); box-shadow: 0 0 0 4px var(--success-bg); }
+}
+@keyframes goal-pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+@keyframes goal-check { from { transform: scale(0) rotate(-40deg); opacity: 0; } }
+@keyframes goal-burst {
+  0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-50px) scale(0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-card.celebrate, .goal-card.celebrate .goal-ring, .goal-card.celebrate .goal-ring svg { animation: none; }
+  .goal-burst { display: none; }
+}

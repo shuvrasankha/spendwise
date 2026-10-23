@@ -500,14 +500,18 @@ function renderGoals(savedThisMonth) {
     total.textContent += covered ? " · covered" : ` · ${moneyWhole(Math.max(savedThisMonth, 0))} left this month`;
   }
   const monthName = by => new Date(by + "-01T00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const celebrating = goals.find(({ g, pace }) => g.id === celebrateGoal && pace.state === "done");
+  celebrateGoal = null;
   list.innerHTML = goals.length ? goals.map(({ g, pace }) => {
+    const party = celebrating?.g === g;
     const pct = Math.round(Math.min(pace.ratio, 1) * 100);
     const meta = pace.state === "done" ? "Reached. Well done!"
       : pace.state === "late" ? `${moneyWhole(pace.left)} to go · ${monthName(g.by)} has passed`
       : `<strong>${moneyWhole(pace.monthly)}</strong> a month · by ${monthName(g.by)}`;
-    return `<li class="goal-card ${pace.state}">
+    return `<li class="goal-card ${pace.state}${party ? " celebrate" : ""}">
       <div class="goal-ring" style="--p:${pct}" role="progressbar" aria-label="${escapeHtml(g.name)} saved" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
         ${pace.state === "done" ? `<i data-lucide="check" aria-hidden="true"></i>` : `<span aria-hidden="true">${pct}%</span>`}
+        ${party ? `<span class="goal-burst" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => `<span style="--a:${i * 30}deg"></span>`).join("")}</span>` : ""}
       </div>
       <div class="goal-body">
         <span class="goal-name">${escapeHtml(g.name)}</span>
@@ -521,6 +525,7 @@ function renderGoals(savedThisMonth) {
     </li>`;
   }).join("") : `<li class="goals-empty"><span class="goals-empty-icon" aria-hidden="true"><i data-lucide="target"></i></span><span>Saving for a trip, a phone or a rainy day? Add a goal to see how much to put aside each month.</span></li>`;
   if (window.lucide) lucide.createIcons();
+  if (celebrating) showToast(`You reached ${celebrating.g.name}. Well done!`, "success");
 }
 
 // ── Due this month: repeating expenses waiting for one tap ───────────────────
@@ -608,7 +613,8 @@ document.addEventListener("click", async (ev) => {
 
 // A budget saved from the profile menu redraws Home right away
 window.addEventListener("spendwise:budget", () => renderHome());
-window.addEventListener("spendwise:goals", () => renderHome());
+let celebrateGoal = null; // a goal just taken past its target: its card celebrates on the next draw
+window.addEventListener("spendwise:goals", e => { celebrateGoal = e.detail?.completed || null; renderHome(); });
 
 // The old card updaters (still called by loaders and save paths) now redraw the home summary
 function updateDebtCards() { renderHome(); }
