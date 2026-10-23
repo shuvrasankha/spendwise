@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /expenses/{doc} {
+      allow read, write: if signedIn()
+        && request.auth.uid == resource.data.uid;
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.uid;
+    }
+
+    match /income/{docId} {
+      allow read, write: if signedIn()
+        && request.auth.uid == resource.data.uid;
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.uid;
+    }
+
+    match /debts/{docId} {
+      allow read, write: if signedIn()
+        && request.auth.uid == resource.data.uid;
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.uid;
+    }
+
+    // One doc per user, id = uid:
+    // { budget: {total, cats}, goals: [...], remindAt: "HH:MM" }
+    function validSettings(d) {
+      return d.keys().hasOnly(['budget', 'goals', 'remindAt'])
+        && (!('budget' in d) || d.budget is map)
+        && (!('goals' in d) || (d.goals is list && d.goals.size() <= 20))
+        && (!('remindAt' in d) || (d.remindAt is string
+          && d.remindAt.matches('^[0-2][0-9]:[0-5][0-9]$')));
+    }
+
+    match /settings/{uid} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && validSettings(request.resource.data);
+    }
+  }
+}
