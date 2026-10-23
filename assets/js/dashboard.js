@@ -57,31 +57,33 @@ function dec(encoded) {
 // window of exposure if an XSS vulnerability is exploited.
 const CACHE_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
-function getCacheKey(uid) { return 'spendwise_expenses_' + uid; }
+// kind: 'expenses', 'income' or 'debts'
+function getCacheKey(uid, kind = 'expenses') { return 'spendwise_' + kind + '_' + uid; }
 
-function saveToCache(uid, expenses) {
+function saveToCache(uid, list, kind = 'expenses') {
   try {
-    const payload = JSON.stringify({ ts: Date.now(), data: expenses });
-    sessionStorage.setItem(getCacheKey(uid), payload);
+    const payload = JSON.stringify({ ts: Date.now(), data: list });
+    sessionStorage.setItem(getCacheKey(uid, kind), payload);
   } catch (e) { /* quota exceeded or private mode — silently skip */ }
 }
 
-function loadFromCache(uid) {
+function loadFromCache(uid, kind = 'expenses') {
   try {
-    const raw = sessionStorage.getItem(getCacheKey(uid));
+    const raw = sessionStorage.getItem(getCacheKey(uid, kind));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Date.now() - parsed.ts > CACHE_MAX_AGE_MS) {
-      sessionStorage.removeItem(getCacheKey(uid));
+      sessionStorage.removeItem(getCacheKey(uid, kind));
       return null;
     }
+    if (!Array.isArray(parsed.data)) return null;
     // A cache written before categories were merged still has the old names
-    return Array.isArray(parsed.data) ? parsed.data.map(e => ({ ...e, category: normalizeCategory(e.category) })) : parsed.data;
+    return kind === 'expenses' ? parsed.data.map(e => ({ ...e, category: normalizeCategory(e.category) })) : parsed.data;
   } catch { return null; }
 }
 
 function clearCache(uid) {
-  try { sessionStorage.removeItem(getCacheKey(uid)); } catch { /* ignore */ }
+  try { ['expenses', 'income', 'debts'].forEach(kind => sessionStorage.removeItem(getCacheKey(uid, kind))); } catch { /* ignore */ }
 }
 
 let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], activeTab = "weekly", deleteTarget = null, editingExpenseId = null;
@@ -126,6 +128,9 @@ onAuthStateChanged(auth, user => {
     initCurrencySelector(refreshMoney);
 
     // ── Cache-first strategy ──
+    // Income and debts first, so the home totals are complete on the first paint
+    allIncome = loadFromCache(user.uid, 'income') || [];
+    allDebts = loadFromCache(user.uid, 'debts') || [];
     const cached = loadFromCache(user.uid);
     if (cached && cached.length) {
       // Render from cache instantly — no skeleton delay
@@ -149,9 +154,8 @@ onAuthStateChanged(auth, user => {
       if (document.getElementById("table-body")) showTableSkeleton("table-body", 5);
       setTimeout(() => loadExpenses(), 0);
     }
-    // Load income data for dashboard cards (always fresh)
+    // Refresh income and debts in the background
     setTimeout(() => loadIncome(), 0);
-    // Load debt data for dashboard cards
     setTimeout(() => loadDebts(), 0);
 
     // Handle hash-based routing (e.g. index.html#history)
@@ -314,6 +318,7 @@ async function loadIncome() {
       return { id: d.id, ...raw, amount: isNaN(amt) ? 0 : amt };
     });
     allIncome.sort((a, b) => b.date.localeCompare(a.date));
+    saveToCache(currentUser.uid, allIncome, 'income');
     updateIncomeCards();
     // If on history page, render income history
     if (document.getElementById("history-list")) {
@@ -340,6 +345,7 @@ async function loadDebts() {
       };
     });
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
+    saveToCache(currentUser.uid, allDebts, 'debts');
     updateDebtCards();
   } catch (e) { console.error("Debt load error:", e); }
 }
@@ -2067,6 +2073,7 @@ window.saveIncEdit = async () => {
       allIncome[idx] = { ...allIncome[idx], amount, date, source, paymentType, bank: bank || '', notes: notes || '' };
       allIncome.sort((a, b) => b.date.localeCompare(a.date));
     }
+    saveToCache(currentUser.uid, allIncome, 'income');
 
     renderIncomeHistory();
     updateIncomeCards();
@@ -2099,6 +2106,7 @@ window.confirmIncDelete = async () => {
     showLoader();
     await deleteDoc(doc(db, 'income', incDeleteTarget));
     allIncome = allIncome.filter(i => i.id !== incDeleteTarget);
+    saveToCache(currentUser.uid, allIncome, 'income');
     renderIncomeHistory();
     updateIncomeCards();
     hideLoader();
