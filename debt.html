@@ -376,7 +376,7 @@
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
     }
     document.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
+      window.lucide?.createIcons(); // the icon CDN may be unreachable on a first visit
     });
   </script>
   <script type="module" src="assets/js/modules/reminders.js"></script>
