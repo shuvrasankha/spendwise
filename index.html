@@ -240,8 +240,10 @@
           </div>
           <p class="home-meter-text" id="home-meter-text"></p>
           <p class="home-pace" id="home-pace"></p>
-          <button type="button" class="home-budget-link" id="home-budget-link" data-open-budget>Set a monthly budget</button>
-          <a class="btn-primary btn-add home-add" href="expense.html"><i data-lucide="plus"></i> Add expense</a>
+          <div class="home-hero-actions">
+            <a class="btn-primary btn-add home-add" href="expense.html"><i data-lucide="plus"></i> Add expense</a>
+            <button type="button" class="home-budget-btn" data-open-budget><i data-lucide="target" aria-hidden="true"></i><span id="home-budget-label">Set a monthly budget</span></button>
+          </div>
         </section>
 
         <section class="home-section" aria-labelledby="home-today-title">
@@ -281,6 +283,16 @@
             </span>
           </a>
         </div>
+
+        <!-- Savings goals: progress and the monthly pace needed (dashboard.js renderGoals, goals.js) -->
+        <section class="home-section home-goals" aria-labelledby="home-goals-title">
+          <div class="home-section-head">
+            <h3 id="home-goals-title"><span class="goals-icon" aria-hidden="true"><i data-lucide="piggy-bank"></i></span>Savings goals</h3>
+            <span class="goals-need hidden" id="home-goals-total"></span>
+          </div>
+          <ul class="goals-list" id="home-goals"></ul>
+          <button type="button" class="goals-new" data-goal-new><i data-lucide="plus" aria-hidden="true"></i>New goal</button>
+        </section>
 
         <section class="home-section" aria-labelledby="home-cats-title">
           <div class="home-section-head">

@@ -6,7 +6,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
-import { todayStr, normalizeCategory } from '../utils/helpers.js';
+import { todayStr, normalizeCategory, countTo } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
@@ -146,19 +146,19 @@ function renderGlance(s, r) {
   el.innerHTML = `
     <section class="home-hero" aria-labelledby="glance-title">
       <h2 class="home-month" id="glance-title">${esc(r.label)}</h2>
-      <p class="home-spent"><span class="home-spent-amount">${money(s.spent)}</span> <span class="home-spent-label">spent</span></p>
+      <p class="home-spent"><span class="home-spent-amount" data-count="spent">${money(s.spent)}</span> <span class="home-spent-label">spent</span></p>
       ${changeText(s.spendChange, r.prevLabel)}
       <p class="home-pace">${money(s.dailyAvg)} a day${s.projection !== null ? ` · on track for ${money(s.projection)} by the end of ${esc(monthName)}` : ''}</p>
     </section>
     <div class="home-tiles">
       <div class="home-tile">
         <span class="home-tile-label">Income</span>
-        <span class="home-tile-value">${s.incomeCount ? money(s.earned) : '—'}</span>
+        <span class="home-tile-value"${s.incomeCount ? ' data-count="earned"' : ''}>${s.incomeCount ? money(s.earned) : '—'}</span>
         ${s.incomeCount ? '' : '<span class="home-tile-sub">None recorded</span>'}
       </div>
       <div class="home-tile">
         <span class="home-tile-label">Saved</span>
-        <span class="home-tile-value">${s.savingsRate !== null ? money(s.saved) : '—'}</span>
+        <span class="home-tile-value"${s.savingsRate !== null ? ' data-count="saved"' : ''}>${s.savingsRate !== null ? money(s.saved) : '—'}</span>
         <span class="home-tile-sub">${s.savingsRate !== null ? `${s.savingsRate.toFixed(0)}% of income` : 'Needs income entries'}${s.invested > 0 ? ` · ${money(s.invested)} invested` : ''}</span>
       </div>
       ${s.debts.activeCount ? `
@@ -180,7 +180,15 @@ function renderGlance(s, r) {
       <div class="home-section-head"><h3 id="glance-big-title">Biggest expenses</h3></div>
       <ul class="home-list">${biggest}</ul>
     </section>` : ''}`;
+  // Switching periods counts each figure from the last period's value to this one's
+  el.querySelectorAll('[data-count]').forEach(n => {
+    const key = n.dataset.count;
+    n.dataset.value = shownTotals[key] ?? 0;
+    countTo(n, s[key], money);
+    shownTotals[key] = s[key];
+  });
 }
+const shownTotals = {}; // last value shown per figure (spent, earned, saved)
 
 async function showPeriod() {
   if (!currentUser) return;

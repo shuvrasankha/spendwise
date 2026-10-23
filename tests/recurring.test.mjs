@@ -1,7 +1,7 @@
-// Run: node --test tests/ — repeating expenses and budget limits
+// Run: node --test tests/ — repeating expenses, budget limits and savings goals
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dueRecurring, recurringKey, budgetState } from '../assets/js/utils/helpers.js';
+import { dueRecurring, recurringKey, budgetState, goalPace } from '../assets/js/utils/helpers.js';
 
 const rent = { id: 'r1', amount: 18000, category: 'Rent', description: 'Flat rent', date: '2026-09-01', repeat: 'monthly' };
 const netflix = { id: 'n1', amount: 649, category: 'Subscription', description: 'Netflix', date: '2026-09-25', repeat: 'monthly' };
@@ -42,4 +42,13 @@ test('budget: share used, money left, and when to warn', () => {
   assert.equal(budgetState(8000, 10000).state, 'near');
   assert.equal(budgetState(10000, 10000).state, 'near');
   assert.equal(budgetState(10500, 10000).state, 'over');
+});
+
+test('savings goal: monthly pace counts the current month, then done or late', () => {
+  const goa = { target: 30000, saved: 6000, by: '2027-03' };
+  assert.deepEqual(goalPace(goa, '2026-10-23'), { ratio: 0.2, left: 24000, months: 6, monthly: 4000, state: 'on' });
+  assert.equal(goalPace(goa, '2027-03-31').monthly, 24000);
+  assert.deepEqual(goalPace(goa, '2027-04-01'), { ratio: 0.2, left: 24000, months: 0, monthly: 0, state: 'late' });
+  assert.equal(goalPace({ ...goa, saved: 31000 }, '2026-10-23').state, 'done');
+  assert.equal(goalPace({ ...goa, saved: 31000 }, '2026-10-23').left, 0);
 });

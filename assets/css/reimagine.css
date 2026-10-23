@@ -792,11 +792,19 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .home-hero .home-meter.near .home-meter-fill { background: linear-gradient(90deg, #d9822b, #ffb14a); }
 .glance-bar.near span { background: var(--warning); }
 .glance-bar.over span { background: var(--danger); }
-.home-budget-link {
-  display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0;
-  color: var(--gold-bright); font-weight: 600; font-size: 0.875rem; text-decoration: underline; text-underline-offset: 3px;
+.home-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.home-hero-actions .home-add { margin-top: 0; }
+/* Secondary action on the ink card: an outlined pill beside the gold Add expense */
+.home-budget-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border: 1px solid rgba(240, 195, 90, 0.45); border-radius: var(--radius-full); background: rgba(240, 195, 90, 0.08);
+  color: var(--gold-bright); font-weight: 600; font-size: 0.9375rem; cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
 }
-.home-budget-link + .home-add { margin-top: 8px; }
+.home-budget-btn:hover { background: rgba(240, 195, 90, 0.16); border-color: var(--gold-bright); }
+.home-budget-btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.home-budget-btn svg { width: 18px; height: 18px; }
+@media (max-width: 560px) { .home-hero-actions > * { flex: 1 1 100%; } }
 .budget-box { max-width: 460px; max-height: 90vh; overflow-y: auto; }
 .budget-note { color: var(--text2); font-size: 0.875rem; margin: -8px 0 16px; }
 .budget-money {
@@ -886,3 +894,141 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .form-group .repeat-row input.reminder-switch:checked { background: var(--success); }
 .form-group .repeat-row input.reminder-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .repeat-row > span { flex: 1 1 auto; }
+
+/* =====================
+   SAVINGS GOALS (goals.js + Home): the standard card frame with a coin-gold accent;
+   cyan (the savings colour) only on the figures and rings
+===================== */
+.home-goals {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: radial-gradient(120% 80% at 100% 0%, var(--gold-bg), transparent 60%), var(--surface);
+}
+.home-goals .home-section-head { align-items: center; flex-wrap: wrap; row-gap: 8px; margin-bottom: 12px; }
+.home-goals h3 { display: flex; align-items: center; gap: 10px; }
+.goals-icon {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--gold-bg); color: var(--gold);
+}
+.goals-icon svg { width: 18px; height: 18px; }
+.goals-need {
+  padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 700;
+  background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan); font-variant-numeric: tabular-nums;
+}
+.goals-need.covered { background: var(--success-bg); color: var(--success); }
+.goals-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.goal-card {
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px 14px; padding: 14px;
+  border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--surface2);
+}
+.goal-ring {
+  --ring: var(--cyan);
+  position: relative; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+  background: conic-gradient(var(--ring) calc(var(--p) * 1%), var(--bg2) 0);
+  font-size: 0.8125rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text);
+}
+.goal-ring::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: var(--surface2); }
+.goal-ring > * { position: relative; }
+.goal-ring svg { width: 22px; height: 22px; color: var(--ring); stroke-width: 3; }
+.goal-card.done .goal-ring { --ring: var(--success); }
+.goal-card.late .goal-ring { --ring: var(--warning); }
+.goal-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.goal-name { font-weight: 700; overflow-wrap: anywhere; }
+.goal-amounts { font-size: 0.875rem; color: var(--text2); font-variant-numeric: tabular-nums; }
+.goal-amounts strong { color: var(--text); font-weight: 700; }
+.goal-meta { font-size: 0.8125rem; color: var(--text2); }
+.goal-meta strong { color: var(--cyan); font-weight: 700; }
+.goal-card.done .goal-meta { color: var(--success); font-weight: 600; }
+.goal-card.late .goal-meta { color: var(--warning); font-weight: 600; }
+.goal-actions { grid-column: 1 / -1; }
+.goal-actions .due-add { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.goal-actions .due-more { min-height: 44px; }
+.goal-actions svg { width: 16px; height: 16px; }
+.goals-empty {
+  display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius-sm);
+  background: var(--surface2); color: var(--text2); font-size: 0.875rem; line-height: 1.45;
+}
+.goals-empty-icon {
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: 50%; background: var(--gold-bg); color: var(--gold);
+}
+.goals-empty-icon svg { width: 20px; height: 20px; }
+.goals-new {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 12px;
+  border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--accent); font-weight: 700; font-size: 0.9375rem; cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.goals-new:hover { background: var(--accent-bg); border-color: var(--accent); }
+.goals-new:focus-visible, .goal-actions button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.goals-new svg { width: 18px; height: 18px; }
+@media (min-width: 640px) {
+  .goal-card { grid-template-columns: auto 1fr auto; }
+  .goal-actions { grid-column: auto; flex-wrap: nowrap; }
+}
+
+/* Goal reached: ring pops, check draws in, a burst of coins, the card glows green. Once, on the change. */
+.goal-card.celebrate { animation: goal-glow 1.8s ease-out; }
+.goal-card.celebrate .goal-ring { animation: goal-pop 650ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.goal-card.celebrate .goal-ring svg { animation: goal-check 420ms 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.goal-ring > .goal-burst { position: absolute; inset: 0; pointer-events: none; }
+.goal-burst span {
+  position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%;
+  background: var(--gold); opacity: 0; animation: goal-burst 900ms 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.goal-burst span:nth-child(3n+1) { background: var(--success); }
+.goal-burst span:nth-child(3n+2) { background: var(--cyan); width: 4px; height: 9px; border-radius: 2px; }
+@keyframes goal-glow {
+  0%, 30% { background: var(--success-bg); border-color: var(--success); box-shadow: 0 0 0 4px var(--success-bg); }
+}
+@keyframes goal-pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+@keyframes goal-check { from { transform: scale(0) rotate(-40deg); opacity: 0; } }
+@keyframes goal-burst {
+  0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-50px) scale(0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-card.celebrate, .goal-card.celebrate .goal-ring, .goal-card.celebrate .goal-ring svg { animation: none; }
+  .goal-burst { display: none; }
+}
+
+/* =====================
+   MOTION: smooth page changes, Home settling in, tactile presses.
+   The global prefers-reduced-motion rule (style.css) turns all of this off.
+===================== */
+/* Cross-fade between pages (native View Transitions); the bottom nav stays put */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; animation-timing-function: var(--ease-smooth); }
+.bottom-nav { view-transition-name: bottom-nav; }
+
+/* Every page: the title, hero and cards rise in one after another (Home, Expenses, Income, Debts, History, Insights) */
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > * { animation: home-rise 520ms var(--ease-smooth) both; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(2) { animation-delay: 60ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(3) { animation-delay: 120ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(4) { animation-delay: 180ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(5) { animation-delay: 240ms; }
+:is(#page-dashboard, .entry-page, .hist-page, .ins-page) > :nth-child(n+6) { animation-delay: 300ms; }
+@keyframes home-rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* Content that arrives later (History results after a filter, Insights figures after the skeleton) fades up in place */
+.hist-list > *, #insights-glance > :not(.ins-skeleton) { animation: content-in 280ms var(--ease-smooth) both; }
+@keyframes content-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* First paint only (dashboard.js growBars): bars grow from the left, goal rings fill, one after another */
+@property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
+.grow .glance-bar span { transform-origin: left center; animation: bar-grow 800ms var(--ease-smooth) both; animation-delay: 250ms; }
+.grow .goal-ring { animation: ring-fill 1000ms var(--ease-smooth) both; animation-delay: 300ms; }
+.grow > li:nth-child(2) .glance-bar span, .grow > li:nth-child(2) .goal-ring { animation-delay: 330ms; }
+.grow > li:nth-child(3) .glance-bar span, .grow > li:nth-child(3) .goal-ring { animation-delay: 410ms; }
+.grow > li:nth-child(4) .glance-bar span, .grow > li:nth-child(4) .goal-ring { animation-delay: 490ms; }
+.grow > li:nth-child(n+5) .glance-bar span, .grow > li:nth-child(n+5) .goal-ring { animation-delay: 570ms; }
+@keyframes bar-grow { from { transform: scaleX(0); } }
+@keyframes ring-fill { from { --p: 0; } }
+
+/* Presses: a quick squeeze so taps feel physical, on every page */
+.home-add, .home-budget-btn, .goals-new, .due-add, .due-more, a.home-tile, .home-more,
+.chip, .seg-btn, .cat-tile, .hist-row, .btn-primary, .btn-secondary {
+  transition: transform 120ms var(--ease-out), background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition), filter var(--transition), opacity var(--transition);
+}
+.home-add:active, .home-budget-btn:active, .goals-new:active, .due-add:active, .due-more:active,
+.chip:active, .seg-btn:active, .cat-tile:active, .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
+a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }

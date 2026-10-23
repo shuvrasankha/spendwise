@@ -2,7 +2,7 @@
 
 import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr } from './utils/helpers.js';
+import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
@@ -73,7 +73,7 @@ function updateDebtSummary() {
   const net = owedToYou - youOwe;
 
   const netEl = document.getElementById('debt-net-balance');
-  netEl.textContent = fmt(Math.abs(net));
+  countTo(netEl, Math.abs(net), fmt);
   netEl.classList.toggle('is-income', net > 0);
   netEl.classList.toggle('is-owe', net < 0);
   document.getElementById('debt-net-word').textContent = net > 0 ? 'in your favour' : net < 0 ? 'you owe overall' : 'all square';
@@ -81,8 +81,8 @@ function updateDebtSummary() {
   document.getElementById('debt-net-sub').textContent = active.length
     ? `${plural(active.length, 'open debt', 'open debts')} with ${plural(people, 'person', 'people')}`
     : 'No open debts';
-  document.getElementById('debt-owed-to-you').textContent = fmt(owedToYou);
-  document.getElementById('debt-you-owe').textContent = fmt(youOwe);
+  countTo(document.getElementById('debt-owed-to-you'), owedToYou, fmt);
+  countTo(document.getElementById('debt-you-owe'), youOwe, fmt);
   document.getElementById('debt-owe-count').textContent = `${owe.length} open`;
   document.getElementById('debt-owed-count').textContent = `${owed.length} open`;
 

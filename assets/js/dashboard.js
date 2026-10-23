@@ -14,10 +14,11 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
+import { getGoals } from './modules/goals.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -340,6 +341,9 @@ function moneyWhole(n) {
   const c = getCurrencyInfo(getCurrency());
   return `${c.symbol} ${Math.round(n).toLocaleString(c.locale)}`;
 }
+// Bars and goal rings fill up on Home's first paint only; later redraws (sync, budget, goals) just update them
+let growBars = true;
+
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function renderHome() {
@@ -360,12 +364,12 @@ function renderHome() {
 
   // Hero: spent so far, against the budget (or else income), and the pace
   document.getElementById("home-month-label").textContent = `${monthName} so far`;
-  spentEl.textContent = moneyWhole(spent);
+  countTo(spentEl, spent, moneyWhole);
   const meter = document.getElementById("home-meter");
   const meterText = document.getElementById("home-meter-text");
   const budget = getBudget();
   const limit = budgetState(spent, budget.total);
-  const budgetLink = document.getElementById("home-budget-link");
+  const budgetLink = document.getElementById("home-budget-label");
   if (budgetLink) budgetLink.textContent = budget.total ? "Change budget" : "Set a monthly budget";
   meter.classList.remove("near");
   if (limit) {
@@ -426,22 +430,26 @@ function renderHome() {
   }
 
   // Tiles: income, saved, debts (owe and owed are separate directions)
-  document.getElementById("home-income").textContent = income > 0 ? moneyWhole(income) : "—";
+  const incomeEl = document.getElementById("home-income");
+  if (income > 0) countTo(incomeEl, income, moneyWhole);
+  else { incomeEl.textContent = "—"; delete incomeEl.dataset.value; }
   document.getElementById("home-income-sub").textContent = monthInc.length ? `${plural(monthInc.length, "entry", "entries")} this month` : "None this month";
   const savedEl = document.getElementById("home-saved");
   const savedSub = document.getElementById("home-saved-sub");
   if (income > 0) {
     const saved = income - spent;
-    savedEl.textContent = saved < 0 ? `−${moneyWhole(-saved)}` : moneyWhole(saved);
+    countTo(savedEl, saved, v => v < 0 ? `−${moneyWhole(-v)}` : moneyWhole(v));
     savedSub.textContent = saved < 0 ? "Overspent this month" : `${Math.round((saved / income) * 100)}% of income`;
   } else {
     savedEl.textContent = "—";
+    delete savedEl.dataset.value;
     savedSub.textContent = "Needs income entries";
   }
   if (invested > 0) savedSub.textContent += ` · ${moneyWhole(invested)} invested`;
+  renderGoals(income > 0 ? income - spent : null);
   const active = allDebts.filter(d => !d.settled);
-  document.getElementById("home-owe").textContent = moneyWhole(active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0));
-  document.getElementById("home-owed").textContent = moneyWhole(active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0));
+  countTo(document.getElementById("home-owe"), active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
+  countTo(document.getElementById("home-owed"), active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
 
   // Where it went: this month's top categories, as labelled bars (readable without a chart)
   const byCat = {};
@@ -463,7 +471,54 @@ function renderHome() {
     </li>`;
   }).join("") : `<li class="home-empty">No expenses this month yet.</li>`;
 
+  document.getElementById("home-categories").classList.toggle("grow", growBars);
+  document.getElementById("home-goals")?.classList.toggle("grow", growBars);
+  if (monthAll.length || getGoals().length) growBars = false; // keep it for the first paint that has something to show
   renderDue();
+}
+
+// ── Savings goals: progress and the monthly pace, against what this month left over ──
+function renderGoals(savedThisMonth) {
+  const list = document.getElementById("home-goals");
+  if (!list) return;
+  const today = todayStr();
+  const goals = getGoals().map(g => ({ g, pace: goalPace(g, today) }));
+  const need = goals.reduce((sum, { pace }) => sum + pace.monthly, 0);
+  const total = document.getElementById("home-goals-total");
+  total.textContent = need > 0 ? `${moneyWhole(need)} a month` : "";
+  total.classList.toggle("hidden", !(need > 0));
+  const covered = need > 0 && savedThisMonth !== null && savedThisMonth >= need;
+  total.classList.toggle("covered", covered);
+  if (need > 0 && savedThisMonth !== null) {
+    total.textContent += covered ? " · covered" : ` · ${moneyWhole(Math.max(savedThisMonth, 0))} left this month`;
+  }
+  const monthName = by => new Date(by + "-01T00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  const celebrating = goals.find(({ g, pace }) => g.id === celebrateGoal && pace.state === "done");
+  celebrateGoal = null;
+  list.innerHTML = goals.length ? goals.map(({ g, pace }) => {
+    const party = celebrating?.g === g;
+    const pct = Math.round(Math.min(pace.ratio, 1) * 100);
+    const meta = pace.state === "done" ? "Reached. Well done!"
+      : pace.state === "late" ? `${moneyWhole(pace.left)} to go · ${monthName(g.by)} has passed`
+      : `<strong>${moneyWhole(pace.monthly)}</strong> a month · by ${monthName(g.by)}`;
+    return `<li class="goal-card ${pace.state}${party ? " celebrate" : ""}">
+      <div class="goal-ring" style="--p:${pct}" role="progressbar" aria-label="${escapeHtml(g.name)} saved" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+        ${pace.state === "done" ? `<i data-lucide="check" aria-hidden="true"></i>` : `<span aria-hidden="true">${pct}%</span>`}
+        ${party ? `<span class="goal-burst" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => `<span style="--a:${i * 30}deg"></span>`).join("")}</span>` : ""}
+      </div>
+      <div class="goal-body">
+        <span class="goal-name">${escapeHtml(g.name)}</span>
+        <span class="goal-amounts"><strong>${moneyWhole(g.saved)}</strong> of ${moneyWhole(g.target)}</span>
+        <span class="goal-meta">${meta}</span>
+      </div>
+      <div class="due-actions goal-actions">
+        ${pace.state === "done" ? "" : `<button type="button" class="due-add" data-goal-add="${escapeHtml(g.id)}" aria-label="Add money to ${escapeHtml(g.name)}"><i data-lucide="plus" aria-hidden="true"></i>Add money</button>`}
+        <button type="button" class="due-more" data-goal-edit="${escapeHtml(g.id)}" aria-label="Edit ${escapeHtml(g.name)}">Edit</button>
+      </div>
+    </li>`;
+  }).join("") : `<li class="goals-empty"><span class="goals-empty-icon" aria-hidden="true"><i data-lucide="target"></i></span><span>Saving for a trip, a phone or a rainy day? Add a goal to see how much to put aside each month.</span></li>`;
+  if (window.lucide) lucide.createIcons();
+  if (celebrating) showToast(`You reached ${celebrating.g.name}. Well done!`, "success");
 }
 
 // ── Due this month: repeating expenses waiting for one tap ───────────────────
@@ -551,6 +606,8 @@ document.addEventListener("click", async (ev) => {
 
 // A budget saved from the profile menu redraws Home right away
 window.addEventListener("spendwise:budget", () => renderHome());
+let celebrateGoal = null; // a goal just taken past its target: its card celebrates on the next draw
+window.addEventListener("spendwise:goals", e => { celebrateGoal = e.detail?.completed || null; renderHome(); });
 
 // The old card updaters (still called by loaders and save paths) now redraw the home summary
 function updateDebtCards() { renderHome(); }
@@ -578,7 +635,7 @@ function updateExpenseCards() {
   const monthlyExpenses = spending.filter(e => e.date >= ms && e.date <= todayStr());
   const monthTotal = monthlyExpenses.reduce((s, e) => s + e.amount, 0);
   
-  if (monthlyEl) monthlyEl.textContent = fmt(monthTotal);
+  if (monthlyEl) countTo(monthlyEl, monthTotal, fmt);
   const monthCountEl = document.getElementById("exp-monthly-count");
   if (monthCountEl) monthCountEl.textContent = monthlyExpenses.length + ' entr' + (monthlyExpenses.length !== 1 ? 'ies' : 'y');
   
@@ -586,13 +643,13 @@ function updateExpenseCards() {
   const yearlyExpenses = spending.filter(e => e.date && e.date.startsWith(yearStr));
   const yearTotal = yearlyExpenses.reduce((s, e) => s + e.amount, 0);
   
-  if (yearlyEl) yearlyEl.textContent = fmt(yearTotal);
+  if (yearlyEl) countTo(yearlyEl, yearTotal, fmt);
   const yearCountEl = document.getElementById("exp-yearly-count");
   if (yearCountEl) yearCountEl.textContent = yearlyExpenses.length + ' entr' + (yearlyExpenses.length !== 1 ? 'ies' : 'y');
   
   // Total
   const totalAmount = spending.reduce((s, e) => s + e.amount, 0);
-  if (totalEl) totalEl.textContent = fmt(totalAmount);
+  if (totalEl) countTo(totalEl, totalAmount, fmt);
   const totalCountEl = document.getElementById("exp-total-count");
   if (totalCountEl) totalCountEl.textContent = spending.length + ' entr' + (spending.length !== 1 ? 'ies' : 'y');
   
@@ -600,7 +657,7 @@ function updateExpenseCards() {
   const today = new Date();
   const dayOfMonth = today.getDate();
   const dailyAvg = dayOfMonth > 0 ? monthTotal / dayOfMonth : 0;
-  if (dailyAvgEl) dailyAvgEl.textContent = fmt(dailyAvg);
+  if (dailyAvgEl) countTo(dailyAvgEl, dailyAvg, fmt);
   const dailySubEl = document.getElementById("exp-daily-sub");
   if (dailySubEl) dailySubEl.textContent = `avg / day this month`;
 }

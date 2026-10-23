@@ -2,7 +2,7 @@
 
 import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, escapeHtml, bindDateChips, shortDay, pad, todayStr } from './utils/helpers.js';
+import { sanitize, escapeHtml, bindDateChips, shortDay, pad, todayStr, countTo } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
@@ -72,7 +72,7 @@ function updateIncomeSummaryCards() {
   const yearTotal = allIncome.filter(i => i.date >= ys && i.date <= today).reduce((s, i) => s + i.amount, 0);
 
   document.getElementById('inc-month-label').textContent = now.toLocaleDateString('en-US', { month: 'long' }) + ' so far';
-  document.getElementById('inc-monthly').textContent = fmt(monthly.reduce((s, i) => s + i.amount, 0));
+  countTo(document.getElementById('inc-monthly'), monthly.reduce((s, i) => s + i.amount, 0), fmt);
   document.getElementById('inc-monthly-sub').textContent =
     `${monthly.length} ${monthly.length === 1 ? 'entry' : 'entries'} · ${fmt(yearTotal)} this year`;
 
