@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "deploy": "npx wrangler deploy",
+    "deploy": "npx wrangler d1 execute spendwise-push --remote --file schema.sql && npx wrangler deploy",
     "test": "node --test test.mjs push.test.mjs"
   },
   "dependencies": {
