@@ -451,8 +451,8 @@ function renderHome() {
   const owe = active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0);
   countTo(document.getElementById("home-owe"), owe, moneyWhole);
 
-  // Money score: savings, budget pace, debt and goals rolled into one number
-  const score = financeScore({ income, spent, budget: budget.total, monthShare: day / monthDays, owe, goals: getGoals().map(g => goalPace(g, today)) });
+  // Money score: savings, investing, budget pace, debt and goals rolled into one number
+  const score = financeScore({ income, spent, invested, budget: budget.total, monthShare: day / monthDays, owe, goals: getGoals().map(g => goalPace(g, today)) });
   const scoreEl = document.getElementById("home-score");
   const scoreTile = document.getElementById("home-score-tile");
   scoreTile.classList.remove("great", "good", "fair", "low");

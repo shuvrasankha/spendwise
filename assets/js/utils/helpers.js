@@ -76,13 +76,14 @@ export function goalPace(goal, today) {
 }
 
 // A 0–100 score for this month from what is known: savings rate (20%+ of income is full marks),
-// spending pace against the budget, debt owed against income, and goals on pace. Factors without
+// investing (10%+ of income), spending pace against the budget, debt owed against income, and goals on pace. Factors without
 // data are left out and the rest scaled up; null until there is income to measure against.
-export function financeScore({ income, spent, budget, monthShare, owe, goals }) {
+export function financeScore({ income, spent, invested, budget, monthShare, owe, goals }) {
   if (!(income > 0)) return null;
   const clamp = v => Math.min(Math.max(v, 0), 1);
   const parts = [
     { weight: 40, value: clamp((income - spent) / income / 0.2), tip: 'Try to keep 20% of your income unspent' },
+    { weight: 15, value: clamp(invested / income / 0.1), tip: 'Putting 10% of your income into investments will lift your score' },
     { weight: 20, value: clamp(1 - owe / income), tip: 'Paying down what you owe will lift your score' },
   ];
   // On pace (projected spend within budget) scores full; projected 50% over budget scores zero
