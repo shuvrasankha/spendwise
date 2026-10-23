@@ -888,18 +888,18 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .repeat-row > span { flex: 1 1 auto; }
 
 /* =====================
-   SAVINGS GOALS (goals.js + Home): cyan is the savings colour; each goal a ring and a card
+   SAVINGS GOALS (goals.js + Home): the standard card frame with a coin-gold accent;
+   cyan (the savings colour) only on the figures and rings
 ===================== */
 .home-goals {
   position: relative; overflow: hidden; isolation: isolate;
-  border-color: color-mix(in srgb, var(--cyan) 35%, var(--border));
-  background: radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--cyan) 10%, transparent), transparent 60%), var(--surface);
+  background: radial-gradient(120% 80% at 100% 0%, var(--gold-bg), transparent 60%), var(--surface);
 }
 .home-goals .home-section-head { align-items: center; flex-wrap: wrap; row-gap: 8px; margin-bottom: 12px; }
 .home-goals h3 { display: flex; align-items: center; gap: 10px; }
 .goals-icon {
   display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
-  background: color-mix(in srgb, var(--cyan) 14%, transparent); color: var(--cyan);
+  background: var(--gold-bg); color: var(--gold);
 }
 .goals-icon svg { width: 18px; height: 18px; }
 .goals-need {
@@ -941,16 +941,16 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 }
 .goals-empty-icon {
   flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
-  border-radius: 50%; background: color-mix(in srgb, var(--cyan) 12%, transparent); color: var(--cyan);
+  border-radius: 50%; background: var(--gold-bg); color: var(--gold);
 }
 .goals-empty-icon svg { width: 20px; height: 20px; }
 .goals-new {
   display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; margin-top: 12px;
-  border: 1.5px dashed color-mix(in srgb, var(--cyan) 50%, var(--border)); border-radius: var(--radius-sm);
-  background: transparent; color: var(--cyan); font-weight: 700; font-size: 0.9375rem; cursor: pointer;
+  border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--accent); font-weight: 700; font-size: 0.9375rem; cursor: pointer;
   transition: background var(--transition), border-color var(--transition);
 }
-.goals-new:hover { background: color-mix(in srgb, var(--cyan) 8%, transparent); border-color: var(--cyan); }
+.goals-new:hover { background: var(--accent-bg); border-color: var(--accent); }
 .goals-new:focus-visible, .goal-actions button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .goals-new svg { width: 18px; height: 18px; }
 @media (min-width: 640px) {
