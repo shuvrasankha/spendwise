@@ -341,6 +341,22 @@ function moneyWhole(n) {
   const c = getCurrencyInfo(getCurrency());
   return `${c.symbol} ${Math.round(n).toLocaleString(c.locale)}`;
 }
+// The hero total counts up (or down) to its new value; instant when the user prefers less motion
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+let spentFrame = 0;
+function countTo(el, value) {
+  const from = Number(el.dataset.value) || 0;
+  el.dataset.value = value;
+  cancelAnimationFrame(spentFrame);
+  if (reduceMotion.matches || document.hidden || from === value) { el.textContent = moneyWhole(value); return; }
+  const start = performance.now();
+  const step = now => {
+    const t = Math.min((now - start) / 700, 1);
+    el.textContent = moneyWhole(from + (value - from) * (1 - (1 - t) ** 3)); // ease-out cubic
+    if (t < 1) spentFrame = requestAnimationFrame(step);
+  };
+  spentFrame = requestAnimationFrame(step);
+}
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function renderHome() {
@@ -361,7 +377,7 @@ function renderHome() {
 
   // Hero: spent so far, against the budget (or else income), and the pace
   document.getElementById("home-month-label").textContent = `${monthName} so far`;
-  spentEl.textContent = moneyWhole(spent);
+  countTo(spentEl, spent);
   const meter = document.getElementById("home-meter");
   const meterText = document.getElementById("home-meter-text");
   const budget = getBudget();
