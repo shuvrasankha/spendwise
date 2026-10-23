@@ -13,3 +13,4 @@ nvidia-config.js
 Thumbs.db
 .vscode/
 .idea/
+firestore.rules
