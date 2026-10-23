@@ -168,14 +168,24 @@
             <button type="button" class="seg-btn" data-type="they-owe" data-action="setDebtTypeTheyOwe" aria-pressed="true">They owe me</button>
             <button type="button" class="seg-btn" data-type="i-owe" data-action="setDebtTypeIOwe" aria-pressed="false">I owe them</button>
           </div>
-          <div class="form-grid">
+          <div class="form-grid" data-person-pair>
             <div class="form-group">
               <label for="debt-person">Person</label>
               <div class="input-icon-wrap">
                 <i data-lucide="user"></i>
-                <input type="text" id="debt-person" placeholder="e.g. Ravi, Mom" list="debt-person-list" autocomplete="off" />
+                <input type="text" id="debt-person" placeholder="e.g. Ravi, Mom" list="debt-person-list" autocomplete="off" data-person-name />
               </div>
-              <datalist id="debt-person-list"></datalist>
+              <datalist id="debt-person-list" data-people="name"></datalist>
+            </div>
+            <!-- Shared by email: shows in their Debts too, and they get a notification (modules/split.js) -->
+            <div class="form-group">
+              <label for="debt-email">Their email <span class="optional-tag">optional</span></label>
+              <div class="input-icon-wrap">
+                <i data-lucide="mail"></i>
+                <input type="email" id="debt-email" placeholder="ravi@gmail.com" list="debt-email-list" autocomplete="off" inputmode="email" maxlength="254" aria-describedby="debt-email-help" data-person-email />
+              </div>
+              <datalist id="debt-email-list" data-people="email"></datalist>
+              <small class="debt-email-help" id="debt-email-help">If they use SpendWise with this email, it shows in their Debts too.</small>
             </div>
             <div class="form-group">
               <label for="debt-amount">Amount (<span class="currency-symbol">₹</span>)</label>

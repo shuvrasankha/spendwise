@@ -1124,3 +1124,4 @@ a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
   content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: var(--accent); vertical-align: middle;
 }
 .notif-empty { padding: 20px 12px; font-size: 0.875rem; color: var(--text2); text-align: center; }
+.debt-email-help { font-size: 0.8125rem; color: var(--text2); }

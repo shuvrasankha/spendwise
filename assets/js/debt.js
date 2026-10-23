@@ -4,7 +4,8 @@ import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
-import { fetchSharedDebts } from './modules/split.js';
+import { fetchSharedDebts, emailError, shareFields, announceDebts } from './modules/split.js';
+import { setKnownPeople } from './modules/people.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -88,9 +89,8 @@ function updateDebtSummary() {
   document.getElementById('debt-owe-count').textContent = `${owe.length} open`;
   document.getElementById('debt-owed-count').textContent = `${owed.length} open`;
 
-  // Names used before, so a repeat person is picked rather than retyped
-  document.getElementById('debt-person-list').innerHTML = [...new Set(allDebts.filter(d => !d.shared).map(d => d.person).filter(Boolean))]
-    .map(p => `<option value="${escapeHtml(p)}"></option>`).join('');
+  // People dealt with before, so a repeat person (and their email) is picked rather than retyped
+  setKnownPeople(allDebts);
 }
 
 // One row: who, which way, when, the amount, then the row's actions
@@ -116,7 +116,7 @@ function renderDebts() {
     return;
   }
   list.innerHTML = active.map(d => {
-    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : '', d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
+    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : d.withEmail ? 'Shared' : '', d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
     const who = escapeHtml(d.person);
     // offline entries have no record to update until they sync; shared ones are theirs to settle
     const actions = d.pending || d.shared ? '' : `
@@ -146,10 +146,13 @@ window.addDebt = async () => {
   const person = sanitize(document.getElementById('debt-person').value.trim(), 100);
   const date = document.getElementById('debt-date').value;
   const notes = sanitize(document.getElementById('debt-notes').value.trim(), 500);
+  const email = document.getElementById('debt-email').value.trim().toLowerCase();
 
   if (!amount || amount <= 0) { showDebtFormMsg('Enter a valid amount.', 'error'); return; }
   if (!person) { showDebtFormMsg('Enter person name.', 'error'); return; }
   if (!date) { showDebtFormMsg('Select a date.', 'error'); return; }
+  const badEmail = emailError(email);
+  if (badEmail) { showDebtFormMsg(badEmail, 'error'); return; }
 
   const debtData = {
     uid: currentUser.uid,
@@ -161,13 +164,15 @@ window.addDebt = async () => {
     settled: false,
     settledDate: '',
     encoding: 'plain',
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    ...shareFields(email),
   };
+  const shared = shareFields(email);
 
   if (window.isOffline && window.isOffline()) {
     if (typeof window.addToOfflineQueue === 'function') {
       window.addToOfflineQueue('debt', debtData);
-      allDebts.unshift({ id: 'offline-' + Date.now(), amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', pending: true });
+      allDebts.unshift({ id: 'offline-' + Date.now(), amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', pending: true, ...shared });
       allDebts.sort((a, b) => b.date.localeCompare(a.date));
       updateDebtSummary();
       renderDebts();
@@ -183,21 +188,22 @@ window.addDebt = async () => {
 
   try {
     const ref = await addDoc(collection(db, 'debts'), debtData);
+    announceDebts([ref], [debtData]);
 
-    allDebts.unshift({ id: ref.id, amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '' });
+    allDebts.unshift({ id: ref.id, amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', ...shared });
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
     updateDebtSummary();
     renderDebts();
     renderDebtHistory();
     resetDebtForm();
-    showDebtFormMsg('Debt added successfully!', 'success');
+    showDebtFormMsg(email ? `Debt added and shared with ${email}.` : 'Debt added successfully!', 'success');
     showToast('Debt added!', 'success');
     window.markLoggedToday?.(); // skips today's reminder (reminders.js)
   } catch (e) {
     console.error(e);
     if (window.addToOfflineQueue && navigator.onLine === false) {
       window.addToOfflineQueue('debt', debtData);
-      allDebts.unshift({ id: 'offline-' + Date.now(), amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', pending: true });
+      allDebts.unshift({ id: 'offline-' + Date.now(), amount, type: currentDebtType, person, date, notes: notes || '', settled: false, settledDate: '', pending: true, ...shared });
       allDebts.sort((a, b) => b.date.localeCompare(a.date));
       updateDebtSummary();
       renderDebts();
@@ -213,7 +219,7 @@ window.addDebt = async () => {
 
 // ── Reset Form ───────────────────────────────────────────────────────────────
 window.resetDebtForm = () => {
-  ['debt-amount', 'debt-person', 'debt-notes'].forEach(id => {
+  ['debt-amount', 'debt-person', 'debt-email', 'debt-notes'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });

@@ -28,7 +28,7 @@ test('notifications: each split, then its settling, newest first', () => {
   const paid = sharedDebtView('b', { type: 'they-owe', amount: 120, fromName: 'Asha', date: '2026-10-18', settled: true, settledDate: '2026-10-22', createdAt: { toMillis: () => 500 } });
   const items = notificationsFrom([open, paid]);
   assert.deepEqual(items.map(i => i.id), ['b:settled', 'a:split', 'b:split']);
-  assert.deepEqual(items[0], { id: 'b:settled', kind: 'settled', at: Date.parse('2026-10-22T23:59:59'), day: '2026-10-22', person: 'Asha', amount: 120, note: '' });
+  assert.deepEqual(items[0], { id: 'b:settled', kind: 'settled', type: 'i-owe', at: Date.parse('2026-10-22T23:59:59'), day: '2026-10-22', person: 'Asha', amount: 120, note: '' });
   assert.equal(items[1].person, 'Ravi');
 });
 

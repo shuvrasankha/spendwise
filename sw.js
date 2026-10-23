@@ -39,6 +39,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/sms-parse.js',
   './assets/js/modules/history-data.js',
   './assets/js/modules/split.js',
+  './assets/js/modules/people.js',
   './assets/js/modules/notifications.js',
   './assets/images/logo-96.png',
   './assets/images/logo-192.png',

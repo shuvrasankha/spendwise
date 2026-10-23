@@ -1,6 +1,7 @@
 // worker/src/push.js — Push: subscription storage (D1) and sending.
 // The daily reminder carries no payload; the service worker shows a fixed "Log today's spending".
-// A bill split with someone by email is one encrypted message to each of their devices (webpush.js).
+// A debt shared with someone by email (a split bill, or one added on Debts) is one encrypted message
+// to each of their devices (webpush.js).
 
 import { importJWK, SignJWT } from 'jose';
 import { encryptPush } from './webpush.js';
@@ -56,6 +57,7 @@ export async function readDebt(id, idToken, env) {
   const f = doc.fields || {};
   return {
     uid: f.uid?.stringValue,
+    type: f.type?.stringValue,
     withEmail: f.withEmail?.stringValue,
     fromName: f.fromName?.stringValue || 'Someone',
     amount: Number(f.amount?.doubleValue ?? f.amount?.integerValue),
@@ -64,12 +66,14 @@ export async function readDebt(id, idToken, env) {
   };
 }
 
-// What the person a bill was split with sees. symbol is the sender's currency sign, if one.
+// What the person a debt was shared with sees, from their side: the sender's "they owe me" is
+// "you owe" for them. symbol is the sender's currency sign, if one.
 export function debtMessage(debt, debtId, symbol) {
   const amount = `${symbol || ''}${debt.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const owed = debt.type === 'i-owe' ? `${debt.fromName} owes you ${amount}` : `You owe ${amount}`;
   return JSON.stringify({
-    title: `${debt.fromName} split a bill with you`.slice(0, 120),
-    body: `You owe ${amount}${debt.notes ? ` · ${debt.notes}` : ''}`.slice(0, 200),
+    title: `${debt.fromName} ${debt.notes.startsWith('Split:') ? 'split a bill' : 'added a debt'} with you`.slice(0, 120),
+    body: `${owed}${debt.notes ? ` · ${debt.notes}` : ''}`.slice(0, 200),
     url: 'debt.html',
     tag: `debt-${debtId}`,
   });

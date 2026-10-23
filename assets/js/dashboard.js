@@ -19,7 +19,8 @@ import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, i
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
 import { getGoals } from './modules/goals.js';
-import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceSplit, setKnownPeople } from './modules/split.js';
+import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
+import { setKnownPeople } from './modules/people.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -896,7 +897,7 @@ window.addExpense = async () => {
     batch.set(ref, expenseData);
     const debtRefs = debts.map(d => { const r = doc(collection(db, "debts")); batch.set(r, d); return r; });
     await batch.commit();
-    announceSplit(debtRefs, debts);
+    announceDebts(debtRefs, debts);
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1;

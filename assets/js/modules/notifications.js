@@ -1,5 +1,5 @@
 // notifications.js — The bell in the header of every signed-in page: what other people shared with
-// you (a bill split with your email, and when they mark it paid), with an unread count. Built from
+// you (a split bill or a debt added with your email, and when they mark it paid), with an unread count. Built from
 // the shared debts (split.js); which items were seen is remembered per device.
 import { auth } from '../config/firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -52,8 +52,10 @@ function updateBadge() {
 function render() {
   const money = n => (window.fmt ? window.fmt(n) : String(n));
   list.innerHTML = items.length ? items.map(i => {
-    const title = i.kind === 'split' ? `${i.person} split a bill with you` : `${i.person} marked ${money(i.amount)} as paid`;
-    const detail = [i.kind === 'split' ? `You owe ${money(i.amount)}` : '', i.note].filter(Boolean).join(' · ');
+    const added = `${i.person} ${i.note?.startsWith('Split:') ? 'split a bill' : 'added a debt'} with you`;
+    const title = i.kind === 'split' ? added : `${i.person} marked ${money(i.amount)} as paid`;
+    const owed = i.type === 'i-owe' ? `You owe ${money(i.amount)}` : `${i.person} owes you ${money(i.amount)}`;
+    const detail = [i.kind === 'split' ? owed : '', i.note].filter(Boolean).join(' · ');
     return `<li class="notif-item${seen.has(i.id) ? '' : ' unread'}">
       <a href="debt.html">
         <span class="notif-icon ${i.kind}" aria-hidden="true"><i data-lucide="${i.kind === 'split' ? 'users' : 'check'}"></i></span>
@@ -64,7 +66,7 @@ function render() {
         </span>
       </a>
     </li>`;
-  }).join('') : `<li class="notif-empty">Nothing yet. When someone splits a bill with your email, it shows up here.</li>`;
+  }).join('') : `<li class="notif-empty">Nothing yet. When someone splits a bill or adds a debt with your email, it shows up here.</li>`;
   if (window.lucide) lucide.createIcons();
 }
 

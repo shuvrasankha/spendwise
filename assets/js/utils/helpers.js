@@ -144,16 +144,16 @@ export function peopleFrom(debts) {
   return [...byKey.values()].filter(p => p.email || !named.has(p.name.toLowerCase()));
 }
 
-// The notification centre's events from debts shared with you, newest first: each was split with
-// you, and later maybe marked paid by them. ids are stable, so "seen" can be remembered per item.
+// The notification centre's events from debts shared with you, newest first: each was added (a split
+// bill or a debt) and later maybe marked paid by them. type is from your side ('i-owe': you owe them). ids are stable, so "seen" can be remembered per item.
 export function notificationsFrom(sharedDebts) {
   const items = [];
   for (const d of sharedDebts) {
     const at = d.createdAt || Date.parse(d.date) || 0;
-    items.push({ id: `${d.id}:split`, kind: 'split', at, day: d.date, person: d.person, amount: d.amount, note: d.notes });
+    items.push({ id: `${d.id}:split`, kind: 'split', type: d.type, at, day: d.date, person: d.person, amount: d.amount, note: d.notes });
     if (d.settled) {
       const paidAt = Date.parse(`${d.settledDate}T23:59:59`) || at;
-      items.push({ id: `${d.id}:settled`, kind: 'settled', at: Math.max(paidAt, at + 1), day: d.settledDate || d.date, person: d.person, amount: d.amount, note: d.notes });
+      items.push({ id: `${d.id}:settled`, kind: 'settled', type: d.type, at: Math.max(paidAt, at + 1), day: d.settledDate || d.date, person: d.person, amount: d.amount, note: d.notes });
     }
   }
   return items.sort((a, b) => b.at - a.at);

@@ -89,6 +89,10 @@ test('a sender is capped per day', async () => {
 });
 
 test('the message names the sender, the amount and the note', () => {
-  const debt = { fromName: 'Ravi', amount: 1250.5, notes: 'Split: Dinner' };
-  assert.deepEqual(JSON.parse(debtMessage(debt, 'd1', '₹')), { title: 'Ravi split a bill with you', body: 'You owe ₹1,250.5 · Split: Dinner', url: 'debt.html', tag: 'debt-d1' });
+  const split = { fromName: 'Ravi', type: 'they-owe', amount: 1250.5, notes: 'Split: Dinner' };
+  assert.deepEqual(JSON.parse(debtMessage(split, 'd1', '₹')), { title: 'Ravi split a bill with you', body: 'You owe ₹1,250.5 · Split: Dinner', url: 'debt.html', tag: 'debt-d1' });
+  // added on Debts, either way round
+  assert.equal(JSON.parse(debtMessage({ fromName: 'Ravi', type: 'they-owe', amount: 500, notes: '' }, 'd2')).body, 'You owe 500');
+  const theyOwe = JSON.parse(debtMessage({ fromName: 'Ravi', type: 'i-owe', amount: 500, notes: 'Rent' }, 'd3', '₹'));
+  assert.deepEqual([theyOwe.title, theyOwe.body], ['Ravi added a debt with you', 'Ravi owes you ₹500 · Rent']);
 });
