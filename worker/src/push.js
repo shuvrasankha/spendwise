@@ -43,10 +43,28 @@ export function isDue(sub, now) {
   return inWindow(sub, now) && sub.last_sent !== date && sub.last_logged !== date;
 }
 
+// The bill's due date on or after `from`: the one the app sent, or the same day in a later month
+// when the app hasn't been opened since it passed (the 31st falls on a shorter month's last day)
+export function nextDue(due, from) {
+  if (due >= from) return due;
+  const day = Number(due.slice(8, 10));
+  for (let [y, m] = from.split('-').map(Number); ; m === 12 ? (y++, m = 1) : m++) {
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const date = `${y}-${String(m).padStart(2, '0')}-${String(Math.min(day, last)).padStart(2, '0')}`;
+    if (date >= from) return date;
+  }
+}
+
+// The bill's next due date if it is due tomorrow in the user's time zone, else null
+function dueTomorrow(row, now) {
+  const tomorrow = new Date(Date.parse(localParts(now, row.tz).date) + 864e5).toISOString().slice(0, 10);
+  return nextDue(row.due, tomorrow) === tomorrow ? tomorrow : null;
+}
+
 // A bill is alerted the day before it's due, at the reminder time, once per due date
 export function billDue(row, now) {
-  const tomorrow = new Date(Date.parse(localParts(now, row.tz).date) + 864e5).toISOString().slice(0, 10);
-  return row.due === tomorrow && row.alerted_due !== row.due && inWindow(row, now);
+  const due = dueTomorrow(row, now);
+  return !!due && row.alerted_due !== due && inWindow(row, now);
 }
 
 // A month's summary goes out on the 1st of the next month, at the reminder time
@@ -130,6 +148,12 @@ export function debtMessage(debt, debtId, symbol, from) {
   });
 }
 
+// Bills and month totals are kept only for users with reminders on somewhere: every signed-in
+// device sends them, so the crons see spending logged on a device without notifications
+async function hasDevice(uid, env) {
+  return !!await env.DB.prepare('SELECT 1 FROM subscriptions WHERE uid = ?1 LIMIT 1').bind(uid).first();
+}
+
 // ── HTTP routes (caller already verified the Firebase user) ─────────────────
 // email is the token's verified address (lowercase); idToken is only used to read Firestore as the caller
 export async function handlePushRoute(path, body, uid, env, { email, idToken } = {}) {
@@ -175,6 +199,7 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
       typeof b?.key === 'string' && b.key.length <= 200 && typeof b.title === 'string' && b.title.trim() &&
       DATE.test(b.due) && Number.isFinite(b.amount) && b.amount > 0 && b.amount < 1e12);
     if (!ok) return [400, { error: 'Invalid bills' }];
+    if (!await hasDevice(uid, env)) return [200, { stored: false }];
     const sign = currencySign(symbol);
     await env.DB.prepare('DELETE FROM bills WHERE uid = ?1 AND key NOT IN (SELECT value FROM json_each(?2))')
       .bind(uid, JSON.stringify(bills.map(b => b.key))).run();
@@ -193,6 +218,7 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
     if (!entries.length || entries.length > 2 || !entries.every(([m, v]) => MONTH.test(m) && Number.isFinite(v) && v >= 0 && v < 1e12)) {
       return [400, { error: 'Invalid totals' }];
     }
+    if (!await hasDevice(uid, env)) return [200, { stored: false }];
     for (const [month, spent] of entries) {
       await env.DB.prepare(
         `INSERT INTO month_totals (uid, month, spent, symbol) VALUES (?1, ?2, ?3, ?4)
@@ -281,15 +307,16 @@ export async function sendDueReminders(env, now = new Date()) {
 
 // Cron: "Netflix due tomorrow" to each of the owner's devices that can take a message push
 export async function sendBillAlerts(env, now = new Date()) {
-  // shortcut: reads every not-yet-alerted bill each run; fine for thousands of users, filter by due date in SQL beyond that
+  // shortcut: reads every bill each run (a passed due date rolls on to next month, so SQL can't filter
+  // by it); fine for thousands of users, store the day of month and filter in SQL beyond that
   const { results } = await env.DB.prepare(
     `SELECT b.uid, b.key, b.title, b.amount, b.symbol, b.due, b.alerted_due, s.endpoint, s.remind_at, s.tz, k.p256dh, k.auth
-     FROM bills b JOIN subscriptions s ON s.uid = b.uid JOIN push_keys k ON k.endpoint = s.endpoint
-     WHERE b.alerted_due IS NOT b.due`).all();
+     FROM bills b JOIN subscriptions s ON s.uid = b.uid JOIN push_keys k ON k.endpoint = s.endpoint`).all();
   const counts = { sent: 0, gone: 0, failed: 0 };
   const alerted = new Map();
-  for (const row of results) {
-    if (!billDue(row, now)) continue;
+  for (const stored of results) {
+    if (!billDue(stored, now)) continue;
+    const row = { ...stored, due: dueTomorrow(stored, now) };
     let outcome;
     try { outcome = await sendPush(row.endpoint, env, await encryptPush(billMessage(row), row)); } catch { outcome = 'failed'; }
     counts[outcome]++;

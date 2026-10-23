@@ -269,6 +269,7 @@ async function loadExpenses(isSilentSync = false) {
 
     // Save to localStorage cache
     saveToCache(currentUser.uid, allExpenses);
+    expensesFresh = true;
 
     // Render lightweight content immediately — only if elements exist
     if (document.getElementById("home-spent")) {
@@ -1140,9 +1141,11 @@ window.deleteFromEdit = async () => {
   document.getElementById("modal").classList.remove("hidden");
 };
 
-function updateCards() { syncPush(); renderHome(); }
+function updateCards() { if (expensesFresh) syncPush(); renderHome(); }
 
-// What the Worker needs for bill-due alerts and the month-end summary (reminders.js)
+// What the Worker needs for bill-due alerts and the month-end summary (reminders.js). Only from
+// expenses read from Firestore, never the cached copy, which can be days old on this device.
+let expensesFresh = false;
 function syncPush() {
   window.syncBills?.(upcomingBills(allExpenses, todayStr(), isSkipped));
   const month = todayStr().slice(0, 7), prev = addMonths(month, -1);
