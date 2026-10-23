@@ -82,16 +82,16 @@ export function financeScore({ income, spent, invested, budget, monthShare, owe,
   if (!(income > 0)) return null;
   const clamp = v => Math.min(Math.max(v, 0), 1);
   const parts = [
-    { weight: 40, value: clamp((income - spent) / income / 0.2), tip: 'Try to keep 20% of your income unspent' },
-    { weight: 15, value: clamp(invested / income / 0.1), tip: 'Putting 10% of your income into investments will lift your score' },
-    { weight: 20, value: clamp(1 - owe / income), tip: 'Paying down what you owe will lift your score' },
+    { name: 'Saving', weight: 40, value: clamp((income - spent) / income / 0.2), tip: 'Try to keep 20% of your income unspent' },
+    { name: 'Investing', weight: 15, value: clamp(invested / income / 0.1), tip: 'Putting 10% of your income into investments will lift your score' },
+    { name: 'Debt', weight: 20, value: clamp(1 - owe / income), tip: 'Paying down what you owe will lift your score' },
   ];
   // On pace (projected spend within budget) scores full; projected 50% over budget scores zero
   if (budget > 0) {
     const projected = spent / monthShare / budget;
-    parts.push({ weight: 30, value: clamp((1.5 - projected) / 0.5), tip: 'Spending is running ahead of your budget' });
+    parts.push({ name: 'Budget pace', weight: 30, value: clamp((1.5 - projected) / 0.5), tip: 'Spending is running ahead of your budget' });
   }
-  if (goals.length) parts.push({ weight: 10, value: goals.filter(g => g.state !== 'late').length / goals.length, tip: 'A savings goal is behind its date' });
+  if (goals.length) parts.push({ name: 'Goals', weight: 10, value: goals.filter(g => g.state !== 'late').length / goals.length, tip: 'A savings goal is behind its date' });
   const total = parts.reduce((s, p) => s + p.weight, 0);
   const score = Math.round(parts.reduce((s, p) => s + p.weight * p.value, 0) / total * 100);
   const weakest = parts.reduce((a, b) => (b.value < a.value ? b : a));
@@ -99,6 +99,7 @@ export function financeScore({ income, spent, invested, budget, monthShare, owe,
     score,
     label: score >= 80 ? 'Great' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Needs work',
     tip: weakest.value < 1 ? weakest.tip : 'Everything is on track this month',
+    parts: parts.map(({ name, value }) => ({ name, value })),
   };
 }
 

@@ -1033,10 +1033,37 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .chip:active, .seg-btn:active, .cat-tile:active, .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
 a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
 
-/* Money score tile: always full width, the label tinted by how the month is going */
-.home-tiles .home-score { grid-column: 1 / -1; }
-.home-score-of { font-size: 0.875rem; font-weight: 600; color: var(--text2); }
-.home-score-label { margin-left: 6px; font-size: 0.875rem; font-weight: 700; }
+/* Money score: a ring in the goal-ring language, the verdict in words beside it, and the factors behind it */
+.home-tiles .home-score { grid-column: 1 / -1; gap: 0; }
+.home-score-main { display: flex; align-items: center; gap: 16px; }
+.score-ring {
+  --ring: var(--text2);
+  position: relative; flex: none; display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%;
+  background: conic-gradient(var(--ring) calc(var(--p) * 1%), var(--border) 0);
+  font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; color: var(--text);
+  transition: --p 700ms var(--ease-smooth);
+}
+.score-ring::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--surface); }
+.score-ring > * { position: relative; }
+.home-score.great .score-ring, .home-score.good .score-ring { --ring: var(--success); }
+.home-score.fair .score-ring { --ring: var(--warning); }
+.home-score.low .score-ring { --ring: var(--danger); }
+.home-score-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.home-score-text h3 { margin: 0; }
+.home-score-label { font-size: 1.125rem; font-weight: 800; color: var(--text); }
 .home-score.great .home-score-label, .home-score.good .home-score-label { color: var(--success); }
 .home-score.fair .home-score-label { color: var(--warning); }
 .home-score.low .home-score-label { color: var(--danger); }
+.home-score-cta { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; font-weight: 700; color: var(--accent); text-decoration: none; }
+.home-score-cta svg { width: 16px; height: 16px; }
+.home-score-why { margin-top: 12px; border-top: 1px solid var(--border-light); }
+.home-score-why summary { display: flex; align-items: center; min-height: 44px; font-size: 0.875rem; font-weight: 600; color: var(--text2); cursor: pointer; }
+.home-score-why summary:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; border-radius: 4px; }
+.home-score-parts { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.score-part { display: grid; grid-template-columns: 7.5rem 1fr 3rem; align-items: center; gap: 10px; font-size: 0.875rem; }
+.score-part-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.score-part-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
+.score-part.weak .score-part-bar > span { background: var(--warning); }
+.score-part-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); }
+.score-part.weak .score-part-pct { color: var(--warning); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .score-ring { transition: none; } }

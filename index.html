@@ -266,11 +266,23 @@
 
         <div class="home-tiles">
           <!-- This month's money score out of 100 (dashboard.js renderHome, helpers.js financeScore) -->
-          <div class="home-tile home-tile-wide home-score" id="home-score-tile">
-            <span class="home-tile-label">Money score</span>
-            <span class="home-tile-value"><span id="home-score">—</span><span class="home-score-of"> / 100</span> <span class="home-score-label" id="home-score-label"></span></span>
-            <span class="home-tile-sub" id="home-score-sub">Add this month's income to see your score</span>
-          </div>
+          <section class="home-tile home-tile-wide home-score" id="home-score-tile" aria-labelledby="home-score-title">
+            <div class="home-score-main">
+              <div class="score-ring" id="home-score-ring" style="--p:0" role="img" aria-label="No money score yet">
+                <span id="home-score" aria-hidden="true">—</span>
+              </div>
+              <div class="home-score-text">
+                <h3 class="home-tile-label" id="home-score-title">Money score</h3>
+                <span class="home-score-label" id="home-score-label">No score yet</span>
+                <span class="home-tile-sub" id="home-score-sub">Add this month's income to see your score</span>
+                <a class="home-score-cta" id="home-score-cta" href="income.html">Add income <i data-lucide="chevron-right" aria-hidden="true"></i></a>
+              </div>
+            </div>
+            <details class="home-score-why hidden" id="home-score-why">
+              <summary>What makes up your score</summary>
+              <ul class="home-score-parts" id="home-score-parts"></ul>
+            </details>
+          </section>
           <a class="home-tile" href="income.html">
             <span class="home-tile-label">Income</span>
             <span class="home-tile-value" id="home-income">—</span>

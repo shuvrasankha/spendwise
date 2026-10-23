@@ -10,7 +10,10 @@ test('no income means no score', () => {
 });
 
 test('saving 20% with no debt is a perfect score', () => {
-  assert.deepEqual(financeScore(base), { score: 100, label: 'Great', tip: 'Everything is on track this month' });
+  assert.deepEqual(financeScore(base), {
+    score: 100, label: 'Great', tip: 'Everything is on track this month',
+    parts: [{ name: 'Saving', value: 1 }, { name: 'Investing', value: 1 }, { name: 'Debt', value: 1 }],
+  });
 });
 
 test('overspending and debt drag it down and name the weakest factor', () => {
