@@ -38,6 +38,9 @@ const STATIC_ASSETS = [
   './assets/js/modules/insights-data.js',
   './assets/js/modules/sms-parse.js',
   './assets/js/modules/history-data.js',
+  './assets/js/modules/split.js',
+  './assets/js/modules/people.js',
+  './assets/js/modules/notifications.js',
   './assets/images/logo-96.png',
   './assets/images/logo-192.png',
   './manifest.json',
@@ -125,8 +128,20 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
-// Daily reminder (worker/src/push.js sends an empty push; the text lives here)
+// A message push (a bill split with you) carries its own text; the daily reminder is empty and its
+// text lives here (worker/src/push.js)
 self.addEventListener('push', (e) => {
+  let msg = null;
+  try { msg = e.data?.json(); } catch { /* not a message push */ }
+  if (msg?.title) {
+    e.waitUntil(self.registration.showNotification(msg.title, {
+      body: msg.body || '',
+      icon: './assets/images/logo-192.png',
+      tag: msg.tag,
+      data: { url: new URL(msg.url || './', self.registration.scope).href },
+    }));
+    return;
+  }
   e.waitUntil(self.registration.showNotification("Log today's spending", {
     body: 'Add what you spent today. It only takes a few seconds.',
     icon: './assets/images/logo-192.png',

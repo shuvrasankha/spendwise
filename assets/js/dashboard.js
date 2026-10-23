@@ -2,7 +2,7 @@
 
 import { auth, gProvider, db } from './config/firebase.js';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -14,11 +14,13 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
 import { getGoals } from './modules/goals.js';
+import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
+import { setKnownPeople } from './modules/people.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -120,6 +122,7 @@ onAuthStateChanged(auth, user => {
     // Income and debts first, so the home totals are complete on the first paint
     allIncome = loadFromCache(user.uid, 'income') || [];
     allDebts = loadFromCache(user.uid, 'debts') || [];
+    setKnownPeople(allDebts);
     const cached = loadFromCache(user.uid);
     if (cached && cached.length) {
       // Render from cache instantly — no skeleton delay
@@ -317,7 +320,7 @@ async function loadDebts() {
   if (!currentUser) return;
   try {
     const q = query(collection(db, "debts"), where("uid", "==", currentUser.uid));
-    const snap = await getDocs(q);
+    const [snap, shared] = await Promise.all([getDocs(q), fetchSharedDebts(currentUser)]);
     allDebts = snap.docs.map(d => {
       const raw = d.data();
       const amt = parseFloat(raw.amount);
@@ -328,9 +331,10 @@ async function loadDebts() {
         settled: raw.settled === true || raw.settled === "true" || raw.settled === 1,
         settledDate: raw.settledDate || '',
       };
-    });
+    }).concat(shared);
     allDebts.sort((a, b) => b.date.localeCompare(a.date));
     saveToCache(currentUser.uid, allDebts, 'debts');
+    setKnownPeople(allDebts);
     updateDebtCards();
   } catch (e) { console.error("Debt load error:", e); }
 }
@@ -827,7 +831,7 @@ function removeLocalExpense(id) {
 }
 
 window.addExpense = async () => {
-  const amount = parseFloat(document.getElementById("exp-amount").value);
+  let amount = parseFloat(document.getElementById("exp-amount").value);
   const category = document.getElementById("exp-category").value;
   const date = document.getElementById("exp-date").value;
   const payment = document.getElementById("exp-payment").value;
@@ -838,6 +842,16 @@ window.addExpense = async () => {
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
+  // Split: your share becomes the expense, and each person owes you theirs (modules/split.js)
+  const split = getSplit();
+  if (split?.error) { showFormMsg(split.error, "error"); return; }
+  let debts = [];
+  if (split) {
+    const { each, mine } = splitAmount(amount, split.people.length);
+    debts = splitDebts(split.people, each, { date, label: description || category });
+    amount = mine;
+  }
+  const queueDebts = () => debts.map(d => window.addToOfflineQueue('debt', d));
   // The same amount + category + date again within 2 minutes is usually a double tap: ask once
   const dupKey = `${amount}|${category}|${date}`;
   if (lastAdded && lastAdded.key === dupKey && Date.now() - lastAdded.at < 120000 && confirmedDupKey !== dupKey) {
@@ -853,6 +867,7 @@ window.addExpense = async () => {
     if (window.isOffline && window.isOffline()) {
       if (typeof window.addToOfflineQueue === 'function') {
         const queueId = window.addToOfflineQueue('expense', expenseData);
+        const debtQueueIds = queueDebts();
         const tempId = 'offline-' + Date.now();
         allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
@@ -868,7 +883,7 @@ window.addExpense = async () => {
         resetForm();
         showFormMsg("Expense saved offline. Will sync when online.", "success");
         rememberAdd(dupKey, payment);
-        showUndoToast("Saved offline.", () => { window.removeFromOfflineQueue(queueId); removeLocalExpense(tempId); });
+        showUndoToast("Saved offline.", () => { [queueId, ...debtQueueIds].forEach(window.removeFromOfflineQueue); removeLocalExpense(tempId); });
       } else {
         showFormMsg("Cannot save offline. Please check your connection.", "error");
       }
@@ -876,7 +891,13 @@ window.addExpense = async () => {
     }
 
     showLoader();
-    const ref = await addDoc(collection(db, "expenses"), expenseData);
+    // One batch, so an expense is never saved without its split debts or the other way round
+    const batch = writeBatch(db);
+    const ref = doc(collection(db, "expenses"));
+    batch.set(ref, expenseData);
+    const debtRefs = debts.map(d => { const r = doc(collection(db, "debts")); batch.set(r, d); return r; });
+    await batch.commit();
+    announceDebts(debtRefs, debts);
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1;
@@ -890,10 +911,10 @@ window.addExpense = async () => {
     });
     saveToCache(currentUser.uid, allExpenses);
     resetForm();
-    showFormMsg("Expense added successfully!", "success");
+    showFormMsg(debts.length ? `Your share added. ${debts.length === 1 ? "1 person owes" : `${debts.length} people owe`} you ${fmt(debts[0].amount)}${debts.length > 1 ? " each" : ""}, see Debts.` : "Expense added successfully!", "success");
     rememberAdd(dupKey, payment);
-    showUndoToast("Expense added.", async () => {
-      await deleteDoc(doc(db, "expenses", ref.id));
+    showUndoToast(debts.length ? "Split saved." : "Expense added.", async () => {
+      await Promise.all([ref, ...debtRefs].map(r => deleteDoc(r)));
       removeLocalExpense(ref.id);
     });
     window.markLoggedToday?.(); // skips today's reminder (reminders.js)
@@ -904,6 +925,7 @@ window.addExpense = async () => {
       const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
     if (repeat) expenseData.repeat = repeat;
       const queueId = window.addToOfflineQueue('expense', expenseData);
+      const debtQueueIds = queueDebts();
       const tempId = 'offline-' + Date.now();
       allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
@@ -919,7 +941,7 @@ window.addExpense = async () => {
       resetForm();
       showFormMsg("Saved offline due to error. Will sync when online.", "success");
       rememberAdd(dupKey, payment);
-      showUndoToast("Saved offline.", () => { window.removeFromOfflineQueue(queueId); removeLocalExpense(tempId); });
+      showUndoToast("Saved offline.", () => { [queueId, ...debtQueueIds].forEach(window.removeFromOfflineQueue); removeLocalExpense(tempId); });
     } else {
       showFormMsg("Couldn't save the expense. Check your connection and try again.", "error"); 
     }
@@ -928,6 +950,7 @@ window.addExpense = async () => {
 };
 
 window.resetForm = () => {
+  resetSplit();
   ["exp-amount", "exp-description", "exp-notes", "exp-card-name", "exp-tags"].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = "";
   });

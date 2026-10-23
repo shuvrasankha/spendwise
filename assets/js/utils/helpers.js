@@ -103,6 +103,62 @@ export function financeScore({ income, spent, invested, budget, monthShare, owe,
   };
 }
 
+// An equal split of total between you and `others` people. Their shares are rounded to 2 places and
+// yours absorbs the rounding, so the parts always add back up to total.
+export function splitAmount(total, others) {
+  const each = Math.round((total / (others + 1)) * 100) / 100;
+  return { each, mine: Math.round((total - each * others) * 100) / 100 };
+}
+
+// A debt someone else recorded against your email, seen from your side: what they're owed, you owe.
+// Read-only here (firestore.rules › debts), so it is flagged shared.
+export function sharedDebtView(id, raw) {
+  return {
+    id,
+    amount: Number(raw.amount) || 0,
+    type: raw.type === 'they-owe' ? 'i-owe' : 'they-owe',
+    person: raw.fromName || 'Someone',
+    email: raw.fromEmail || '',
+    date: raw.date || '',
+    notes: raw.notes || '',
+    settled: raw.settled === true,
+    settledDate: raw.settledDate || '',
+    createdAt: raw.createdAt?.toMillis?.() || 0,
+    shared: true,
+  };
+}
+
+// People you've dealt with, for the split form's suggestions: from your own debts (with the email
+// you split with, if any) and from bills others split with you (their email). Most recent first, one
+// per name and email; a bare name is dropped when the same name is known with an email.
+export function peopleFrom(debts) {
+  const byKey = new Map();
+  for (const d of [...debts].sort((a, b) => (b.date || '').localeCompare(a.date || ''))) {
+    const name = (d.person || '').trim();
+    if (!name) continue;
+    const email = (d.shared ? d.email : d.withEmail) || '';
+    const key = `${name.toLowerCase()}|${email}`;
+    if (!byKey.has(key)) byKey.set(key, { name, email });
+  }
+  const named = new Set([...byKey.values()].filter(p => p.email).map(p => p.name.toLowerCase()));
+  return [...byKey.values()].filter(p => p.email || !named.has(p.name.toLowerCase()));
+}
+
+// The notification centre's events from debts shared with you, newest first: each was added (a split
+// bill or a debt) and later maybe marked paid by them. type is from your side ('i-owe': you owe them). ids are stable, so "seen" can be remembered per item.
+export function notificationsFrom(sharedDebts) {
+  const items = [];
+  for (const d of sharedDebts) {
+    const at = d.createdAt || Date.parse(d.date) || 0;
+    items.push({ id: `${d.id}:split`, kind: 'split', type: d.type, at, day: d.date, person: d.person, amount: d.amount, note: d.notes });
+    if (d.settled) {
+      const paidAt = Date.parse(`${d.settledDate}T23:59:59`) || at;
+      items.push({ id: `${d.id}:settled`, kind: 'settled', type: d.type, at: Math.max(paidAt, at + 1), day: d.settledDate || d.date, person: d.person, amount: d.amount, note: d.notes });
+    }
+  }
+  return items.sort((a, b) => b.at - a.at);
+}
+
 // Counts a money figure from what it shows now (0 the first time) to value, easing out over 700ms.
 // Instant with reduced motion, in a hidden tab, or when the value is unchanged. format: number → text.
 const countFrames = new WeakMap();

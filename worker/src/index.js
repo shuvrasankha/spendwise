@@ -1,6 +1,7 @@
 // worker/src/index.js — SpendWise backend for signed-in users (verified Firebase ID token):
 //   POST /         AI requests on Cloudflare Workers AI (free daily allowance, no API key)
-//   POST /push/*   daily reminder subscriptions (see push.js); the cron sends them
+//   POST /push/*   push subscriptions and the daily reminder cron; /push/debt tells the person a
+//                  bill was split with (see push.js)
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { handlePushRoute, sendDueReminders } from './push.js';
@@ -25,7 +26,7 @@ const AI_DAILY_LIMIT = 100;
 export function userFrom(payload) {
   if (!payload?.sub) return { status: 401, error: 'Not signed in' };
   if (payload.email_verified !== true) return { status: 403, error: 'Verify your email first' };
-  return { uid: payload.sub };
+  return { uid: payload.sub, ...(typeof payload.email === 'string' && { email: payload.email.toLowerCase() }) };
 }
 
 // Why an AI request body is refused, or null when it's fine: [status, message]
@@ -88,7 +89,7 @@ export default {
 
     const path = new URL(req.url).pathname;
     if (path.startsWith('/push/')) {
-      const [status, result] = await handlePushRoute(path, body, uid, env);
+      const [status, result] = await handlePushRoute(path, body, uid, env, { email: user.email, idToken });
       return json(status, result, cors);
     }
     const bad = aiBodyError(body);

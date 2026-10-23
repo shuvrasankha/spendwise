@@ -19,3 +19,21 @@ CREATE TABLE IF NOT EXISTS ai_usage (
   n   INTEGER NOT NULL,
   PRIMARY KEY (uid, day)
 );
+
+-- Message pushes (a bill split with you): a device's encryption keys and the verified email it
+-- signed in with, saved alongside its subscription. Deleted with the subscription.
+CREATE TABLE IF NOT EXISTS push_keys (
+  endpoint TEXT PRIMARY KEY,
+  email    TEXT NOT NULL,         -- lowercase, from the verified Firebase token
+  p256dh   TEXT NOT NULL,
+  auth     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS push_keys_email ON push_keys (email);
+
+-- Each shared debt is pushed at most once; also caps how many one sender can push a day
+CREATE TABLE IF NOT EXISTS debt_pushes (
+  debt_id TEXT PRIMARY KEY,
+  uid     TEXT NOT NULL,          -- sender
+  sent_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS debt_pushes_uid ON debt_pushes (uid, sent_at);

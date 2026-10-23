@@ -43,6 +43,7 @@ async function save(sub) {
     endpoint: sub.endpoint,
     remindAt: timeInput.value || DEFAULT_TIME,
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    keys: sub.toJSON().keys, // lets this device receive "a bill was split with you" messages
   });
   if (res.status === 409) throw new Error('TOO_MANY_DEVICES'); // worker allows 10 devices per user
   if (!res.ok) throw new Error('SUBSCRIBE_FAILED');
