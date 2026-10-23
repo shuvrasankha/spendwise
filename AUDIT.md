@@ -88,6 +88,8 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
   - **Problem:** The app filters with `where('uid', '==', uid)` in the browser, but that protects nothing; anyone can send their own query. If the rules in the Firebase console are loose (for example, left in "test mode"), anyone can read or delete every user's finances. I could not verify the rules from here.
   - **Fix:** Add `firestore.rules` with `allow read, update, delete: if request.auth.uid == resource.data.uid; allow create: if request.auth.uid == request.resource.data.uid;` for `expenses`, `income` and `debts`, and deploy it with `firebase deploy --only firestore:rules`.
   - **If we skip it:** One wrong click in the console exposes everyone's money data, and nobody would notice.
+  - **Status (2026-10-23):** `firestore.rules` was committed (`641d550`) and then untracked again (`70cab95`). It is no longer in `.gitignore`; commit the live rules from the machine that has them. The shared-debt rules matter most now, since another person's account can read those debts.
+    - The old committed rules let an `update` change `uid`, moving a record into someone else's account. Use `allow update: if request.auth.uid == resource.data.uid && request.resource.data.uid == resource.data.uid;` for `expenses`, `income` and `debts`.
 
 - [ ] **7. A failed CSV import leaves half the rows saved, and retrying duplicates them** (`assets/js/modules/csv-upload.js:186+` `saveToFirestore`)
   - **What this is:** After the AI parses a CSV, each row is saved with its own `addDoc` call, one after another.
