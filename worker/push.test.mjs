@@ -77,9 +77,11 @@ test('unsubscribe and logged only touch the caller\'s own rows', async () => {
   const env = { DB: fakeDB() };
   await handlePushRoute('/push/unsubscribe', { endpoint: sub().endpoint }, 'u1', env);
   await handlePushRoute('/push/logged', { date: '2026-10-21' }, 'u1', env);
-  assert.match(env.DB.calls[0].sql, /WHERE endpoint = \?1 AND uid = \?2/);
-  assert.deepEqual(env.DB.calls[0].args, [sub().endpoint, 'u1']);
-  assert.deepEqual(env.DB.calls[1].args, ['2026-10-21', 'u1']);
+  // the device's message keys go too, but only if the device is this user's
+  assert.match(env.DB.calls[0].sql, /DELETE FROM push_keys WHERE endpoint = \?1 AND endpoint IN \(SELECT endpoint FROM subscriptions WHERE uid = \?2\)/);
+  assert.match(env.DB.calls[1].sql, /DELETE FROM subscriptions WHERE endpoint = \?1 AND uid = \?2/);
+  assert.deepEqual(env.DB.calls[1].args, [sub().endpoint, 'u1']);
+  assert.deepEqual(env.DB.calls[2].args, ['2026-10-21', 'u1']);
   assert.equal((await handlePushRoute('/push/logged', { date: 'today' }, 'u1', env))[0], 400);
 });
 
@@ -110,5 +112,5 @@ test('cron sends a signed push to due subscriptions, records it, and drops revok
   assert.equal(requests[0].init.headers['Content-Length'], '0');
 
   const writes = env.DB.calls.map(c => c.sql.split(' ')[0] + ' ' + c.args.join('|'));
-  assert.deepEqual(writes, [`UPDATE 2026-10-21|${due.endpoint}`, `DELETE ${gone.endpoint}`]);
+  assert.deepEqual(writes, [`UPDATE 2026-10-21|${due.endpoint}`, `DELETE ${gone.endpoint}`, `DELETE ${gone.endpoint}`]); // subscription and its keys
 });

@@ -122,8 +122,24 @@ export function sharedDebtView(id, raw) {
     notes: raw.notes || '',
     settled: raw.settled === true,
     settledDate: raw.settledDate || '',
+    createdAt: raw.createdAt?.toMillis?.() || 0,
     shared: true,
   };
+}
+
+// The notification centre's events from debts shared with you, newest first: each was split with
+// you, and later maybe marked paid by them. ids are stable, so "seen" can be remembered per item.
+export function notificationsFrom(sharedDebts) {
+  const items = [];
+  for (const d of sharedDebts) {
+    const at = d.createdAt || Date.parse(d.date) || 0;
+    items.push({ id: `${d.id}:split`, kind: 'split', at, day: d.date, person: d.person, amount: d.amount, note: d.notes });
+    if (d.settled) {
+      const paidAt = Date.parse(`${d.settledDate}T23:59:59`) || at;
+      items.push({ id: `${d.id}:settled`, kind: 'settled', at: Math.max(paidAt, at + 1), day: d.settledDate || d.date, person: d.person, amount: d.amount, note: d.notes });
+    }
+  }
+  return items.sort((a, b) => b.at - a.at);
 }
 
 // Counts a money figure from what it shows now (0 the first time) to value, easing out over 700ms.

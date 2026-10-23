@@ -2,6 +2,7 @@
 // addExpense saves your share as the expense and a "they owe me" debt per person). A person with an
 // email sees that debt in their own account as one they owe you, read-only (firestore.rules › debts).
 import { auth, db } from '../config/firebase.js';
+import { callWorker } from '../config/ai.js';
 import { collection, getDocs, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { sanitize, splitAmount, sharedDebtView } from '../utils/helpers.js';
 
@@ -105,4 +106,13 @@ export async function fetchSharedDebts(user) {
     console.warn('Shared debts unavailable:', e);
     return [];
   }
+}
+
+// After a split is saved: ask the Worker to push it to each person named by email (worker/src/push.js
+// checks the debt is ours and new, and sends once). Best effort: the debt is already in their account.
+export function announceSplit(debtRefs, debts) {
+  const symbol = window.getCurrencyInfo?.(window.getCurrency())?.symbol;
+  debts.forEach((d, i) => {
+    if (d.withEmail) callWorker('/push/debt', { debtId: debtRefs[i].id, symbol }).catch(() => {});
+  });
 }

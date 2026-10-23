@@ -62,6 +62,7 @@ test('unverified email accounts are refused; verified ones get their uid', () =>
   assert.deepEqual(userFrom({ sub: 'u1' }), { status: 403, error: 'Verify your email first' });
   assert.deepEqual(userFrom({}), { status: 401, error: 'Not signed in' });
   assert.deepEqual(userFrom({ sub: 'u1', email_verified: true }), { uid: 'u1' });
+  assert.deepEqual(userFrom({ sub: 'u1', email_verified: true, email: 'Ravi@Gmail.com' }), { uid: 'u1', email: 'ravi@gmail.com' });
 });
 
 test('each user gets 100 AI requests per UTC day, then 429; others and the next day are unaffected', async () => {
