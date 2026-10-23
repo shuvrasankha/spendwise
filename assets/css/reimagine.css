@@ -1032,3 +1032,42 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .home-add:active, .home-budget-btn:active, .goals-new:active, .due-add:active, .due-more:active,
 .chip:active, .seg-btn:active, .cat-tile:active, .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
 a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
+
+/* Money score: a soft glow and a fine dot grid in the top corner, tinted by how the month is going;
+   both fade out before the text. */
+.home-tiles .home-score { grid-column: 1 / -1; gap: 0; position: relative; overflow: hidden; isolation: isolate; --tint: var(--text2); }
+.home-score.great, .home-score.good { --tint: var(--success); }
+.home-score.fair { --tint: var(--warning); }
+.home-score.low { --tint: var(--danger); }
+.home-score::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 10rem; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 90% at 100% 0%, color-mix(in srgb, var(--tint) 24%, transparent), transparent 70%),
+    radial-gradient(circle, color-mix(in srgb, var(--tint) 36%, transparent) 1.2px, transparent 1.7px) 0 0 / 14px 14px;
+  -webkit-mask-image: radial-gradient(100% 130% at 100% 0%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(100% 130% at 100% 0%, #000 20%, transparent 75%);
+}
+.home-score.empty::before { opacity: 0.6; }
+@media (prefers-contrast: more) { .home-score::before { display: none; } }
+.home-score-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.home-score-text h3 { margin: 0; }
+.home-score-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 4px; margin: 2px 0 4px; }
+.home-score-num { font-family: var(--font-display); font-size: 3rem; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums lining-nums; letter-spacing: -0.03em; color: var(--text); }
+.home-score-of { font-size: 1rem; font-weight: 600; color: var(--text2); margin-right: 10px; }
+.home-score.empty .home-score-num, .home-score.empty .home-score-of { display: none; }
+.home-score-label { font-size: 1.125rem; font-weight: 800; color: var(--text); }
+.home-score.great .home-score-label, .home-score.good .home-score-label { color: var(--success); }
+.home-score.fair .home-score-label { color: var(--warning); }
+.home-score.low .home-score-label { color: var(--danger); }
+.home-score-cta { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; font-weight: 700; color: var(--accent); text-decoration: none; }
+.home-score-cta svg { width: 16px; height: 16px; }
+.home-score-why { margin-top: 12px; border-top: 1px solid var(--border-light); }
+.home-score-why summary { display: flex; align-items: center; min-height: 44px; font-size: 0.875rem; font-weight: 600; color: var(--text2); cursor: pointer; }
+.home-score-why summary:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; border-radius: 4px; }
+.home-score-parts { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.score-part { display: grid; grid-template-columns: 7.5rem 1fr 3rem; align-items: center; gap: 10px; font-size: 0.875rem; }
+.score-part-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.score-part-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
+.score-part.weak .score-part-bar > span { background: var(--warning); }
+.score-part-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--text2); }
+.score-part.weak .score-part-pct { color: var(--warning); font-weight: 700; }
