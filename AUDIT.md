@@ -90,13 +90,15 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
   - **If we skip it:** One wrong click in the console exposes everyone's money data, and nobody would notice.
   - **Status (2026-10-23):** `firestore.rules` is back in the repo, with shared debts covered: the person a debt names by email can read it but not change it, `fromEmail` must be the sender's own verified email, and an update can't change a record's `uid` or who it's shared with. Tested in the Firestore emulator. Tick this once it's published in the Firebase console.
 
-- [ ] **7. A failed CSV import leaves half the rows saved, and retrying duplicates them** (`assets/js/modules/csv-upload.js:186+` `saveToFirestore`)
+- [x] **7. A failed CSV import leaves half the rows saved, and retrying duplicates them** (`assets/js/modules/csv-upload.js:186+` `saveToFirestore`)
+  - **Status (2026-10-23):** Fixed: `saveToFirestore` writes in batches of 500, and each row keeps the id from its first try, so a retry overwrites instead of duplicating.
   - **What this is:** After the AI parses a CSV, each row is saved with its own `addDoc` call, one after another.
   - **Problem:** If row 40 of 100 fails (network drop, rate limit), rows 1–39 are already saved. The user sees an error, tries again, and rows 1–39 are saved twice.
   - **Fix:** Use a chunked `writeBatch`, the same as the fix for #5, so all rows land or none do.
   - **If we skip it:** Duplicate expenses that the user has to delete one by one.
 
 - [ ] **8. Shared helpers are copied into every file, and `modules/auth.js` is dead code** (`assets/js/modules/auth.js`, `assets/js/utils/helpers.js`)
+  - **Status (2026-10-23):** Half done: `modules/auth.js` is deleted. Local copies remain: `pad` in `voice-command.js`, `sms-parse.js`, `insights-data.js`, `pickers.js`; `escapeHtml` in `dashboard.js`, `voice-command.js`, `csv-upload.js`, `pickers.js`; `showToast` in `offline-queue.js`, `backup.js`, `csv-upload.js`.
   - **What this is:** `helpers.js` exports `pad`, `todayStr`, `formatDate`, `escapeHtml` and `friendlyErr`, but the pages import only `sanitize`.
   - **Problem:** Every page keeps its own copy instead: `pad` in 5 files, `escapeHtml` in 4, `showToast` in 7, `formatDate`, `toggleTheme` and `initCurrencySelector` in 3. `modules/auth.js` (110 lines) is imported by nothing; only `sw.js` lists it. A fix to one copy, like #4, has to be repeated everywhere or the pages disagree.
   - **Fix:** Import these from `utils/helpers.js` and delete the local copies. Delete `modules/auth.js` and remove it from `sw.js`.
@@ -108,13 +110,15 @@ Tick a box when a finding is fixed. Findings are numbered so you can say "fix 3"
   - **Fix:** Keep one `saveIncomeEdit` / `deleteIncome` in a shared module, use `sanitize()` there, and import it from both pages.
   - **If we skip it:** The next change to income fields is made in one copy only.
 
-- [ ] **10. No tests at all for date and money logic**
+- [x] **10. No tests at all for date and money logic**
+  - **Status (2026-10-23):** Fixed: `tests/` has 12 test files (dates, money, history, backup, offline queue and more). Run `node --test tests/*.test.mjs`.
   - **What this is:** The repo has no test files.
   - **Problem:** #4 shows how easy date math is to get wrong, and amounts, backup validation (`validateRecord`) and the AI-output cleaning in `csv-upload.js` all decide what gets saved as money data.
   - **Fix:** Add one `tests/helpers.test.js` run with `node --test`. It should check `todayStr(new Date(2026, 9, 1))` → `"2026-10-01"` and `getWeekStart` on a Sunday, run with `TZ=Asia/Kolkata`. Add `validateRecord` cases once it is exported.
   - **If we skip it:** Date bugs come back unnoticed.
 
-- [ ] **11. The README and code comments make security claims that are false** (`README.md:37, 60, 115`, `assets/js/utils/helpers.js:32-38`)
+- [x] **11. The README and code comments make security claims that are false** (`README.md:37, 60, 115`, `assets/js/utils/helpers.js:32-38`)
+  - **Status (2026-10-23):** Fixed: the README no longer claims client-side encryption or Netlify, and the `helpers.js` CSP comment is gone.
   - **What this is:** The README says fields are "encrypted client-side (XOR encryption)" and that the app is deployed on Netlify. A CSP comment says Netlify headers do the main enforcement.
   - **Problem:** `dec()` is now a no-op, so there is no encryption, and the app deploys to GitHub Pages, so there are no Netlify headers. The only CSP is a `<meta>` tag that allows `'unsafe-inline'` scripts.
   - **Fix:** Remove the encryption claim, change "Netlify" to "GitHub Pages", and fix the CSP comment.
