@@ -1,4 +1,4 @@
-// Run: node --test tests/ — money figures count to their value, or jump there when motion is unwelcome
+// Run: node --test tests/*.test.mjs — money figures count to their value, or jump there when motion is unwelcome
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { countTo } from '../assets/js/utils/helpers.js';

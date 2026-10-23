@@ -138,6 +138,15 @@ npx wrangler secret put VAPID_PRIVATE_JWK       # private key as a JWK
 npx wrangler deploy
 ```
 
+## 🧪 Tests
+
+```bash
+node --test tests/*.test.mjs   # app: dates, money, history, split, backup, offline queue…
+cd worker && npm test          # Worker: AI proxy, push reminders, bill alerts, summaries
+```
+
+`node --test tests/` (a bare folder) fails on Node 22; pass the files as above.
+
 ## 🔒 Security
 
 - ✅ User data isolated by authentication (uid-based access)

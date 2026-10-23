@@ -1,4 +1,4 @@
-// Run: node --test tests/ — reading bank and UPI SMS on the device
+// Run: node --test tests/*.test.mjs — reading bank and UPI SMS on the device
 process.env.TZ = 'Asia/Kolkata';
 
 import { test } from 'node:test';

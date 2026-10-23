@@ -1,4 +1,4 @@
-// Run: node --test tests/ — Insights numbers, periods and markdown
+// Run: node --test tests/*.test.mjs — Insights numbers, periods and markdown
 process.env.TZ = 'Asia/Kolkata';
 
 import { test } from 'node:test';
