@@ -1,4 +1,5 @@
--- Daily reminder subscriptions and per-user AI usage. Apply with:
+-- Daily reminder subscriptions and per-user AI usage. "npm run deploy" applies this first;
+-- every statement is IF NOT EXISTS, so it only creates what is missing. By hand:
 --   npx wrangler d1 execute spendwise-push --remote --file schema.sql
 CREATE TABLE IF NOT EXISTS subscriptions (
   endpoint    TEXT PRIMARY KEY,   -- browser push endpoint (unique per device/browser)

@@ -82,3 +82,11 @@ test('AI requests: only allowed models, and a receipt photo fits but a huge body
   assert.equal(aiBodyError({ model: '@cf/some/pricier-model', messages: [] })[0], 400);
   assert.equal(aiBodyError({ model: '@cf/qwen/qwen2.5-coder-32b-instruct' })[0], 400);
 });
+
+// npm run deploy applies schema.sql to the live database every time, so each statement must be repeatable
+test('schema.sql only creates what is missing, so it is safe to run on every deploy', () => {
+  const sql = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8').replace(/--.*$/gm, '');
+  const statements = sql.split(';').map(s => s.trim()).filter(Boolean);
+  assert.ok(statements.length > 0);
+  for (const s of statements) assert.match(s, /^CREATE (TABLE|INDEX) IF NOT EXISTS /, s.slice(0, 60));
+});
