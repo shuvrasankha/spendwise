@@ -118,16 +118,35 @@ button { cursor: pointer; border: none; outline: none; background: none; }
   background: var(--accent-hover);
 }
 
-/* Danger Button (red) */
+/* Danger Button (red). Used without .btn in the confirm dialogs, so it carries its own layout:
+   the icon sized to the text and centred with it */
 .btn-danger {
-  padding: 11px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
   background: var(--danger);
-  color: #fff;
+  color: var(--on-danger);
+}
+
+.btn-danger svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .btn-danger:hover {
-  opacity: 0.85;
+  background: var(--danger-hover);
 }
+
+.modal-actions .btn-secondary { min-height: 44px; }
 
 /* Secondary/Outline Button */
 .btn-secondary {

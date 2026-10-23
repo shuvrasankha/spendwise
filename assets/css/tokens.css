@@ -42,6 +42,7 @@
   --danger: #b4261f;        /* 6.4:1 */
   --danger-hover: #961d18;
   --danger-bg: rgba(180, 38, 31, 0.08);
+  --on-danger: #fff;        /* text on a --danger fill: 6.4:1 */
 
   --warning: #a35200;       /* 5.5:1 */
   --warning-hover: #8f4700;
@@ -119,6 +120,7 @@
   --danger: #ff7a6e;
   --danger-hover: #ff958b;
   --danger-bg: rgba(255, 122, 110, 0.12);
+  --on-danger: #2b0b08;     /* white on this coral is 2.5:1; this is 7.2:1 */
 
   --warning: #ffb14a;
   --warning-hover: #ffc06a;
