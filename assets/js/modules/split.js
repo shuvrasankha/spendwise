@@ -5,8 +5,8 @@
 // as the expense and a "they owe me" debt per person). The Debts form shares one debt (debt.js).
 import { auth, db } from '../config/firebase.js';
 import { callWorker } from '../config/ai.js';
-import { collection, getDocs, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, splitAmount, sharedDebtView } from '../utils/helpers.js';
+import { collection, doc, getDocs, query, where, serverTimestamp, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { sanitize, splitAmount, sharedDebtView, todayStr } from '../utils/helpers.js';
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MAX_PEOPLE = 10;
@@ -49,6 +49,37 @@ export function announceDebts(refs, debts) {
     if (d.withEmail) callWorker('/push/debt', { debtId: refs[i].id, symbol }).catch(() => {});
   });
 }
+
+// ── Settling a shared debt ───────────────────────────────────────────────────
+// The person it was shared with says it's settled (claimDate); the one who added it confirms, which
+// settles it, or says not yet. Only the confirm settles: they could otherwise mark their own debt paid.
+
+// Your own debts the other person says are settled, for the notification centre
+export async function fetchClaimedDebts(user) {
+  if (!user) return [];
+  try {
+    const snap = await getDocs(query(collection(db, 'debts'), where('uid', '==', user.uid)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(d => d.claimDate && !d.settled);
+  } catch (e) {
+    console.warn('Debts unavailable:', e);
+    return [];
+  }
+}
+
+// On a debt shared with you: say it's settled today (the one who added it is pushed), or take it back
+export async function claimSettled(id) {
+  const claimDate = todayStr();
+  await updateDoc(doc(db, 'debts', id), { claimDate });
+  const symbol = window.getCurrencyInfo?.(window.getCurrency())?.symbol;
+  callWorker('/push/claim', { debtId: id, symbol }).catch(() => {});
+  return claimDate;
+}
+export const withdrawClaim = id => updateDoc(doc(db, 'debts', id), { claimDate: deleteField() });
+
+// On your own debt: agree it's settled (on the day they said), or not yet
+export const confirmClaim = (id, claimDate) =>
+  updateDoc(doc(db, 'debts', id), { settled: true, settledDate: claimDate, claimDate: deleteField() });
+export const rejectClaim = withdrawClaim;
 
 // ── Splitting an expense ─────────────────────────────────────────────────────
 const list = () => document.getElementById('split-people');

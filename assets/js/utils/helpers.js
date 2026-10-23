@@ -111,7 +111,7 @@ export function splitAmount(total, others) {
 }
 
 // A debt someone else recorded against your email, seen from your side: what they're owed, you owe.
-// Read-only here (firestore.rules › debts), so it is flagged shared.
+// Flagged shared: you can only say it's settled (claimDate), and they confirm (firestore.rules › debts).
 export function sharedDebtView(id, raw) {
   return {
     id,
@@ -123,6 +123,7 @@ export function sharedDebtView(id, raw) {
     notes: raw.notes || '',
     settled: raw.settled === true,
     settledDate: raw.settledDate || '',
+    claimDate: raw.claimDate || '',
     createdAt: raw.createdAt?.toMillis?.() || 0,
     shared: true,
   };
@@ -144,10 +145,16 @@ export function peopleFrom(debts) {
   return [...byKey.values()].filter(p => p.email || !named.has(p.name.toLowerCase()));
 }
 
-// The notification centre's events from debts shared with you, newest first: each was added (a split
-// bill or a debt) and later maybe marked paid by them. type is from your side ('i-owe': you owe them). ids are stable, so "seen" can be remembered per item.
-export function notificationsFrom(sharedDebts) {
+// The notification centre's events, newest first: each debt shared with you was added (a split bill or
+// a debt) and later maybe marked paid by them; and on your own shared debts, the other person saying
+// it's settled, waiting for you to confirm. type is from your side ('i-owe': you owe them). ids are
+// stable, so "seen" can be remembered per item.
+export function notificationsFrom(sharedDebts, ownDebts = []) {
   const items = [];
+  for (const d of ownDebts) {
+    if (!d.claimDate || d.settled) continue;
+    items.push({ id: `${d.id}:claim:${d.claimDate}`, kind: 'claim', type: d.type, at: Date.parse(`${d.claimDate}T23:59:59`) || 0, day: d.claimDate, person: d.person, amount: d.amount, note: d.notes || '' });
+  }
   for (const d of sharedDebts) {
     const at = d.createdAt || Date.parse(d.date) || 0;
     items.push({ id: `${d.id}:split`, kind: 'split', type: d.type, at, day: d.date, person: d.person, amount: d.amount, note: d.notes });

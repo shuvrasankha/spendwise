@@ -1,9 +1,10 @@
 // notifications.js — The bell in the header of every signed-in page: what other people shared with
-// you (a split bill or a debt added with your email, and when they mark it paid), with an unread count. Built from
-// the shared debts (split.js); which items were seen is remembered per device.
+// you (a split bill or a debt added with your email, and when they mark it paid), and someone saying
+// a debt you shared is settled, with an unread count. Built from the debts (split.js); which items
+// were seen is remembered per device.
 import { auth } from '../config/firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { fetchSharedDebts } from './split.js';
+import { fetchSharedDebts, fetchClaimedDebts } from './split.js';
 import { notificationsFrom, escapeHtml, shortDay } from '../utils/helpers.js';
 
 const SEEN_KEY = 'spendwise_notif_seen_'; // + uid: ids of items already shown
@@ -69,9 +70,11 @@ function render() {
   const money = n => (window.fmt ? window.fmt(n) : String(n));
   list.innerHTML = items.length ? items.map(i => {
     const added = `${i.person} ${i.note?.startsWith('Split:') ? 'split a bill' : 'added a debt'} with you`;
-    const title = i.kind === 'split' ? added : `${i.person} marked ${money(i.amount)} as paid`;
+    const title = i.kind === 'split' ? added
+      : i.kind === 'claim' ? `${i.person} says ${money(i.amount)} is settled`
+      : `${i.person} marked ${money(i.amount)} as paid`;
     const owed = i.type === 'i-owe' ? `You owe ${money(i.amount)}` : `${i.person} owes you ${money(i.amount)}`;
-    const detail = [i.kind === 'split' ? owed : '', i.note].filter(Boolean).join(' · ');
+    const detail = [i.kind === 'split' ? owed : i.kind === 'claim' ? 'Confirm it on Debts' : '', i.note].filter(Boolean).join(' · ');
     return `<li class="notif-item${seen.has(i.id) ? '' : ' unread'}">
       <button type="button" class="notif-clear" data-notif-clear="${escapeHtml(i.id)}" aria-label="Clear: ${escapeHtml(title)}" title="Clear"><i data-lucide="x" aria-hidden="true"></i></button>
       <a href="debt.html">
@@ -117,7 +120,8 @@ function close() {
 
 async function refresh() {
   if (!user) return;
-  all = notificationsFrom(await fetchSharedDebts(user));
+  const [shared, claimed] = await Promise.all([fetchSharedDebts(user), fetchClaimedDebts(user)]);
+  all = notificationsFrom(shared, claimed);
   visible();
   updateBadge();
   if (!panel.classList.contains('hidden')) render();

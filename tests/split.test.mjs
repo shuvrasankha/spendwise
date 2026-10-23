@@ -16,7 +16,7 @@ test('your share absorbs the rounding, so the parts add back to the total', () =
 
 test('a debt they recorded as owed to them is one you owe, from them', () => {
   const d = sharedDebtView('d1', { uid: 'them', type: 'they-owe', amount: 250, fromName: 'Ravi', date: '2026-10-20', notes: 'Split: Dinner', settled: false, withEmail: 'me@x.com' });
-  assert.deepEqual(d, { id: 'd1', amount: 250, type: 'i-owe', person: 'Ravi', email: '', date: '2026-10-20', notes: 'Split: Dinner', settled: false, settledDate: '', createdAt: 0, shared: true });
+  assert.deepEqual(d, { id: 'd1', amount: 250, type: 'i-owe', person: 'Ravi', email: '', date: '2026-10-20', notes: 'Split: Dinner', settled: false, settledDate: '', claimDate: '', createdAt: 0, shared: true });
 });
 
 test('settled on their side shows settled on yours', () => {
@@ -30,6 +30,12 @@ test('notifications: each split, then its settling, newest first', () => {
   assert.deepEqual(items.map(i => i.id), ['b:settled', 'a:split', 'b:split']);
   assert.deepEqual(items[0], { id: 'b:settled', kind: 'settled', type: 'i-owe', at: Date.parse('2026-10-22T23:59:59'), day: '2026-10-22', person: 'Asha', amount: 120, note: '' });
   assert.equal(items[1].person, 'Ravi');
+});
+
+test('notifications: the other person saying your shared debt is settled, until you settle it', () => {
+  const claimed = { id: 'c', type: 'they-owe', amount: 500, person: 'Ravi', date: '2026-10-10', notes: 'Rent', withEmail: 'ravi@x.com', claimDate: '2026-10-23' };
+  const items = notificationsFrom([], [claimed, { ...claimed, id: 'd', claimDate: '' }, { ...claimed, id: 'e', settled: true }]);
+  assert.deepEqual(items, [{ id: 'c:claim:2026-10-23', kind: 'claim', type: 'they-owe', at: Date.parse('2026-10-23T23:59:59'), day: '2026-10-23', person: 'Ravi', amount: 500, note: 'Rent' }]);
 });
 
 test('people: from your debts and from splits with you, newest first, one each', () => {

@@ -1,7 +1,7 @@
 // worker/src/push.js — Push: subscription storage (D1) and sending.
 // The daily reminder carries no payload; the service worker shows a fixed "Log today's spending".
 // A debt shared with someone by email (a split bill, or one added on Debts) is one encrypted message
-// to each of their devices (webpush.js).
+// to each of their devices (webpush.js); so is their saying it's settled, to the one who added it.
 
 import { importJWK, SignJWT } from 'jose';
 import { encryptPush } from './webpush.js';
@@ -128,6 +128,9 @@ export async function readDebt(id, idToken, env) {
     uid: f.uid?.stringValue,
     type: f.type?.stringValue,
     withEmail: f.withEmail?.stringValue,
+    fromEmail: f.fromEmail?.stringValue,
+    claimDate: f.claimDate?.stringValue,
+    settled: f.settled?.booleanValue === true,
     amount: Number(f.amount?.doubleValue ?? f.amount?.integerValue),
     notes: f.notes?.stringValue || '',
     created: Date.parse(doc.createTime),
@@ -152,6 +155,42 @@ export function debtMessage(debt, debtId, symbol, from) {
 // device sends them, so the crons see spending logged on a device without notifications
 async function hasDevice(uid, env) {
   return !!await env.DB.prepare('SELECT 1 FROM subscriptions WHERE uid = ?1 LIMIT 1').bind(uid).first();
+}
+
+// What the one who added a shared debt sees when the other person says it's settled: from their side,
+// "they-owe" was owed to them. from is the claimer's verified sign-in email.
+export function claimMessage(debt, debtId, symbol, from) {
+  const amount = `${symbol || ''}${debt.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const said = debt.type === 'i-owe' ? `You paid them ${amount}` : `They paid you ${amount}`;
+  return JSON.stringify({
+    title: `${from} says a debt is settled`.slice(0, 120),
+    body: `${said} · Confirm it in Debts${debt.notes ? ` · ${debt.notes}` : ''}`.slice(0, 200),
+    url: 'debt.html',
+    tag: `claim-${debtId}`,
+  });
+}
+
+// One encrypted message to every device signed in with `email`; returns how many took it
+async function pushToEmail(email, message, env) {
+  const { results } = await env.DB.prepare('SELECT endpoint, p256dh, auth FROM push_keys WHERE email = ?1').bind(email).all();
+  let sent = 0;
+  for (const device of results) {
+    let outcome;
+    try { outcome = await sendPush(device.endpoint, env, await encryptPush(message, device)); } catch { outcome = 'failed'; }
+    if (outcome === 'sent') sent++;
+    if (outcome === 'gone') await forget(device.endpoint, env);
+  }
+  return sent;
+}
+
+// Message pushes per sender per day, and each one at most once (key: what it's about)
+async function claimPush(key, uid, env) {
+  const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM debt_pushes WHERE uid = ?1 AND sent_at > ?2')
+    .bind(uid, Date.now() - 864e5).first();
+  if (n >= DEBT_PUSHES_PER_DAY) return 'limit';
+  const claim = await env.DB.prepare('INSERT OR IGNORE INTO debt_pushes (debt_id, uid, sent_at) VALUES (?1, ?2, ?3)')
+    .bind(key, uid, Date.now()).run();
+  return claim.meta?.changes ? 'ok' : 'sent';
 }
 
 // ── HTTP routes (caller already verified the Firebase user) ─────────────────
@@ -237,22 +276,25 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
     // Only the sender's own, just-created debt that names someone by email
     const debt = await readDebt(debtId, idToken, env);
     if (!email || !debt || debt.uid !== uid || !debt.withEmail || !(Date.now() - debt.created < DEBT_FRESH_MS)) return [404, { error: 'No such shared debt' }];
-    const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM debt_pushes WHERE uid = ?1 AND sent_at > ?2')
-      .bind(uid, Date.now() - 864e5).first();
-    if (n >= DEBT_PUSHES_PER_DAY) return [429, { error: 'Too many notifications today' }];
-    const claim = await env.DB.prepare('INSERT OR IGNORE INTO debt_pushes (debt_id, uid, sent_at) VALUES (?1, ?2, ?3)')
-      .bind(debtId, uid, Date.now()).run();
-    if (!claim.meta?.changes) return [200, { sent: 0 }]; // already announced
+    const state = await claimPush(debtId, uid, env);
+    if (state === 'limit') return [429, { error: 'Too many notifications today' }];
+    if (state === 'sent') return [200, { sent: 0 }]; // already announced
     const message = debtMessage(debt, debtId, /^\p{Sc}$/u.test(symbol || '') ? symbol : '', email);
-    const { results } = await env.DB.prepare('SELECT endpoint, p256dh, auth FROM push_keys WHERE email = ?1').bind(debt.withEmail).all();
-    let sent = 0;
-    for (const device of results) {
-      let outcome;
-      try { outcome = await sendPush(device.endpoint, env, await encryptPush(message, device)); } catch { outcome = 'failed'; }
-      if (outcome === 'sent') sent++;
-      if (outcome === 'gone') await forget(device.endpoint, env);
+    return [200, { sent: await pushToEmail(debt.withEmail, message, env) }];
+  }
+  if (path === '/push/claim') {
+    const { debtId, symbol } = body || {};
+    if (!DOC_ID.test(debtId || '')) return [400, { error: 'Invalid debt' }];
+    // Only the person it was shared with, about an open debt they just said is settled
+    const debt = await readDebt(debtId, idToken, env);
+    if (!email || !debt || debt.withEmail !== email || !DATE.test(debt.claimDate || '') || debt.settled || !debt.fromEmail) {
+      return [404, { error: 'No such settle claim' }];
     }
-    return [200, { sent }];
+    const state = await claimPush(`claim:${debtId}:${debt.claimDate}`, uid, env);
+    if (state === 'limit') return [429, { error: 'Too many notifications today' }];
+    if (state === 'sent') return [200, { sent: 0 }]; // already told
+    const message = claimMessage(debt, debtId, /^\p{Sc}$/u.test(symbol || '') ? symbol : '', email);
+    return [200, { sent: await pushToEmail(debt.fromEmail, message, env) }];
   }
   return [404, { error: 'Not found' }];
 }

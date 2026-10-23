@@ -1,7 +1,7 @@
 // worker/src/index.js — SpendWise backend for signed-in users (verified Firebase ID token):
 //   POST /         AI requests on Cloudflare Workers AI (free daily allowance, no API key)
 //   POST /push/*   push subscriptions, the daily reminder, bill-due and month-summary crons; /push/debt tells the person a
-//                  bill was split with (see push.js)
+//                  bill was split with, /push/claim tells its sender they say it's settled (see push.js)
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { handlePushRoute, sendDueReminders, sendBillAlerts, sendMonthSummaries } from './push.js';
