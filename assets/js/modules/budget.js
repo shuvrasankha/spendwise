@@ -1,53 +1,40 @@
 // budget.js — A monthly spending limit, overall and per category, saved to the user's
-// settings in Firestore (settings.js) with a local copy so Home can read it at once.
-// Home reads it through getBudget() and redraws on the 'spendwise:budget' event.
-// Opened from the profile menu or Home's "Set a budget" link.
-import { auth } from '../config/firebase.js';
+// settings in Firestore (settings.js). Home reads it through getBudget() and redraws on the
+// 'spendwise:budget' event. Opened from the profile menu or Home's "Set a budget" link.
 import { EXPENSE_CATEGORIES } from '../utils/helpers.js';
-import { onSettings, saveSettings } from './settings.js';
+import { getSetting, onSettings, saveSettings } from './settings.js';
 import { showToast } from './page-shell.js';
 
 const LEGACY_KEY = 'spendwise_budget'; // before the budget was synced: one per device
-const cacheKey = () => auth.currentUser && LEGACY_KEY + ':' + auth.currentUser.uid;
 const EMPTY = () => ({ total: null, cats: {} });
+const changed = () => window.dispatchEvent(new CustomEvent('spendwise:budget'));
 
 function normalize(b) {
   return b && typeof b === 'object' ? { total: b.total > 0 ? b.total : null, cats: b.cats || {} } : EMPTY();
 }
 
-function readLocal(key) {
-  try { return key ? normalize(JSON.parse(localStorage.getItem(key) || 'null')) : EMPTY(); } catch { return EMPTY(); }
-}
-
 export function getBudget() {
-  return readLocal(cacheKey());
-}
-
-function keepLocal(b) {
-  const key = cacheKey();
-  try {
-    if (!key) return;
-    if (!b.total && !Object.keys(b.cats).length) localStorage.removeItem(key);
-    else localStorage.setItem(key, JSON.stringify(b));
-  } catch { /* storage blocked: Firestore still has it */ }
-  window.dispatchEvent(new CustomEvent('spendwise:budget'));
+  return normalize(getSetting('budget'));
 }
 
 function saveBudget(b) {
-  keepLocal(b);
   saveSettings({ budget: b }).catch(e => {
     console.error('Budget save failed:', e);
     showToast("Couldn't save the budget to your account. Check your connection and try again.", 'error');
   });
+  changed();
 }
 
-// After sign-in: take the account's budget, or move a budget saved on this device before syncing existed
+// After sign-in: show the account's budget, or move a budget saved on this device before syncing existed
 onSettings(s => {
-  if (s.budget !== undefined) return keepLocal(normalize(s.budget));
-  const legacy = readLocal(LEGACY_KEY);
-  if (!legacy.total && !Object.keys(legacy.cats).length) return;
-  saveSettings({ budget: legacy }).then(() => { try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ } }, () => {});
-  keepLocal(legacy);
+  if (s.budget === undefined) {
+    let legacy = EMPTY();
+    try { legacy = normalize(JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null')); } catch { /* ignore */ }
+    if (legacy.total || Object.keys(legacy.cats).length) {
+      saveSettings({ budget: legacy }).then(() => { try { localStorage.removeItem(LEGACY_KEY); } catch { /* ignore */ } }, () => {});
+    }
+  }
+  changed();
 });
 
 const symbol = () => (window.getCurrencyInfo?.(window.getCurrency?.())?.symbol) || '₹';

@@ -14,10 +14,11 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
+import { getGoals } from './modules/goals.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -439,6 +440,7 @@ function renderHome() {
     savedSub.textContent = "Needs income entries";
   }
   if (invested > 0) savedSub.textContent += ` · ${moneyWhole(invested)} invested`;
+  renderGoals(income > 0 ? income - spent : null);
   const active = allDebts.filter(d => !d.settled);
   document.getElementById("home-owe").textContent = moneyWhole(active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0));
   document.getElementById("home-owed").textContent = moneyWhole(active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0));
@@ -464,6 +466,35 @@ function renderHome() {
   }).join("") : `<li class="home-empty">No expenses this month yet.</li>`;
 
   renderDue();
+}
+
+// ── Savings goals: progress and the monthly pace, against what this month left over ──
+function renderGoals(savedThisMonth) {
+  const list = document.getElementById("home-goals");
+  if (!list) return;
+  const today = todayStr();
+  const goals = getGoals().map(g => ({ g, pace: goalPace(g, today) }));
+  const need = goals.reduce((sum, { pace }) => sum + pace.monthly, 0);
+  const total = document.getElementById("home-goals-total");
+  total.textContent = need > 0 ? `${moneyWhole(need)} a month` : "";
+  if (need > 0 && savedThisMonth !== null) {
+    total.textContent += savedThisMonth >= need ? " · this month covers it" : ` · ${moneyWhole(Math.max(savedThisMonth, 0))} left over this month`;
+  }
+  const monthName = by => new Date(by + "-01T00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  list.innerHTML = goals.length ? goals.map(({ g, pace }) => {
+    const meta = pace.state === "done" ? "Reached. Well done!"
+      : pace.state === "late" ? `${moneyWhole(pace.left)} to go · ${monthName(g.by)} has passed`
+      : `${moneyWhole(pace.monthly)} a month to reach it by ${monthName(g.by)}`;
+    return `<li class="glance-cat">
+      <div class="glance-cat-row"><span class="glance-cat-name">${escapeHtml(g.name)}</span><span class="glance-cat-amount">${moneyWhole(g.saved)} of ${moneyWhole(g.target)}</span></div>
+      <div class="glance-bar${pace.state === "late" ? " near" : ""}" role="progressbar" aria-label="${escapeHtml(g.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(pace.ratio, 1) * 100)}"><span style="width:${Math.max(Math.min(pace.ratio, 1) * 100, 2).toFixed(1)}%"></span></div>
+      <div class="glance-cat-meta">${meta}</div>
+      <div class="due-actions">
+        ${pace.state === "done" ? "" : `<button type="button" class="due-add" data-goal-add="${escapeHtml(g.id)}" aria-label="Add money to ${escapeHtml(g.name)}">Add money</button>`}
+        <button type="button" class="due-more" data-goal-edit="${escapeHtml(g.id)}" aria-label="Edit ${escapeHtml(g.name)}">Edit</button>
+      </div>
+    </li>`;
+  }).join("") : `<li class="home-empty">Saving for something? Add a goal to see how much to put aside each month.</li>`;
 }
 
 // ── Due this month: repeating expenses waiting for one tap ───────────────────
@@ -551,6 +582,7 @@ document.addEventListener("click", async (ev) => {
 
 // A budget saved from the profile menu redraws Home right away
 window.addEventListener("spendwise:budget", () => renderHome());
+window.addEventListener("spendwise:goals", () => renderHome());
 
 // The old card updaters (still called by loaders and save paths) now redraw the home summary
 function updateDebtCards() { renderHome(); }

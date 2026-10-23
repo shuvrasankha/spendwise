@@ -59,6 +59,22 @@ export function budgetState(spent, limit) {
   return { ratio, left: limit - spent, state: ratio > 1 ? 'over' : ratio >= 0.8 ? 'near' : 'ok' };
 }
 
+// A savings goal ({ target, saved, by: 'YYYY-MM' }) on a given day: share saved, money still to go,
+// months left counting the current one, and what to put away each of those months
+export function goalPace(goal, today) {
+  const left = Math.max(goal.target - goal.saved, 0);
+  const [y, m] = today.split('-').map(Number);
+  const [gy, gm] = goal.by.split('-').map(Number);
+  const months = (gy - y) * 12 + (gm - m) + 1;
+  return {
+    ratio: goal.target > 0 ? goal.saved / goal.target : 0,
+    left,
+    months,
+    monthly: left && months > 0 ? left / months : 0,
+    state: !left ? 'done' : months > 0 ? 'on' : 'late',
+  };
+}
+
 // ── Repeating expenses ───────────────────────────────────────────────────────
 // An expense with repeat: 'monthly' starts a series (same category and description).
 // The newest entry carrying a repeat field is the series' template; repeat: 'stopped' ends it.

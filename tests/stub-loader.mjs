@@ -1,10 +1,11 @@
-// Node loader hook: swaps the browser-only Firebase imports in offline-queue.js for stubs
+// Node loader hook: swaps the browser-only Firebase imports (offline-queue.js, settings.js) for stubs
 // that forward to globalThis.__firebase, which each test sets up.
 const firestore = `
 export const collection = (db, coll) => ({ coll });
 // doc(collectionRef) makes an auto id; doc(db, coll, id) a fixed one
 export const doc = (a, coll, id) => coll === undefined ? { coll: a.coll, id: 'AUTO' } : { coll, id };
-export const setDoc = (ref, data) => globalThis.__firebase.setDoc(ref, data);
+export const setDoc = (ref, data, opts) => globalThis.__firebase.setDoc(ref, data, opts);
+export const getDoc = ref => globalThis.__firebase.getDoc(ref);
 export const writeBatch = () => globalThis.__firebase.writeBatch();
 export const serverTimestamp = () => 'SERVER_TS';
 export const getDocs = async () => ({ docs: [] });

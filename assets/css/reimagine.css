@@ -797,6 +797,8 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
   color: var(--gold-bright); font-weight: 600; font-size: 0.875rem; text-decoration: underline; text-underline-offset: 3px;
 }
 .home-budget-link + .home-add { margin-top: 8px; }
+.home-goals .home-budget-link { color: var(--accent); }
+.home-goals .due-actions { margin-top: 8px; }
 .budget-box { max-width: 460px; max-height: 90vh; overflow-y: auto; }
 .budget-note { color: var(--text2); font-size: 0.875rem; margin: -8px 0 16px; }
 .budget-money {
