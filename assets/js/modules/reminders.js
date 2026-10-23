@@ -10,6 +10,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/f
 
 const TIME_KEY = 'spendwise_reminder_time';
 const LOGGED_KEY = 'spendwise_logged_ping_'; // + uid: last date we told the Worker
+const BILLS_KEY = 'spendwise_bills_sent_'; // + uid: the bill list the Worker last got
 const DEFAULT_TIME = '21:00';
 
 const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -183,6 +184,22 @@ window.markLoggedToday = async function () {
     const res = await callWorker('/push/logged', { date: today });
     if (res.ok) localStorage.setItem(key, today);
   } catch { /* offline: the sync below tries again */ }
+};
+
+// Home calls this with upcomingBills(): the Worker pushes "Netflix due tomorrow" at the reminder time.
+// Only sent when this device has push on and the list changed since last time.
+window.syncBills = async function (bills) {
+  const user = auth.currentUser;
+  if (!user || !supported || Notification.permission !== 'granted') return;
+  const symbol = window.getCurrencyInfo?.(window.getCurrency?.())?.symbol;
+  const payload = JSON.stringify({ bills: bills.slice(0, 50), symbol });
+  const key = BILLS_KEY + user.uid;
+  try { if (localStorage.getItem(key) === payload) return; } catch { /* ignore */ }
+  try {
+    if (!await currentSubscription()) return;
+    const res = await callWorker('/push/bills', JSON.parse(payload));
+    if (res.ok) localStorage.setItem(key, payload);
+  } catch { /* offline: tried again on the next Home load */ }
 };
 
 // Entries saved offline count once they sync

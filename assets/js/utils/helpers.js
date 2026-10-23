@@ -184,10 +184,8 @@ export function countTo(el, value, format) {
 // The newest entry carrying a repeat field is the series' template; repeat: 'stopped' ends it.
 export const recurringKey = e => `${normalizeCategory(e.category)}|${String(e.description || '').trim().toLowerCase()}`;
 
-// Series due this month: active, nothing entered for it yet this month, and its day has come
-// (the 31st falls on the month's last day). skipped(key, 'YYYY-MM') hides one for a month.
-export function dueRecurring(expenses, today = todayStr(), skipped = () => false) {
-  const month = today.slice(0, 7);
+// Newest entry and newest repeat-carrying entry (the template) per series
+function recurringSeries(expenses) {
   const latest = new Map(), template = new Map();
   for (const e of expenses) {
     if (!e || !e.date) continue;
@@ -195,16 +193,46 @@ export function dueRecurring(expenses, today = todayStr(), skipped = () => false
     if (!latest.has(key) || e.date > latest.get(key).date) latest.set(key, e);
     if (e.repeat && (!template.has(key) || e.date > template.get(key).date)) template.set(key, e);
   }
-  const [y, m, d] = today.split('-').map(Number);
-  const monthDays = new Date(y, m, 0).getDate();
+  return { latest, template };
+}
+
+// The template's day in month 'YYYY-MM' (the 31st falls on the month's last day)
+function dueIn(t, month) {
+  const [y, m] = month.split('-').map(Number);
+  return `${month}-${pad(Math.min(Number(t.date.slice(8, 10)), new Date(y, m, 0).getDate()))}`;
+}
+
+// Series due this month: active, nothing entered for it yet this month, and its day has come.
+// skipped(key, 'YYYY-MM') hides one for a month.
+export function dueRecurring(expenses, today = todayStr(), skipped = () => false) {
+  const month = today.slice(0, 7);
+  const { latest, template } = recurringSeries(expenses);
   const due = [];
   for (const [key, t] of template) {
     if (t.repeat !== 'monthly' || latest.get(key).date.slice(0, 7) >= month || skipped(key, month)) continue;
-    const day = Math.min(Number(t.date.slice(8, 10)), monthDays);
-    if (d < day) continue;
-    due.push({ key, template: t, due: `${month}-${pad(day)}` });
+    const day = dueIn(t, month);
+    if (today < day) continue;
+    due.push({ key, template: t, due: day });
   }
   return due.sort((a, b) => a.due.localeCompare(b.due) || b.template.amount - a.template.amount);
+}
+
+// Each active series' next due date from today on, for bill-due alerts: this month's unless it was
+// already entered, skipped or has passed (Home lists overdue ones), else next month's
+export function upcomingBills(expenses, today = todayStr(), skipped = () => false) {
+  const month = today.slice(0, 7);
+  const [y, m] = month.split('-').map(Number);
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`;
+  const { latest, template } = recurringSeries(expenses);
+  const bills = [];
+  for (const [key, t] of template) {
+    const entered = latest.get(key).date.slice(0, 7);
+    if (t.repeat !== 'monthly' || entered >= next) continue;
+    let due = dueIn(t, month);
+    if (entered >= month || skipped(key, month) || due < today) due = dueIn(t, next);
+    bills.push({ key, title: t.description && t.description !== '-' ? t.description : t.category, amount: t.amount, due });
+  }
+  return bills.sort((a, b) => a.key.localeCompare(b.key));
 }
 
 // "21 Oct", or "21 Oct 2025" outside the current year: short enough for a list row

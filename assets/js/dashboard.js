@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
@@ -560,6 +560,7 @@ const isSkipped = (key, month) => { try { return localStorage.getItem(SKIP_KEY +
 let dueItems = [];
 
 function renderDue() {
+  window.syncBills?.(upcomingBills(allExpenses, todayStr(), isSkipped));
   const section = document.getElementById("home-due");
   if (!section) return;
   dueItems = dueRecurring(allExpenses, todayStr(), isSkipped);
