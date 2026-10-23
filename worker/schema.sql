@@ -39,7 +39,8 @@ CREATE TABLE IF NOT EXISTS debt_pushes (
 CREATE INDEX IF NOT EXISTS debt_pushes_uid ON debt_pushes (uid, sent_at);
 
 -- Bill-due alerts: each repeating expense's next due date, as the app last sent it (/push/bills).
--- The cron pushes "<title> due tomorrow" once per due date, at the user's reminder time.
+-- The cron pushes "<title> due tomorrow" once per due date, at the user's reminder time; a date that
+-- passed while the app was closed rolls on to the same day next month (push.js nextDue).
 CREATE TABLE IF NOT EXISTS bills (
   uid         TEXT NOT NULL,
   key         TEXT NOT NULL,      -- series key: category|description

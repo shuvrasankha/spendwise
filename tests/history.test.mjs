@@ -1,4 +1,4 @@
-// Run: node --test tests/ — History page: date ranges, filters, search, sort, day headings
+// Run: node --test tests/*.test.mjs — History page: date ranges, filters, search, sort, day headings
 process.env.TZ = 'Asia/Kolkata';
 
 import { test } from 'node:test';

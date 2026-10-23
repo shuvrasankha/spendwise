@@ -1,4 +1,4 @@
-// Run: node --test tests/ — merged expense categories
+// Run: node --test tests/*.test.mjs — merged expense categories
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EXPENSE_CATEGORIES, CATEGORY_ALIASES, normalizeCategory, isSpending } from '../assets/js/utils/helpers.js';

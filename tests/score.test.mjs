@@ -1,4 +1,4 @@
-// Run: node --test tests/ — the money score weighs only the factors that have data
+// Run: node --test tests/*.test.mjs — the money score weighs only the factors that have data
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { financeScore } from '../assets/js/utils/helpers.js';

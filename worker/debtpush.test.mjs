@@ -44,7 +44,7 @@ const debtDoc = (over = {}) => ({
   ...over.doc,
 });
 
-async function call(body, { doc = debtDoc(), status = 200, db = fakeDB(), uid = 'me' } = {}) {
+async function call(body, { doc = debtDoc(), status = 200, db = fakeDB(), uid = 'me', email = 'me@x.com' } = {}) {
   const env = { DB: db, FIREBASE_PROJECT_ID: 'p', VAPID_PRIVATE_JWK: JSON.stringify(await exportJWK(privateKey)), VAPID_PUBLIC_KEY: 'k', VAPID_SUBJECT: 'https://x' };
   const requests = [];
   const realFetch = globalThis.fetch;
@@ -53,7 +53,7 @@ async function call(body, { doc = debtDoc(), status = 200, db = fakeDB(), uid = 
     if (String(url).startsWith('https://firestore.googleapis.com/')) return new Response(JSON.stringify(doc), { status });
     return new Response(null, { status: 201 });
   };
-  try { return { result: await handlePushRoute('/push/debt', body, uid, env, { idToken: 'tok' }), requests, env }; }
+  try { return { result: await handlePushRoute('/push/debt', body, uid, env, { email, idToken: 'tok' }), requests, env }; }
   finally { globalThis.fetch = realFetch; }
 }
 
@@ -84,15 +84,19 @@ test('refused: someone else\'s debt, no email, an old debt, unreadable, bad id',
   assert.equal((await call({ debtId: '../x' })).result[0], 400);
 });
 
+test('no verified sender email, no push', async () => {
+  assert.equal((await call({ debtId: 'a1' }, { email: '' })).result[0], 404);
+});
+
 test('a sender is capped per day', async () => {
   assert.equal((await call({ debtId: 'a1' }, { db: fakeDB({ sentToday: 50 }) })).result[0], 429);
 });
 
-test('the message names the sender, the amount and the note', () => {
-  const split = { fromName: 'Ravi', type: 'they-owe', amount: 1250.5, notes: 'Split: Dinner' };
-  assert.deepEqual(JSON.parse(debtMessage(split, 'd1', '₹')), { title: 'Ravi split a bill with you', body: 'You owe ₹1,250.5 · Split: Dinner', url: 'debt.html', tag: 'debt-d1' });
+test('the message names the sender by verified email, the amount and the note', () => {
+  const split = { type: 'they-owe', amount: 1250.5, notes: 'Split: Dinner' };
+  assert.deepEqual(JSON.parse(debtMessage(split, 'd1', '₹', 'ravi@x.com')), { title: 'ravi@x.com split a bill with you', body: 'You owe ₹1,250.5 · Split: Dinner', url: 'debt.html', tag: 'debt-d1' });
   // added on Debts, either way round
-  assert.equal(JSON.parse(debtMessage({ fromName: 'Ravi', type: 'they-owe', amount: 500, notes: '' }, 'd2')).body, 'You owe 500');
-  const theyOwe = JSON.parse(debtMessage({ fromName: 'Ravi', type: 'i-owe', amount: 500, notes: 'Rent' }, 'd3', '₹'));
-  assert.deepEqual([theyOwe.title, theyOwe.body], ['Ravi added a debt with you', 'Ravi owes you ₹500 · Rent']);
+  assert.equal(JSON.parse(debtMessage({ type: 'they-owe', amount: 500, notes: '' }, 'd2', '', 'ravi@x.com')).body, 'You owe 500');
+  const theyOwe = JSON.parse(debtMessage({ type: 'i-owe', amount: 500, notes: 'Rent' }, 'd3', '₹', 'ravi@x.com'));
+  assert.deepEqual([theyOwe.title, theyOwe.body], ['ravi@x.com added a debt with you', 'ravi@x.com owes you ₹500 · Rent']);
 });

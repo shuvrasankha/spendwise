@@ -1,4 +1,4 @@
-// Run: node --test tests/ — repeating expenses, budget limits and savings goals
+// Run: node --test tests/*.test.mjs — repeating expenses, budget limits and savings goals
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { dueRecurring, upcomingBills, recurringKey, budgetState, goalPace } from '../assets/js/utils/helpers.js';

@@ -15,12 +15,12 @@ const row = (over = {}) => ({
 });
 const nov1 = new Date('2026-11-01T15:40:00Z'); // 21:10 IST
 
-function fakeDB(rows = []) {
+function fakeDB(rows = [], { device = true } = {}) {
   const calls = [];
   return {
     calls,
     prepare(sql) {
-      const stmt = { all: async () => ({ results: rows }), run: async () => calls.push({ sql, args: [] }) };
+      const stmt = { all: async () => ({ results: rows }), first: async () => (device ? { 1: 1 } : null), run: async () => calls.push({ sql, args: [] }) };
       return { ...stmt, bind: (...args) => ({ ...stmt, run: async () => calls.push({ sql, args }) }) };
     },
   };
@@ -54,6 +54,12 @@ test('cron pushes encrypted and marks the month sent', async () => {
   finally { globalThis.fetch = realFetch; }
   assert.ok(!new TextDecoder().decode(requests[0].init.body).includes('October'), 'message is encrypted');
   assert.deepEqual(db.calls.at(-1).args, ['me', '2026-10']);
+});
+
+test('month totals: nothing stored for a user with no device to alert', async () => {
+  const db = fakeDB([], { device: false });
+  assert.deepEqual(await handlePushRoute('/push/months', { totals: { '2026-10': 24100 } }, 'me', { DB: db }), [200, { stored: false }]);
+  assert.equal(db.calls.length, 0);
 });
 
 test('month totals: stored per user, older months dropped, bad input refused', async () => {

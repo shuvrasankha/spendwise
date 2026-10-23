@@ -1,4 +1,4 @@
-// Run: node --test tests/ — settings (budget, goals) follow the account and stay readable offline
+// Run: node --test tests/*.test.mjs — settings (budget, goals) follow the account and stay readable offline
 import { register } from 'node:module';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

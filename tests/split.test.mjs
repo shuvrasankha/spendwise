@@ -1,4 +1,4 @@
-// Run: node --test tests/ — splitting an expense, and a shared debt seen from the other side
+// Run: node --test tests/*.test.mjs — splitting an expense, and a shared debt seen from the other side
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { splitAmount, sharedDebtView, notificationsFrom, peopleFrom } from '../assets/js/utils/helpers.js';

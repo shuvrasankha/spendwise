@@ -1,4 +1,4 @@
-// Run: node --test tests/ — restoring a large backup must work and never duplicate
+// Run: node --test tests/*.test.mjs — restoring a large backup must work and never duplicate
 import { register } from 'node:module';
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

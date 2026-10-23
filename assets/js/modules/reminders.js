@@ -63,6 +63,7 @@ async function enable() {
     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
   });
   await save(sub);
+  if (auth.currentUser) resendSync(auth.currentUser.uid);
   showNote(`You'll get a reminder at ${timeInput.value} if you haven't added anything that day.`);
 }
 
@@ -186,19 +187,30 @@ window.markLoggedToday = async function () {
   } catch { /* offline: the sync below tries again */ }
 };
 
-// Data the Worker's crons need but can't read from Firestore. Sent only when this device has push on
-// and the body changed since last time; offline, the next redraw tries again.
-async function pushSync(path, body) {
+// Data the Worker's crons need but can't read from Firestore. Every signed-in device sends it, so
+// spending logged on a laptop without notifications still reaches the phone's alerts (the Worker
+// keeps it only if some device has reminders on). Sent when the body changed since last time, one
+// at a time so an older body never lands after a newer one; offline, the next redraw tries again.
+let syncing = Promise.resolve();
+function pushSync(path, body) {
   const user = auth.currentUser;
-  if (!user || !supported || Notification.permission !== 'granted') return;
+  if (!user) return;
   const payload = JSON.stringify(body);
   const key = SYNC_KEY + path + ':' + user.uid;
-  try { if (localStorage.getItem(key) === payload) return; } catch { /* ignore */ }
+  syncing = syncing.then(async () => {
+    try { if (localStorage.getItem(key) === payload) return; } catch { /* ignore */ }
+    try {
+      const res = await callWorker(path, body);
+      if (res.ok) localStorage.setItem(key, payload);
+    } catch { /* offline */ }
+  });
+}
+
+// What this device sent before reminders were on may not have been kept: send it again
+function resendSync(uid) {
   try {
-    if (!await currentSubscription()) return;
-    const res = await callWorker(path, body);
-    if (res.ok) localStorage.setItem(key, payload);
-  } catch { /* offline */ }
+    Object.keys(localStorage).filter(k => k.startsWith(SYNC_KEY) && k.endsWith(':' + uid)).forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
 }
 const currencySymbol = () => window.getCurrencyInfo?.(window.getCurrency?.())?.symbol;
 

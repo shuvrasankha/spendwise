@@ -1,4 +1,4 @@
-// Run: node --test tests/ — dates must follow the user's calendar, not UTC
+// Run: node --test tests/*.test.mjs — dates must follow the user's calendar, not UTC
 process.env.TZ = 'Asia/Kolkata'; // UTC+5:30, where toISOString() is a day early before 05:30
 
 import { test } from 'node:test';

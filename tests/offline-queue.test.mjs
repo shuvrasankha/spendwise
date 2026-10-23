@@ -1,4 +1,4 @@
-// Run: node --test tests/ — offline queue must sync the signed-in user's items and never lose any
+// Run: node --test tests/*.test.mjs — offline queue must sync the signed-in user's items and never lose any
 import { register } from 'node:module';
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
