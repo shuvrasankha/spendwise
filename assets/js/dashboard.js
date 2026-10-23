@@ -455,14 +455,12 @@ function renderHome() {
   const score = financeScore({ income, spent, invested, budget: budget.total, monthShare: day / monthDays, owe, goals: getGoals().map(g => goalPace(g, today)) });
   const scoreEl = document.getElementById("home-score");
   const scoreTile = document.getElementById("home-score-tile");
-  const ring = document.getElementById("home-score-ring");
   scoreTile.classList.remove("great", "good", "fair", "low");
+  scoreTile.classList.toggle("empty", !score);
   document.getElementById("home-score-cta").classList.toggle("hidden", !!score);
   document.getElementById("home-score-why").classList.toggle("hidden", !score);
   if (score) {
     countTo(scoreEl, score.score, Math.round);
-    ring.style.setProperty("--p", score.score);
-    ring.setAttribute("aria-label", `Money score ${score.score} out of 100, ${score.label}`);
     document.getElementById("home-score-label").textContent = score.label;
     document.getElementById("home-score-sub").textContent = score.tip;
     scoreTile.classList.add(score.score >= 80 ? "great" : score.score >= 60 ? "good" : score.score >= 40 ? "fair" : "low");
@@ -477,8 +475,6 @@ function renderHome() {
   } else {
     scoreEl.textContent = "—";
     delete scoreEl.dataset.value;
-    ring.style.setProperty("--p", 0);
-    ring.setAttribute("aria-label", "No money score yet");
     document.getElementById("home-score-label").textContent = "No score yet";
     document.getElementById("home-score-sub").textContent = "Add this month's income to see your score";
   }
