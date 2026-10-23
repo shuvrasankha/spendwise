@@ -50,3 +50,14 @@ CREATE TABLE IF NOT EXISTS bills (
   alerted_due TEXT,               -- the due date last alerted
   PRIMARY KEY (uid, key)
 );
+
+-- Month-end summary: spending per month as the app last sent it (/push/months). On the 1st, at the
+-- reminder time, the cron pushes last month's total against the month before.
+CREATE TABLE IF NOT EXISTS month_totals (
+  uid     TEXT NOT NULL,
+  month   TEXT NOT NULL,          -- 'YYYY-MM'
+  spent   REAL NOT NULL,
+  symbol  TEXT NOT NULL,          -- currency sign, or ''
+  alerted INTEGER,                -- 1 once its summary was pushed
+  PRIMARY KEY (uid, month)
+);

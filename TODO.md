@@ -26,5 +26,5 @@ Ranked by value for effort. Already shipped: budgets (overall and per category),
 
 ## Smaller extras
 
-- [ ] **Month-end summary notification:** "You spent ₹24k, 8% less than last month". Reuses the insights code.
+- [x] **Month-end summary notification:** "You spent ₹24k, 8% less than last month". Reuses the insights code.
 - [ ] **Tags for trips or events** (#goa2026), to see a trip's total across categories.

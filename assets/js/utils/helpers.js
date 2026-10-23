@@ -196,6 +196,13 @@ function recurringSeries(expenses) {
   return { latest, template };
 }
 
+// 'YYYY-MM' shifted by n months
+export function addMonths(month, n) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+}
+
 // The template's day in month 'YYYY-MM' (the 31st falls on the month's last day)
 function dueIn(t, month) {
   const [y, m] = month.split('-').map(Number);
@@ -221,8 +228,7 @@ export function dueRecurring(expenses, today = todayStr(), skipped = () => false
 // already entered, skipped or has passed (Home lists overdue ones), else next month's
 export function upcomingBills(expenses, today = todayStr(), skipped = () => false) {
   const month = today.slice(0, 7);
-  const [y, m] = month.split('-').map(Number);
-  const next = m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`;
+  const next = addMonths(month, 1);
   const { latest, template } = recurringSeries(expenses);
   const bills = [];
   for (const [key, t] of template) {

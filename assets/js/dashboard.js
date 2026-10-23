@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
@@ -560,7 +560,6 @@ const isSkipped = (key, month) => { try { return localStorage.getItem(SKIP_KEY +
 let dueItems = [];
 
 function renderDue() {
-  window.syncBills?.(upcomingBills(allExpenses, todayStr(), isSkipped));
   const section = document.getElementById("home-due");
   if (!section) return;
   dueItems = dueRecurring(allExpenses, todayStr(), isSkipped);
@@ -1141,7 +1140,15 @@ window.deleteFromEdit = async () => {
   document.getElementById("modal").classList.remove("hidden");
 };
 
-function updateCards() { renderHome(); }
+function updateCards() { syncPush(); renderHome(); }
+
+// What the Worker needs for bill-due alerts and the month-end summary (reminders.js)
+function syncPush() {
+  window.syncBills?.(upcomingBills(allExpenses, todayStr(), isSkipped));
+  const month = todayStr().slice(0, 7), prev = addMonths(month, -1);
+  const spentIn = m => Math.round(allExpenses.filter(e => isSpending(e) && e.date.startsWith(m)).reduce((sum, e) => sum + e.amount, 0));
+  window.syncMonthTotals?.({ [month]: spentIn(month), [prev]: spentIn(prev) });
+}
 
 window.switchTableTab = (tab) => {
   activeTab = tab;
