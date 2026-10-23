@@ -265,6 +265,12 @@
         </section>
 
         <div class="home-tiles">
+          <!-- This month's money score out of 100 (dashboard.js renderHome, helpers.js financeScore) -->
+          <div class="home-tile home-tile-wide home-score" id="home-score-tile">
+            <span class="home-tile-label">Money score</span>
+            <span class="home-tile-value"><span id="home-score">—</span><span class="home-score-of"> / 100</span> <span class="home-score-label" id="home-score-label"></span></span>
+            <span class="home-tile-sub" id="home-score-sub">Add this month's income to see your score</span>
+          </div>
           <a class="home-tile" href="income.html">
             <span class="home-tile-label">Income</span>
             <span class="home-tile-value" id="home-income">—</span>

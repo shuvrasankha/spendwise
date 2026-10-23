@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, countTo, dueRecurring, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay } from './modules/history-data.js';
 import { getBudget } from './modules/budget.js';
@@ -448,7 +448,25 @@ function renderHome() {
   if (invested > 0) savedSub.textContent += ` · ${moneyWhole(invested)} invested`;
   renderGoals(income > 0 ? income - spent : null);
   const active = allDebts.filter(d => !d.settled);
-  countTo(document.getElementById("home-owe"), active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
+  const owe = active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0);
+  countTo(document.getElementById("home-owe"), owe, moneyWhole);
+
+  // Money score: savings, budget pace, debt and goals rolled into one number
+  const score = financeScore({ income, spent, budget: budget.total, monthShare: day / monthDays, owe, goals: getGoals().map(g => goalPace(g, today)) });
+  const scoreEl = document.getElementById("home-score");
+  const scoreTile = document.getElementById("home-score-tile");
+  scoreTile.classList.remove("great", "good", "fair", "low");
+  if (score) {
+    countTo(scoreEl, score.score, Math.round);
+    document.getElementById("home-score-label").textContent = score.label;
+    document.getElementById("home-score-sub").textContent = score.tip;
+    scoreTile.classList.add(score.score >= 80 ? "great" : score.score >= 60 ? "good" : score.score >= 40 ? "fair" : "low");
+  } else {
+    scoreEl.textContent = "—";
+    delete scoreEl.dataset.value;
+    document.getElementById("home-score-label").textContent = "";
+    document.getElementById("home-score-sub").textContent = "Add this month's income to see your score";
+  }
   countTo(document.getElementById("home-owed"), active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
 
   // Where it went: this month's top categories, as labelled bars (readable without a chart)

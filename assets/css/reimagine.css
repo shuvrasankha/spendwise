@@ -1032,3 +1032,11 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 .home-add:active, .home-budget-btn:active, .goals-new:active, .due-add:active, .due-more:active,
 .chip:active, .seg-btn:active, .cat-tile:active, .btn-primary:active, .btn-secondary:active { transform: scale(0.97); }
 a.home-tile:active, .hist-row:active:not(:disabled) { transform: scale(0.985); }
+
+/* Money score tile: always full width, the label tinted by how the month is going */
+.home-tiles .home-score { grid-column: 1 / -1; }
+.home-score-of { font-size: 0.875rem; font-weight: 600; color: var(--text2); }
+.home-score-label { margin-left: 6px; font-size: 0.875rem; font-weight: 700; }
+.home-score.great .home-score-label, .home-score.good .home-score-label { color: var(--success); }
+.home-score.fair .home-score-label { color: var(--warning); }
+.home-score.low .home-score-label { color: var(--danger); }
