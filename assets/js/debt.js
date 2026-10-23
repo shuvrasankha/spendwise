@@ -1,10 +1,10 @@
 // debt.js — SpendWise Debts page
 
 import { db } from './config/firebase.js';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
-import { fetchSharedDebts, emailError, shareFields, announceDebts } from './modules/split.js';
+import { fetchSharedDebts, emailError, shareFields, announceDebts, claimSettled, withdrawClaim, confirmClaim, rejectClaim } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
@@ -116,12 +116,29 @@ function renderDebts() {
     return;
   }
   list.innerHTML = active.map(d => {
-    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : d.withEmail ? 'Shared' : '', d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
+    // A settle claim: the person it's shared with says it's settled, and the one who added it confirms
+    const claim = !d.claimDate ? '' : d.shared ? 'You said it’s settled · waiting for them' : `${d.person} says it’s settled`;
+    const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : d.withEmail ? 'Shared' : '', claim, d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
     const who = escapeHtml(d.person);
-    // offline entries have no record to update until they sync; shared ones are theirs to settle
-    const actions = d.pending || d.shared ? '' : `
-      <button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Settle ${fmt(d.amount)} with ${who}">Settle</button>
-      <button type="button" class="icon-btn" data-action="openDebtDeleteModal" data-debt-id="${escapeHtml(d.id)}" aria-label="Delete debt with ${who}" title="Delete"><i data-lucide="trash-2"></i></button>`;
+    const id = escapeHtml(d.id);
+    const amount = fmt(d.amount);
+    let actions = '';
+    if (d.pending) {
+      // offline entries have no record to update until they sync
+    } else if (d.shared) {
+      actions = d.claimDate
+        ? `<button type="button" class="debt-action" data-claim="undo" data-debt-id="${id}" aria-label="Undo saying ${amount} with ${who} is settled">Undo</button>`
+        : `<button type="button" class="debt-action" data-claim="claim" data-debt-id="${id}" aria-label="Tell ${who} ${d.type === 'i-owe' ? `you paid ${amount}` : `you got ${amount}`}">${d.type === 'i-owe' ? 'I paid' : 'I got paid'}</button>`;
+    } else if (d.claimDate) {
+      actions = `<div class="debt-claim-actions">
+        <button type="button" class="debt-action debt-action-quiet" data-claim="reject" data-debt-id="${id}" aria-label="Not settled yet: ${amount} with ${who}">Not yet</button>
+        <button type="button" class="debt-action" data-claim="confirm" data-debt-id="${id}" aria-label="Confirm ${amount} with ${who} is settled">Confirm</button>
+      </div>`;
+    } else {
+      actions = `
+      <button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${id}" aria-label="Settle ${amount} with ${who}">Settle</button>
+      <button type="button" class="icon-btn" data-action="openDebtDeleteModal" data-debt-id="${id}" aria-label="Delete debt with ${who}" title="Delete"><i data-lucide="trash-2"></i></button>`;
+    }
     return debtRow(d, meta, actions);
   }).join('');
   if (window.lucide) lucide.createIcons();
@@ -288,12 +305,13 @@ window.confirmDebtSettle = async () => {
   try {
     const debtRef = doc(db, 'debts', settleDebtTarget);
     const settledDate = todayStr();
-    await updateDoc(debtRef, { settled: true, settledDate });
+    await updateDoc(debtRef, { settled: true, settledDate, claimDate: deleteField() });
 
     const idx = allDebts.findIndex(d => d.id === settleDebtTarget);
     if (idx >= 0) {
       allDebts[idx].settled = true;
       allDebts[idx].settledDate = settledDate;
+      allDebts[idx].claimDate = '';
     }
 
     updateDebtSummary();
@@ -305,6 +323,36 @@ window.confirmDebtSettle = async () => {
   }
   closeDebtSettleModal();
 };
+
+// ── Settle claims on shared debts (split.js) ─────────────────────────────────
+const CLAIM_DONE = {
+  claim: 'Sent. They’ll confirm it’s settled.',
+  undo: 'Taken back.',
+  confirm: 'Debt settled!',
+  reject: 'Kept open. They can say so again once it’s settled.',
+};
+
+document.getElementById('debt-body')?.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-claim]');
+  if (!btn) return;
+  const kind = btn.dataset.claim;
+  const d = allDebts.find(x => x.id === btn.dataset.debtId);
+  if (!d) return;
+  btn.disabled = true;
+  try {
+    if (kind === 'claim') d.claimDate = await claimSettled(d.id);
+    else if (kind === 'undo' || kind === 'reject') { await (kind === 'undo' ? withdrawClaim : rejectClaim)(d.id); d.claimDate = ''; }
+    else if (kind === 'confirm') { await confirmClaim(d.id, d.claimDate); Object.assign(d, { settled: true, settledDate: d.claimDate, claimDate: '' }); }
+    updateDebtSummary();
+    renderDebts();
+    renderDebtHistory();
+    showToast(CLAIM_DONE[kind], 'success');
+  } catch (err) {
+    console.error(err);
+    btn.disabled = false;
+    showToast("Couldn't update the debt. Check your connection and try again.", 'error');
+  }
+});
 
 // ── Reactivate Debt ──────────────────────────────────────────────────────────
 window.openDebtReactivateModal = (id) => {

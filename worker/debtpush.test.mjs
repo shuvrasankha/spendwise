@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPair, exportJWK } from 'jose';
-import { handlePushRoute, debtMessage } from './src/push.js';
+import { handlePushRoute, debtMessage, claimMessage } from './src/push.js';
 import { b64url } from './src/webpush.js';
 
 const { privateKey } = await generateKeyPair('ES256', { extractable: true });
@@ -22,7 +22,7 @@ function fakeDB({ sentToday = 0 } = {}) {
     prepare(sql) {
       return { bind: (...args) => ({
         first: async () => ({ n: sentToday }),
-        all: async () => ({ results: sql.includes('FROM push_keys') && args[0] === 'friend@y.com' ? [device] : [] }),
+        all: async () => ({ results: sql.includes('FROM push_keys') && ['friend@y.com', 'me@x.com'].includes(args[0]) ? [device] : [] }),
         run: async () => {
           calls.push({ sql, args });
           if (sql.startsWith('INSERT OR IGNORE INTO debt_pushes')) {
@@ -44,7 +44,7 @@ const debtDoc = (over = {}) => ({
   ...over.doc,
 });
 
-async function call(body, { doc = debtDoc(), status = 200, db = fakeDB(), uid = 'me', email = 'me@x.com' } = {}) {
+async function call(body, { doc = debtDoc(), status = 200, db = fakeDB(), uid = 'me', email = 'me@x.com', path = '/push/debt' } = {}) {
   const env = { DB: db, FIREBASE_PROJECT_ID: 'p', VAPID_PRIVATE_JWK: JSON.stringify(await exportJWK(privateKey)), VAPID_PUBLIC_KEY: 'k', VAPID_SUBJECT: 'https://x' };
   const requests = [];
   const realFetch = globalThis.fetch;
@@ -53,7 +53,7 @@ async function call(body, { doc = debtDoc(), status = 200, db = fakeDB(), uid = 
     if (String(url).startsWith('https://firestore.googleapis.com/')) return new Response(JSON.stringify(doc), { status });
     return new Response(null, { status: 201 });
   };
-  try { return { result: await handlePushRoute('/push/debt', body, uid, env, { email, idToken: 'tok' }), requests, env }; }
+  try { return { result: await handlePushRoute(path, body, uid, env, { email, idToken: 'tok' }), requests, env }; }
   finally { globalThis.fetch = realFetch; }
 }
 
@@ -99,4 +99,32 @@ test('the message names the sender by verified email, the amount and the note', 
   assert.equal(JSON.parse(debtMessage({ type: 'they-owe', amount: 500, notes: '' }, 'd2', '', 'ravi@x.com')).body, 'You owe 500');
   const theyOwe = JSON.parse(debtMessage({ type: 'i-owe', amount: 500, notes: 'Rent' }, 'd3', '₹', 'ravi@x.com'));
   assert.deepEqual([theyOwe.title, theyOwe.body], ['ravi@x.com added a debt with you', 'ravi@x.com owes you ₹500 · Rent']);
+});
+
+// The friend says the debt is settled: its sender (me@x.com) is told, once per claim
+const claimDoc = (fields = {}) => debtDoc({ fields: { fromEmail: { stringValue: 'me@x.com' }, claimDate: { stringValue: '2026-10-23' }, type: { stringValue: 'they-owe' }, ...fields } });
+const claim = (opts = {}) => call({ debtId: 'c1', symbol: '₹' }, { path: '/push/claim', uid: 'fr', email: 'friend@y.com', doc: claimDoc(), ...opts });
+
+test('a settle claim is pushed to the debt\'s sender, once per claim', async () => {
+  const db = fakeDB();
+  const first = await claim({ db });
+  assert.deepEqual(first.result, [200, { sent: 1 }]);
+  assert.ok(first.requests[0].url.endsWith('/debts/c1'));
+  assert.equal(first.requests[1].url, device.endpoint);
+  assert.deepEqual((await claim({ db })).result, [200, { sent: 0 }]);
+  assert.equal((await claim({ db, doc: claimDoc({ claimDate: { stringValue: '2026-10-24' } }) })).result[1].sent, 1); // claimed again later
+});
+
+test('settle claim refused: not shared with the caller, no claim, already settled, no sender email', async () => {
+  assert.equal((await claim({ email: 'other@z.com' })).result[0], 404);
+  assert.equal((await claim({ doc: claimDoc({ claimDate: { stringValue: '' } }) })).result[0], 404);
+  assert.equal((await claim({ doc: claimDoc({ settled: { booleanValue: true } }) })).result[0], 404);
+  assert.equal((await claim({ doc: claimDoc({ fromEmail: { stringValue: '' } }) })).result[0], 404);
+  assert.equal((await claim({ db: fakeDB({ sentToday: 50 }) })).result[0], 429);
+});
+
+test('the settle message reads from the sender\'s side', () => {
+  const owedToMe = JSON.parse(claimMessage({ type: 'they-owe', amount: 500, notes: 'Rent' }, 'c1', '₹', 'ravi@x.com'));
+  assert.deepEqual(owedToMe, { title: 'ravi@x.com says a debt is settled', body: 'They paid you ₹500 · Confirm it in Debts · Rent', url: 'debt.html', tag: 'claim-c1' });
+  assert.equal(JSON.parse(claimMessage({ type: 'i-owe', amount: 500, notes: '' }, 'c1', '', 'ravi@x.com')).body, 'You paid them 500 · Confirm it in Debts');
 });

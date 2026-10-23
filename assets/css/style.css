@@ -3294,6 +3294,13 @@ img {
   background: var(--accent-bg); color: var(--accent); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
 }
 .debt-action:hover { background: var(--accent-bg-hover); }
+.debt-action:disabled { opacity: 0.6; cursor: default; }
+.debt-action-quiet { background: transparent; color: var(--text2); }
+.debt-action-quiet:hover { background: var(--accent-bg); }
+/* Confirm / Not yet sit on their own line, so the row's text keeps its width */
+.debt-row:has(.debt-claim-actions) { flex-wrap: wrap; }
+.debt-row:has(.debt-claim-actions) .hist-row-amount { margin-right: 12px; }
+.debt-claim-actions { display: flex; justify-content: flex-end; gap: 8px; flex-basis: 100%; padding-right: 8px; }
 .debt-row > .debt-action:last-child { margin-right: 8px; }
 .debt-settled { margin-bottom: 16px; }
 .debt-settled summary {
