@@ -477,24 +477,34 @@ function renderGoals(savedThisMonth) {
   const need = goals.reduce((sum, { pace }) => sum + pace.monthly, 0);
   const total = document.getElementById("home-goals-total");
   total.textContent = need > 0 ? `${moneyWhole(need)} a month` : "";
+  total.classList.toggle("hidden", !(need > 0));
+  const covered = need > 0 && savedThisMonth !== null && savedThisMonth >= need;
+  total.classList.toggle("covered", covered);
   if (need > 0 && savedThisMonth !== null) {
-    total.textContent += savedThisMonth >= need ? " · this month covers it" : ` · ${moneyWhole(Math.max(savedThisMonth, 0))} left over this month`;
+    total.textContent += covered ? " · covered" : ` · ${moneyWhole(Math.max(savedThisMonth, 0))} left this month`;
   }
-  const monthName = by => new Date(by + "-01T00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthName = by => new Date(by + "-01T00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
   list.innerHTML = goals.length ? goals.map(({ g, pace }) => {
+    const pct = Math.round(Math.min(pace.ratio, 1) * 100);
     const meta = pace.state === "done" ? "Reached. Well done!"
       : pace.state === "late" ? `${moneyWhole(pace.left)} to go · ${monthName(g.by)} has passed`
-      : `${moneyWhole(pace.monthly)} a month to reach it by ${monthName(g.by)}`;
-    return `<li class="glance-cat">
-      <div class="glance-cat-row"><span class="glance-cat-name">${escapeHtml(g.name)}</span><span class="glance-cat-amount">${moneyWhole(g.saved)} of ${moneyWhole(g.target)}</span></div>
-      <div class="glance-bar${pace.state === "late" ? " near" : ""}" role="progressbar" aria-label="${escapeHtml(g.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.min(pace.ratio, 1) * 100)}"><span style="width:${Math.max(Math.min(pace.ratio, 1) * 100, 2).toFixed(1)}%"></span></div>
-      <div class="glance-cat-meta">${meta}</div>
-      <div class="due-actions">
-        ${pace.state === "done" ? "" : `<button type="button" class="due-add" data-goal-add="${escapeHtml(g.id)}" aria-label="Add money to ${escapeHtml(g.name)}">Add money</button>`}
+      : `<strong>${moneyWhole(pace.monthly)}</strong> a month · by ${monthName(g.by)}`;
+    return `<li class="goal-card ${pace.state}">
+      <div class="goal-ring" style="--p:${pct}" role="progressbar" aria-label="${escapeHtml(g.name)} saved" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+        ${pace.state === "done" ? `<i data-lucide="check" aria-hidden="true"></i>` : `<span aria-hidden="true">${pct}%</span>`}
+      </div>
+      <div class="goal-body">
+        <span class="goal-name">${escapeHtml(g.name)}</span>
+        <span class="goal-amounts"><strong>${moneyWhole(g.saved)}</strong> of ${moneyWhole(g.target)}</span>
+        <span class="goal-meta">${meta}</span>
+      </div>
+      <div class="due-actions goal-actions">
+        ${pace.state === "done" ? "" : `<button type="button" class="due-add" data-goal-add="${escapeHtml(g.id)}" aria-label="Add money to ${escapeHtml(g.name)}"><i data-lucide="plus" aria-hidden="true"></i>Add money</button>`}
         <button type="button" class="due-more" data-goal-edit="${escapeHtml(g.id)}" aria-label="Edit ${escapeHtml(g.name)}">Edit</button>
       </div>
     </li>`;
-  }).join("") : `<li class="home-empty">Saving for something? Add a goal to see how much to put aside each month.</li>`;
+  }).join("") : `<li class="goals-empty"><span class="goals-empty-icon" aria-hidden="true"><i data-lucide="target"></i></span><span>Saving for a trip, a phone or a rainy day? Add a goal to see how much to put aside each month.</span></li>`;
+  if (window.lucide) lucide.createIcons();
 }
 
 // ── Due this month: repeating expenses waiting for one tap ───────────────────

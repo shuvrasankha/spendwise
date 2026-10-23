@@ -285,11 +285,11 @@
         <!-- Savings goals: progress and the monthly pace needed (dashboard.js renderGoals, goals.js) -->
         <section class="home-section home-goals" aria-labelledby="home-goals-title">
           <div class="home-section-head">
-            <h3 id="home-goals-title">Savings goals</h3>
-            <span class="home-section-total" id="home-goals-total"></span>
+            <h3 id="home-goals-title"><span class="goals-icon" aria-hidden="true"><i data-lucide="piggy-bank"></i></span>Savings goals</h3>
+            <span class="goals-need hidden" id="home-goals-total"></span>
           </div>
-          <ul class="glance-cats" id="home-goals"></ul>
-          <button type="button" class="home-budget-link" data-goal-new>New goal</button>
+          <ul class="goals-list" id="home-goals"></ul>
+          <button type="button" class="goals-new" data-goal-new><i data-lucide="plus" aria-hidden="true"></i>New goal</button>
         </section>
 
         <section class="home-section" aria-labelledby="home-cats-title">
