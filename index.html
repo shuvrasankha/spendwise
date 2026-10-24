@@ -324,7 +324,67 @@
           <ul class="glance-cats" id="home-categories"></ul>
         </section>
 
+        <!-- Browse by period: pick a month (or a whole year) and see its totals underneath (dashboard.js updatePeriodSummary) -->
+        <section class="period-card" aria-labelledby="period-picker-label">
+          <div class="period-picker-card">
+            <div class="period-picker-left">
+              <div class="period-picker-icon"><i data-lucide="calendar-search"></i></div>
+              <div>
+                <div class="period-picker-label" id="period-picker-label">Browse by Period</div>
+                <div class="period-picker-sub" id="period-picker-sub">Showing all time</div>
+              </div>
+            </div>
+            <div class="period-picker-controls">
+              <div class="period-select-wrap">
+                <select id="picker-month" aria-label="Month">
+                  <option value="">All Months</option>
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+              <div class="period-select-wrap">
+                <select id="picker-year" aria-label="Year">
+                  <option value="">All Years</option>
+                </select>
+              </div>
+              <button class="btn-period-reset" data-action="resetPeriodPicker" title="Reset to current month">
+                <i data-lucide="rotate-ccw"></i>
+              </button>
+            </div>
+          </div>
+          <div class="period-summary-bar" id="period-summary-bar">
+            <div class="period-summary-item">
+              <span class="period-summary-label">Total Spent</span>
+              <span class="period-summary-value" id="period-total"><span class="currency-symbol">₹</span> 0.00</span>
+            </div>
 
+            <div class="period-summary-divider"></div>
+            <div class="period-summary-item">
+              <span class="period-summary-label">Transactions</span>
+              <span class="period-summary-value" id="period-count">0</span>
+            </div>
+            <div class="period-summary-divider"></div>
+            <div class="period-summary-item">
+              <span class="period-summary-label">Avg Spend/Day</span>
+              <span class="period-summary-value" id="period-avg"><span class="currency-symbol">₹</span> 0.00</span>
+            </div>
+            <div class="period-summary-divider"></div>
+            <div class="period-summary-item">
+              <span class="period-summary-label">Highest Spend</span>
+              <span class="period-summary-value" id="period-max"><span class="currency-symbol">₹</span> 0.00</span>
+            </div>
+          </div>
+        </section>
 
         <!-- Spending over time: the tabs pick the range for both the chart and the list under it
              (dashboard.js switchTableTab) -->
@@ -374,65 +434,6 @@
           <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
         </section>
 
-        <!-- Look back at any month -->
-        <div class="period-picker-card">
-          <div class="period-picker-left">
-            <div class="period-picker-icon"><i data-lucide="calendar-search"></i></div>
-            <div>
-              <div class="period-picker-label">Browse by Period</div>
-              <div class="period-picker-sub" id="period-picker-sub">Showing all time</div>
-            </div>
-          </div>
-          <div class="period-picker-controls">
-            <div class="period-select-wrap">
-              <select id="picker-month" aria-label="Month">
-                <option value="">All Months</option>
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
-            <div class="period-select-wrap">
-              <select id="picker-year" aria-label="Year">
-                <option value="">All Years</option>
-              </select>
-            </div>
-            <button class="btn-period-reset" data-action="resetPeriodPicker" title="Reset to current month">
-              <i data-lucide="rotate-ccw"></i>
-            </button>
-          </div>
-        </div>
-        <div class="period-summary-bar" id="period-summary-bar">
-          <div class="period-summary-item">
-            <span class="period-summary-label">Total Spent</span>
-            <span class="period-summary-value" id="period-total"><span class="currency-symbol">₹</span> 0.00</span>
-          </div>
-
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Transactions</span>
-            <span class="period-summary-value" id="period-count">0</span>
-          </div>
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Avg Spend/Day</span>
-            <span class="period-summary-value" id="period-avg"><span class="currency-symbol">₹</span> 0.00</span>
-          </div>
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Highest Spend</span>
-            <span class="period-summary-value" id="period-max"><span class="currency-symbol">₹</span> 0.00</span>
-          </div>
-        </div>
 
       </div>
     </main>
