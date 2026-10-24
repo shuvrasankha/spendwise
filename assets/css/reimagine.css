@@ -174,7 +174,8 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
 }
 .summary-card:hover { transform: none; box-shadow: var(--shadow-sm); }
 a.home-tile { transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition); }
-a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+/* A card that is a link shows hover by lifting, not with the page's link underline and fade */
+a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; opacity: 1; }
 
 /* Small caps-style labels */
 .home-tile-label, .summary-label, .period-summary-label {
