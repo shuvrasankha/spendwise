@@ -1353,3 +1353,6 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .backup-restore { align-self: flex-start; margin-top: 10px; min-height: 40px; padding: 0 20px; }
 .backup-restore:disabled { opacity: 0.45; cursor: default; }
 .backup-box .backup-status { margin-top: 4px; border: 0; }
+
+/* The wordmark links to the Dashboard: no link underline or fade on hover */
+.nav-logo-link:hover { text-decoration: none; opacity: 1; }
