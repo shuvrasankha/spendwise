@@ -38,6 +38,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/accessibility.js',
   './assets/js/modules/reminders.js',
   './assets/js/modules/insights-data.js',
+  './assets/js/modules/ask-data.js',
   './assets/js/modules/sms-parse.js',
   './assets/js/modules/history-data.js',
   './assets/js/modules/csv-export.js',

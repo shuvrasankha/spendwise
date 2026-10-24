@@ -1413,3 +1413,38 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .ins-dot { flex-shrink: 0; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; }
 .ins-dot.fixed { background: var(--gold); }
 .ins-dot.flex { background: color-mix(in srgb, var(--gold) 30%, var(--bg2)); }
+
+/* =====================
+   INSIGHTS · ASK: a search field with a round send button, example chips, then the answer
+   (big figure, one sentence, what was searched, the matching entries, a link into History).
+===================== */
+.ins-ask { margin-bottom: 16px; }
+.ins-ask-title { margin-bottom: 10px; font-size: 1.0625rem; font-weight: 700; }
+.ins-ask-form {
+  display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 6px 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface2);
+}
+.ins-ask-form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.ins-ask-form > svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--text2); }
+.ins-ask-form input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--text); font: inherit; font-size: 1rem; outline: none; }
+.ins-ask-form input::placeholder { color: var(--text2); opacity: 0.8; }
+.ins-ask-go {
+  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 0; border-radius: 50%;
+  background: var(--accent); color: #fff; cursor: pointer;
+}
+[data-theme="dark"] .ins-ask-go { color: var(--bg); }
+.ins-ask-go:disabled { opacity: 0.5; cursor: default; }
+.ins-ask-go svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.ins-ask-examples { margin-top: 10px; }
+.ins-ask-result { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+.ins-ask-result.hidden { display: none; }
+.ins-ask-headline { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text); }
+.ins-ask-sentence { margin-top: 2px; font-size: 0.9375rem; line-height: 1.45; color: var(--text); }
+.ins-ask-searched { margin: 4px 0 8px; font-size: 0.8125rem; color: var(--text2); }
+.ins-ask-result .ins-list { margin-top: 4px; }
+/* phones: the examples swipe in one row, like History's chips */
+@media not ((hover: hover) and (pointer: fine)) {
+  .ins-ask-examples { flex-wrap: nowrap; overflow-x: auto; margin-left: -20px; margin-right: -20px; padding: 0 20px 2px; scrollbar-width: none; }
+  .ins-ask-examples::-webkit-scrollbar { display: none; }
+  .ins-ask-examples .chip { flex-shrink: 0; white-space: nowrap; }
+}

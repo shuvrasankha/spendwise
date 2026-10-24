@@ -10,6 +10,7 @@ import { todayStr, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
+import { askPrompt, readSpec, guessSpec, runQuery, answerFor, subjectText, dayText } from './ask-data.js';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -87,8 +88,9 @@ async function loadData() {
     (await getDocs(query(collection(db, name), where('uid', '==', uid)))).docs.map(d => map(d.data()));
   const [expenses, income, debts] = await Promise.all([
     get('expenses', r => ({ amount: num(r.amount), category: normalizeCategory(r.category), date: r.date || '',
-      description: r.description || '', payment: r.payment || '', repeat: r.repeat || '', emiTotal: Number(r.emiTotal) || 0 })),
-    get('income', r => ({ amount: num(r.amount), date: r.date || '' })),
+      description: r.description || '', payment: r.payment || '', repeat: r.repeat || '', emiTotal: Number(r.emiTotal) || 0,
+      notes: r.notes || '', cardName: r.cardName || '', tags: Array.isArray(r.tags) ? r.tags : [] })),
+    get('income', r => ({ amount: num(r.amount), date: r.date || '', source: r.source || '', notes: r.notes || '', bank: r.bank || '' })),
     get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '' })),
   ]);
   return { expenses, income, debts };
@@ -458,12 +460,12 @@ function showConsentDialog() {
     overlay.className = 'modal-overlay open insights-consent';
     overlay.innerHTML = `
       <div class="insights-consent-box" role="dialog" aria-modal="true" aria-labelledby="consent-title">
-        <h3 id="consent-title">Ask the AI coach?</h3>
-        <p>Your numbers above are worked out on your device. To get advice, SpendWise sends the AI only totals by category and dates.</p>
-        <p class="insights-consent-note">Descriptions, notes and people's names are never sent.</p>
+        <h3 id="consent-title">Use the AI?</h3>
+        <p>Your numbers are worked out on your device. To understand a question, SpendWise sends the AI only the question; for the coach's advice, only totals by category and dates.</p>
+        <p class="insights-consent-note">Your entries, descriptions, notes and people's names are never sent. Without the AI, common questions are still answered on your device.</p>
         <div class="insights-consent-actions">
           <button type="button" id="consent-decline" class="btn-secondary">Not now</button>
-          <button type="button" id="consent-accept" class="btn-primary">Ask the coach</button>
+          <button type="button" id="consent-accept" class="btn-primary">Continue</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -475,6 +477,103 @@ function showConsentDialog() {
     overlay.querySelector('#consent-accept').focus();
   });
 }
+
+// ── Ask about your spending (ask-data.js) ───────────────────────────────────
+// The AI turns the question into a search: it is sent the question and today's date, never entries.
+// The search runs here over the user's own entries. Declined, offline or over the limit, guessSpec
+// reads common questions on the device instead.
+let asking = false;
+
+async function specFor(question, today) {
+  if (await ensureConsent()) {
+    try {
+      const res = await callAI({
+        model: AI_MODEL,
+        messages: [{ role: 'system', content: askPrompt(today) }, { role: 'user', content: question }],
+        max_tokens: 200,
+        temperature: 0,
+      });
+      if (res.ok) {
+        const spec = readSpec((await res.json()).choices?.[0]?.message?.content || '');
+        if (spec) return spec;
+      }
+    } catch { /* offline: read it here */ }
+  }
+  return guessSpec(question, today);
+}
+
+// "Amazon · 1 Sep – 30 Sep · expenses": what was searched, so a misread question is easy to spot
+function searchedText(spec) {
+  const day = s => dayText(s, todayStr());
+  const dates = spec.from || spec.to ? `${spec.from ? day(spec.from) : 'The start'} – ${spec.to ? day(spec.to) : 'today'}` : 'All time';
+  const kind = spec.type === 'income' ? 'income' : spec.type === 'both' ? 'expenses and income' : 'expenses';
+  return [subjectText(spec) || 'Everything', dates, kind].join(' · ');
+}
+
+// The same search, opened in History (one kind at a time)
+function historyLink(spec) {
+  if (spec.type === 'both') return '';
+  const p = new URLSearchParams();
+  if (spec.type === 'income') p.set('tab', 'income');
+  const q = spec.tag ? '#' + spec.tag : spec.text;
+  if (q) p.set('q', q);
+  if (spec.from) p.set('from', spec.from);
+  if (spec.to) p.set('to', spec.to);
+  spec.categories.forEach(c => p.append('cat', c));
+  return 'history.html?' + p.toString();
+}
+
+function renderAnswer(spec, result, today) {
+  const box = $('ask-result');
+  const { headline, sentence } = answerFor(spec, result, money, today);
+  // newest first, or largest first when the question asks for the biggest
+  const shown = spec.measure === 'biggest' ? [...result.rows].sort((a, b) => b.amount - a.amount) : result.rows;
+  const rows = shown.slice(0, 5).map(r => {
+    const name = r.kind === 'income' ? (r.source || 'Income') : (r.description && r.description !== '-' ? r.description : r.category);
+    const sub = [r.kind === 'income' ? 'Income' : r.category, shortDate(r.date)].filter(Boolean).join(' · ');
+    return `<li class="ins-row">
+      <span class="ins-icon" aria-hidden="true"><i data-lucide="${r.kind === 'income' ? 'arrow-down-left' : 'receipt'}"></i></span>
+      <div class="ins-row-body">
+        <div class="home-row-main"><span class="home-row-title">${esc(name)}</span><span class="home-row-meta">${esc(sub)}</span></div>
+        <span class="home-row-amount">${money(r.amount)}</span>
+      </div>
+    </li>`;
+  }).join('');
+  const link = historyLink(spec);
+  box.innerHTML = `
+    <p class="ins-ask-headline">${esc(headline)}</p>
+    <p class="ins-ask-sentence">${esc(sentence)}</p>
+    <p class="ins-ask-searched">Searched: ${esc(searchedText(spec))}</p>
+    ${rows ? `<ul class="ins-list">${rows}</ul>` : ''}
+    ${link && result.count ? `<a class="home-more" href="${esc(link)}">${result.count > 5 ? `See all ${result.count} in History` : 'Open in History'} <i data-lucide="chevron-right"></i></a>` : ''}`;
+  box.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+async function askQuestion(question) {
+  question = question.trim().slice(0, 200);
+  if (!question || asking || !currentUser) return;
+  asking = true;
+  const btn = $('ask-go');
+  btn.disabled = true;
+  const box = $('ask-result');
+  box.classList.remove('hidden');
+  box.innerHTML = '<p class="ins-ask-sentence">Looking through your entries…</p>';
+  try {
+    const today = todayStr();
+    const [spec, data] = await Promise.all([specFor(question, today), dataPromise ??= loadData()]);
+    renderAnswer(spec, runQuery(spec, data), today);
+  } catch (err) {
+    console.error('Ask error:', err);
+    dataPromise = null;
+    box.innerHTML = `<p class="ins-ask-sentence">Couldn't load your entries. Check your connection and try again.</p>`;
+  } finally {
+    asking = false;
+    btn.disabled = false;
+  }
+}
+
+const ASK_EXAMPLES = ['Amazon last month', 'Food this week', 'Biggest expense this year', 'Salary this month'];
 
 // ── Setup ───────────────────────────────────────────────────────────────────
 function selectPeriod(period) {
@@ -510,6 +609,17 @@ function initUI() {
     });
   }
   $('new-chat-btn')?.addEventListener('click', closeChat);
+  $('ask-form')?.addEventListener('submit', e => { e.preventDefault(); askQuestion($('ask-input').value); });
+  const examples = $('ask-examples');
+  if (examples) {
+    examples.innerHTML = ASK_EXAMPLES.map(q => `<button type="button" class="chip">${esc(q)}</button>`).join('');
+    examples.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      $('ask-input').value = chip.textContent;
+      askQuestion(chip.textContent);
+    });
+  }
   updateCoach();
 }
 
