@@ -567,9 +567,12 @@ function updateFileName(name) {
 //  INIT — Wire up events
 // ══════════════════════════════════════════════════════════════════════════════
 function initCSVUpload() {
-  // Open modal button
-  const openBtn = document.getElementById('csv-import-btn');
-  if (openBtn) openBtn.addEventListener('click', openModal);
+  // Opened from Settings › Your data; the Expense page links to settings.html#import, which opens it
+  document.querySelectorAll('[data-csv-import]').forEach(btn => btn.addEventListener('click', openModal));
+  if (location.hash === '#import' && getOverlay()) {
+    history.replaceState(null, '', location.pathname + location.search); // a reload shouldn't reopen it
+    openModal();
+  }
 
   // Close modal (X button + overlay click)
   const closeBtn = document.getElementById('csv-close-btn');

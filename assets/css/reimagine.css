@@ -1322,3 +1322,7 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .emi-meta strong { font-weight: 600; color: var(--text); }
 .emi-item.done .emi-bar span { background: var(--success); }
 .emi-item.done .emi-name, .emi-item.done .emi-amount { color: var(--text2); }
+
+/* The Expense page's pointer to Settings › Import from a bank statement */
+.csv-import-link { margin: 4px 0 16px; font-size: 0.875rem; color: var(--text2); text-align: center; }
+.csv-import-link a { font-weight: 600; }
