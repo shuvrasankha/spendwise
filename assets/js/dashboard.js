@@ -1325,10 +1325,11 @@ function historyDates() {
 }
 
 // The rows on screen: tab, dates, chips, search and sort applied (also what Download exports)
-function historyRows() {
+// dates: [from, to], History's own range unless Export picked another
+function historyRows(dates = historyDates()) {
   const t = HISTORY_TABS[hist.tab];
   const $id = id => document.getElementById(id);
-  const [from, to] = historyDates();
+  const [from, to] = dates;
   return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, tagsOf: t.tags, sort: $id("hist-sort")?.value });
 }
 
@@ -1461,6 +1462,7 @@ function initHistory() {
   });
   $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
   $id("export-go")?.addEventListener("click", downloadHistoryExport);
+  ["export-range", "export-from", "export-to"].forEach(id => $id(id)?.addEventListener("change", updateExportDialog));
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
   if (location.hash === "#income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click(); // "All income" link
 }
@@ -1556,43 +1558,60 @@ function renderTable(tbodyId, rows, del) {
 
 
 // ── History: Export (modules/csv-export.js) ──────────────────────────────────
-// What a download would hold: the rows on screen, or every expense and income entry in the chosen
-// dates (ignoring search and chips), newest first
+// [from, to] picked in the Export dialog (its own time frame, which starts as History's). Custom
+// dates entered backwards are swapped.
+function exportDates() {
+  const $id = id => document.getElementById(id);
+  if (!$id("export-range")) return historyDates(); // a page cached from before the dialog
+  const [from, to] = historyRange($id("export-range").value, new Date(), { from: $id("export-from").value, to: $id("export-to").value });
+  return from && to && from > to ? [to, from] : [from, to];
+}
+
+// What a download would hold, in the Export dialog's dates: the rows History shows (tab, chips,
+// search), or every expense and income entry (ignoring search and chips), newest first
 function exportEntries(what) {
   if (what === "both") {
-    const [from, to] = historyDates();
+    const [from, to] = exportDates();
     const inDates = r => (!from || r.date >= from) && (!to || r.date <= to);
     return [...allExpenses.filter(inDates).map(row => ({ kind: "expense", row })), ...allIncome.filter(inDates).map(row => ({ kind: "income", row }))]
       .sort((a, b) => (b.row.date || "").localeCompare(a.row.date || ""));
   }
   const kind = hist.tab === "income" ? "income" : "expense";
-  return historyRows().map(row => ({ kind, row }));
+  return historyRows(exportDates()).map(row => ({ kind, row }));
 }
 
-// "This month", or the custom dates
-function exportRangeLabel() {
-  const sel = document.getElementById("hist-range");
-  if (sel?.value !== "custom") return sel?.selectedOptions[0]?.textContent || "All time";
-  const [from, to] = historyDates();
-  return from || to ? `${from ? shortDay(from) : "The start"} – ${to ? shortDay(to) : "today"}` : "All time";
+// Counts and totals for the dialog's time frame; an option with nothing in it can't be picked
+function updateExportDialog() {
+  const $id = id => document.getElementById(id);
+  const t = HISTORY_TABS[hist.tab];
+  $id("export-custom").classList.toggle("hidden", $id("export-range").value !== "custom");
+  const shown = exportEntries("shown"), both = exportEntries("both");
+  const q = $id("hist-search").value.trim();
+  const filters = [...hist.kinds, q && `“${q}”`].filter(Boolean);
+  $id("export-shown-title").textContent = filters.length ? `What's shown · ${plural(shown.length, t.one, t.many)}` : `All ${t.many} · ${shown.length}`;
+  $id("export-shown-sub").textContent = [fmt(shown.reduce((sum, e) => sum + e.row.amount, 0)), ...filters].join(" · ");
+  $id("export-both-sub").textContent = `${plural(both.length, "entry", "entries")}, without search or chips`;
+  const pick = value => document.querySelector(`input[name="export-what"][value="${value}"]`);
+  pick("shown").disabled = !shown.length;
+  pick("both").disabled = !both.length;
+  if (pick("shown").checked && !shown.length && both.length) pick("both").checked = true;
+  if (pick("both").checked && !both.length && shown.length) pick("shown").checked = true;
+  $id("export-go").disabled = !shown.length && !both.length;
+  $id("export-empty").classList.toggle("hidden", !!(shown.length || both.length));
 }
 
 window.openHistoryExport = () => {
-  if (!document.getElementById("export-modal")) { downloadHistoryExport(); return; } // a page cached from before the dialog
-  const t = HISTORY_TABS[hist.tab];
-  const shown = exportEntries("shown"), both = exportEntries("both");
-  if (!shown.length && !both.length) { showToast("Nothing to export in these dates.", "error"); return; }
-  const q = document.getElementById("hist-search").value.trim();
-  const filters = [...hist.kinds, q && `“${q}”`].filter(Boolean);
-  const shownTotal = shown.reduce((sum, e) => sum + e.row.amount, 0);
-  document.getElementById("export-summary").textContent = exportRangeLabel();
-  document.getElementById("export-shown-title").textContent = `What's shown · ${plural(shown.length, t.one, t.many)}`;
-  document.getElementById("export-shown-sub").textContent = [fmt(shownTotal), ...filters].join(" · ");
-  document.getElementById("export-both-sub").textContent = `${plural(both.length, "entry", "entries")} in these dates, without search or chips`;
-  const shownOpt = document.querySelector('input[name="export-what"][value="shown"]');
-  shownOpt.disabled = !shown.length;
-  document.querySelector(`input[name="export-what"][value="${shown.length ? "shown" : "both"}"]`).checked = true;
-  document.getElementById("export-modal").classList.remove("hidden");
+  const $id = id => document.getElementById(id);
+  if (!$id("export-modal")) { downloadHistoryExport(); return; } // a page cached from before the dialog
+  // The dialog's time frame starts as History's own
+  $id("export-range").innerHTML = $id("hist-range").innerHTML;
+  $id("export-range").value = $id("hist-range").value;
+  const [from, to] = historyDates();
+  $id("export-from").value = $id("hist-from").value || from || todayStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  $id("export-to").value = $id("hist-to").value || to || todayStr();
+  document.querySelector('input[name="export-what"][value="shown"]').checked = true;
+  updateExportDialog();
+  $id("export-modal").classList.remove("hidden");
   if (window.lucide) lucide.createIcons();
 };
 
@@ -1603,7 +1622,7 @@ function downloadHistoryExport() {
   const entries = exportEntries(what);
   if (!entries.length) { showToast("Nothing to export.", "error"); return; }
   const csv = buildCsv(entries, { currency: window.getCurrency?.() || "INR", total: document.getElementById("export-total")?.checked ?? true });
-  const [from, to] = historyDates();
+  const [from, to] = exportDates();
   const name = exportFileName(what === "both" ? "Expenses-and-income" : hist.tab === "income" ? "Income" : "Expenses", from, to, todayStr());
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));

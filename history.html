@@ -306,7 +306,16 @@
   <div id="export-modal" class="modal-overlay hidden">
     <div class="modal-box export-box">
       <h3 id="export-title">Export</h3>
-      <p class="export-summary" id="export-summary"></p>
+      <p class="export-summary">Pick the dates and what goes in the file.</p>
+      <div class="export-range">
+        <label class="export-label" for="export-range">Time frame</label>
+        <!-- Options copied from History's own range picker when the dialog opens -->
+        <select id="export-range"></select>
+        <div class="date-range export-custom hidden" id="export-custom" role="group" aria-label="Custom dates">
+          <label>From <input type="date" id="export-from" /></label>
+          <label>To <input type="date" id="export-to" /></label>
+        </div>
+      </div>
       <fieldset class="export-options">
         <legend class="sr-only">Include</legend>
         <label class="export-option">
@@ -318,6 +327,7 @@
           <span><strong>Expenses and income</strong><small id="export-both-sub"></small></span>
         </label>
       </fieldset>
+      <p class="export-empty hidden" id="export-empty" role="status">Nothing in these dates. Pick another time frame.</p>
       <label class="export-check"><input type="checkbox" id="export-total" checked> Add totals at the end</label>
       <p class="export-note">A CSV file, for Excel, Numbers or Google Sheets.</p>
       <div class="modal-actions">

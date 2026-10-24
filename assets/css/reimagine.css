@@ -1269,3 +1269,15 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .export-note { margin: 2px 0 16px; font-size: 0.8125rem; color: var(--text2); }
 .export-box .btn-primary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
 .export-box .btn-primary svg { width: 16px; height: 16px; }
+.export-range { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.export-label { font-size: 0.8125rem; font-weight: 600; color: var(--text2); }
+.export-range select {
+  min-height: 44px; padding: 0 36px 0 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background-color: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem;
+}
+.export-custom { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.export-custom.hidden { display: none; }
+.export-custom label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8125rem; color: var(--text2); }
+.export-custom input { min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
+.export-empty { margin: -4px 0 10px; font-size: 0.875rem; color: var(--danger); }
+#export-go:disabled { opacity: 0.5; cursor: default; }
