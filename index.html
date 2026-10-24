@@ -170,14 +170,14 @@
         <div class="profile-menu" id="profile-menu">
           <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
-            <div class="profile-currency-wrap">
-              <label for="currency-select">Currency</label>
-              <select id="currency-select" data-change="handleCurrencyChange"></select>
+            <div class="profile-who">
+              <strong id="profile-name" class="profile-name"></strong>
+              <span id="profile-email" class="profile-email"></span>
             </div>
-            <button class="btn-profile-action" data-action="openBackupModal">
-              <i data-lucide="database"></i><span>Backup & Restore</span>
-            </button>
-            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout">
+            <a class="btn-profile-action" href="settings.html" role="menuitem">
+              <i data-lucide="settings"></i><span>Settings</span>
+            </a>
+            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout" role="menuitem">
               <i data-lucide="log-out"></i><span>Logout</span>
             </button>
           </div>
@@ -224,6 +224,9 @@
         <button class="sidebar-btn" data-action="navigateToInsights" id="snav-insights">
           <i data-lucide="sparkles"></i> AI Insights
         </button>
+        <button class="sidebar-btn sidebar-btn-settings" data-action="navigateToSettings" id="snav-settings">
+          <i data-lucide="settings"></i> Settings
+        </button>
       </nav>
     </aside>
 
@@ -246,13 +249,19 @@
           </div>
         </section>
 
-        <section class="home-section" aria-labelledby="home-today-title">
+        <!-- Today: what was spent, against the month's daily average, then the entries (dashboard.js renderHome) -->
+        <section class="home-section home-today" aria-labelledby="home-today-title">
           <div class="home-section-head">
             <h3 id="home-today-title">Today</h3>
-            <span class="home-section-total" id="home-today-total"></span>
+            <span class="home-section-total" id="home-today-count"></span>
           </div>
-          <ul class="home-list" id="home-today-list"></ul>
-          <a class="home-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
+          <div class="today-summary hidden" id="home-today-summary">
+            <p class="today-figure"><span class="today-amount" id="home-today-total"></span> <span class="today-unit">spent</span></p>
+            <div class="today-meter hidden" id="home-today-meter" aria-hidden="true"><span class="today-meter-fill" id="home-today-fill"></span><span class="today-meter-avg" id="home-today-avg"></span></div>
+            <p class="today-compare" id="home-today-compare"></p>
+          </div>
+          <ul class="today-list" id="home-today-list"></ul>
+          <a class="home-more today-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
         </section>
 
         <!-- Repeating expenses whose day has come: one tap adds them (dashboard.js renderDue) -->
@@ -880,51 +889,11 @@
   <script src="assets/js/modules/network-status.js"></script>
   <script src="assets/js/modules/offline-queue.js"></script>
   <script type="module" src="assets/js/dashboard.js"></script>
-  <script type="module" src="assets/js/modules/backup.js"></script>
   <script src="assets/js/modules/accessibility.js"></script>
   <script src="assets/js/modules/pickers.js"></script>
   <script src="assets/js/modules/nav.js"></script>
   <script type="module" src="assets/js/modules/budget.js"></script>
 
-  <!-- Backup & Restore Modal -->
-  <div id="backup-modal" class="modal-overlay hidden">
-    <div class="modal-box backup-modal-box">
-      <div class="modal-header">
-        <h3><i data-lucide="database"></i> Backup & Restore</h3>
-        <button class="modal-close-btn" data-action="closeBackupModal" title="Close">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <!-- Export Section -->
-        <div class="backup-section">
-          <h4><i data-lucide="download"></i> Export Backup</h4>
-          <p>Download all your expenses, income, and debts as a JSON file.</p>
-          <button class="btn-backup" id="btn-export" data-action="exportData">
-            <i data-lucide="download"></i> Export Backup
-          </button>
-        </div>
-
-        <!-- Import Section -->
-        <div class="backup-section">
-          <h4><i data-lucide="upload"></i> Import Backup</h4>
-          <p>Restore your data from a previously exported backup file.</p>
-          <div class="backup-file-drop" id="backup-file-drop">
-            <i data-lucide="file-up"></i>
-            <p>Drag & drop your backup file here</p>
-            <p class="backup-file-sub">or click to browse</p>
-            <input type="file" id="backup-file-input" accept=".json" class="backup-file-input" data-change="handleFileSelect" />
-            <span id="backup-file-name" class="backup-file-name">No file selected</span>
-          </div>
-          <button class="btn-backup" id="btn-import" data-action="handleImportClick">
-            <i data-lucide="upload"></i> Import Backup
-          </button>
-        </div>
-
-        <div id="backup-status" class="backup-status hidden"></div>
-      </div>
-    </div>
-  </div>
   <script type="module">
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));

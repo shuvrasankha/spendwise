@@ -1,4 +1,4 @@
-// nav.js — The phone tab bar's extras: the More sheet (Income, Debts) and hold-+ for voice.
+// nav.js — The phone tab bar's extras: the More sheet (Income, Debts, Settings) and hold-+ for voice.
 // Tabs themselves navigate through data-action (event-delegation.js); this adds the rest.
 // The sheet reuses the picker sheet styles (.sw-pick-*), so it looks like every other sheet.
 (function () {
@@ -6,7 +6,8 @@
 
   const PAGES = [
     { href: 'income.html', icon: 'trending-up', title: 'Income', hint: 'Salary, freelance and other money in' },
-    { href: 'debt.html', icon: 'hand-coins', title: 'Debts', hint: 'Money lent and borrowed' }
+    { href: 'debt.html', icon: 'hand-coins', title: 'Debts', hint: 'Money lent and borrowed' },
+    { href: 'settings.html', icon: 'settings', title: 'Settings', hint: 'Currency, budget, reminders, backup' }
   ];
   const HOLD_MS = 500;
 

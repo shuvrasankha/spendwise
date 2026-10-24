@@ -166,11 +166,14 @@
         <div class="profile-menu" id="profile-menu">
           <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
           <div class="profile-dropdown hidden" id="profile-dropdown">
-            <div class="profile-currency-wrap">
-              <label for="currency-select">Currency</label>
-              <select id="currency-select" data-change="handleCurrencyChange"></select>
+            <div class="profile-who">
+              <strong id="profile-name" class="profile-name"></strong>
+              <span id="profile-email" class="profile-email"></span>
             </div>
-            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout">
+            <a class="btn-profile-action" href="settings.html" role="menuitem">
+              <i data-lucide="settings"></i><span>Settings</span>
+            </a>
+            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout" role="menuitem">
               <i data-lucide="log-out"></i><span>Logout</span>
             </button>
           </div>
@@ -218,6 +221,9 @@
         </button>
         <button class="sidebar-btn" data-action="navigateToInsights" id="snav-insights">
           <i data-lucide="sparkles"></i> AI Insights
+        </button>
+        <button class="sidebar-btn sidebar-btn-settings" data-action="navigateToSettings" id="snav-settings">
+          <i data-lucide="settings"></i> Settings
         </button>
       </nav>
     </aside>

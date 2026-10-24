@@ -69,6 +69,7 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 | **History** | Complete transaction history with filters and export |
 | **Debt Tracker** | Manage debts - money owed to you and money you owe |
 | **AI Insights** | Get smart financial insights powered by AI |
+| **Settings** | Appearance, currency, monthly budget, daily reminder, app lock, backup & restore, log out (also in the avatar menu) |
 
 ## 🚀 Quick Start
 

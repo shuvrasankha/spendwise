@@ -1,6 +1,7 @@
 // reminders.js — Daily "log today's spending" push reminder.
-// Adds a switch + time picker to the profile menu. The Worker stores the push
-// subscription and its cron sends the reminder (worker/src/push.js).
+// The switch + time picker live on the Settings page (#settings-reminder); every page keeps this
+// device's subscription current. The Worker stores the subscription and its cron sends the
+// reminder (worker/src/push.js).
 
 import { auth } from '../config/firebase.js';
 import { callWorker, VAPID_PUBLIC_KEY } from '../config/ai.js';
@@ -42,7 +43,7 @@ async function currentSubscription() {
 async function save(sub) {
   const res = await callWorker('/push/subscribe', {
     endpoint: sub.endpoint,
-    remindAt: timeInput.value || DEFAULT_TIME,
+    remindAt: timeInput?.value || storedTime(),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     keys: sub.toJSON().keys, // lets this device receive "a bill was split with you" messages
   });
@@ -106,8 +107,8 @@ async function onTimeChange() {
 }
 
 function buildUI() {
-  const dropdown = document.getElementById('profile-dropdown');
-  if (!dropdown || document.getElementById('reminder-toggle')) return false;
+  const host = document.getElementById('settings-reminder');
+  if (!host || document.getElementById('reminder-toggle')) return false;
   const wrap = document.createElement('div');
   wrap.className = 'profile-reminder-wrap';
   wrap.innerHTML = `
@@ -117,8 +118,7 @@ function buildUI() {
     </div>
     <input type="time" id="reminder-time" class="profile-reminder-time" aria-label="Reminder time">
     <p id="reminder-note" class="profile-reminder-note hidden" aria-live="polite"></p>`;
-  const anchor = dropdown.querySelector('.profile-currency-wrap');
-  if (anchor) anchor.after(wrap); else dropdown.prepend(wrap);
+  host.append(wrap);
 
   toggle = wrap.querySelector('#reminder-toggle');
   timeInput = wrap.querySelector('#reminder-time');
@@ -126,6 +126,9 @@ function buildUI() {
   timeInput.value = storedTime();
   return true;
 }
+
+// Reminders are on for this device: notifications allowed and a push subscription
+const pushOn = async () => supported && Notification.permission === 'granted' && !!await currentSubscription();
 
 // The account's reminder time wins over this device's; a time picked before syncing existed is uploaded once
 async function syncTime(s) {
@@ -135,16 +138,25 @@ async function syncTime(s) {
     if (local) saveSettings({ remindAt: local }).catch(() => {});
     return;
   }
-  if (s.remindAt === timeInput.value) return;
-  timeInput.value = s.remindAt;
+  if (s.remindAt === (timeInput ? timeInput.value : storedTime())) return;
+  if (timeInput) timeInput.value = s.remindAt;
   try { localStorage.setItem(TIME_KEY, s.remindAt); } catch { /* ignore */ }
-  const sub = toggle.checked && await currentSubscription();
+  const on = toggle ? toggle.checked : await pushOn();
+  const sub = on && await currentSubscription();
   if (sub) save(sub).catch(() => {});
 }
 
 async function init() {
-  if (!buildUI()) return;
+  const ui = buildUI();
   onSettings(syncTime);
+  if (!ui) {
+    // Not the Settings page: just re-save on sign-in, so the device's reminders follow whoever is
+    // signed in and the time zone stays current
+    if (!await pushOn()) return;
+    const sub = await currentSubscription();
+    onAuthStateChanged(auth, user => { if (user) save(sub).catch(() => {}); });
+    return;
+  }
 
   if (isIOS && !standalone) {
     toggle.disabled = true;
