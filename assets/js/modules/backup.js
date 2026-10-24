@@ -47,7 +47,7 @@ async function exportData() {
   const btn = document.getElementById('btn-export');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader-2" class="voice-spin"></i> Exporting…';
+    btn.innerHTML = '<i data-lucide="loader-2" class="voice-spin"></i> Downloading…';
     if (window.lucide) lucide.createIcons();
   }
 
@@ -102,7 +102,7 @@ async function exportData() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="download"></i> Export Backup';
+      btn.textContent = 'Download';
       if (window.lucide) lucide.createIcons();
     }
   }
@@ -148,7 +148,7 @@ async function importData(file) {
   const btn = document.getElementById('btn-import');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader-2" class="voice-spin"></i> Importing…';
+    btn.innerHTML = '<i data-lucide="loader-2" class="voice-spin"></i> Restoring…';
     if (window.lucide) lucide.createIcons();
   }
 
@@ -211,7 +211,7 @@ async function importData(file) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="upload"></i> Import Backup';
+      btn.textContent = 'Restore';
       if (window.lucide) lucide.createIcons();
     }
   }
@@ -226,9 +226,19 @@ function openBackupModal() {
   // Reset file input
   const fileInput = document.getElementById('backup-file-input');
   if (fileInput) fileInput.value = '';
-  const fileName = document.getElementById('backup-file-name');
-  if (fileName) fileName.textContent = 'No file selected';
+  showChosenFile(null);
   if (window.lucide) lucide.createIcons();
+}
+
+// The chosen file's name in the picker; Restore is only on once there is one
+function showChosenFile(file) {
+  const fileName = document.getElementById('backup-file-name');
+  if (fileName) {
+    fileName.textContent = file ? file.name : 'Choose a file, or drop it here';
+    fileName.classList.toggle('has-file', !!file);
+  }
+  const restore = document.getElementById('btn-import');
+  if (restore) restore.disabled = !file;
 }
 
 function closeBackupModal() {
@@ -237,12 +247,7 @@ function closeBackupModal() {
 }
 
 function handleFileSelect(event) {
-  const file = event.target.files[0];
-  const fileName = document.getElementById('backup-file-name');
-  if (fileName) {
-    fileName.textContent = file ? file.name : 'No file selected';
-    fileName.classList.toggle('has-file', !!file);
-  }
+  showChosenFile(event.target.files[0]);
 }
 
 function handleDrop(event) {
@@ -259,11 +264,7 @@ function handleDrop(event) {
       dt.items.add(file);
       fileInput.files = dt.files;
     }
-    const fileName = document.getElementById('backup-file-name');
-    if (fileName) {
-      fileName.textContent = file.name;
-      fileName.classList.add('has-file');
-    }
+    showChosenFile(file);
   }
 }
 

@@ -1313,3 +1313,43 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 /* The Expense page's pointer to Settings › Import from a bank statement */
 .csv-import-link { margin: 4px 0 16px; font-size: 0.875rem; color: var(--text2); text-align: center; }
 .csv-import-link a { font-weight: 600; }
+
+/* =====================
+   BACKUP & RESTORE dialog (Settings): one card, a header, then two inset rows (icon tile, title over
+   a line of help, the action). Restore picks a file in a compact dashed area; Restore is the only
+   filled button and stays off until a file is chosen (backup.js showChosenFile).
+===================== */
+.backup-box { max-width: 480px; }
+.backup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.backup-head h3 { margin: 0 0 2px; }
+.backup-sub { font-size: 0.875rem; color: var(--text2); }
+.backup-head .modal-close-btn { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--surface2); }
+.backup-rows { border-top: 1px solid var(--border-light); }
+.backup-row { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; }
+.backup-row + .backup-row { border-top: 1px solid var(--border-light); }
+.backup-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--gold-bg); color: var(--gold); }
+.backup-icon svg { width: 18px; height: 18px; }
+.backup-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.backup-text > strong { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.backup-text > span { font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+.backup-action {
+  align-self: center; flex-shrink: 0; min-height: 40px; padding: 0 16px; border: 1px solid var(--border); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.backup-action:hover { border-color: var(--text2); }
+.backup-action:disabled { opacity: 0.6; cursor: default; }
+.backup-action svg { width: 16px; height: 16px; }
+.backup-pick {
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 48px; margin-top: 10px; padding: 0 14px;
+  border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+.backup-pick:hover, .backup-pick.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+.backup-pick:focus-within { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.backup-pick svg { flex-shrink: 0; width: 18px; height: 18px; }
+.backup-pick .backup-file-name { margin: 0; padding: 0; border: 0; background: none; font-size: 0.875rem; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.backup-pick .backup-file-name.has-file { color: var(--text); font-weight: 600; background: none; }
+.backup-restore { align-self: flex-start; margin-top: 10px; min-height: 40px; padding: 0 20px; }
+.backup-restore:disabled { opacity: 0.45; cursor: default; }
+.backup-box .backup-status { margin-top: 4px; border: 0; }
