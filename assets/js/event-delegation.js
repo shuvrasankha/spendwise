@@ -44,7 +44,6 @@
     'switchTableTabWeekly': function() { if (window.switchTableTab) window.switchTableTab('weekly'); },
     'switchTableTabMonthly': function() { if (window.switchTableTab) window.switchTableTab('monthly'); },
     'switchTableTabYearly': function() { if (window.switchTableTab) window.switchTableTab('yearly'); },
-    'downloadCSV': function() { if (window.downloadCSV) window.downloadCSV(); },
     'resetPeriodPicker': function() { if (window.resetPeriodPicker) window.resetPeriodPicker(); },
 
     // Expense form
@@ -61,7 +60,8 @@
     'confirmDelete': function() { if (window.confirmDelete) window.confirmDelete(); },
 
     // History
-    'downloadHistoryCSV': function() { if (window.downloadHistoryCSV) window.downloadHistoryCSV(); },
+    'openHistoryExport': function() { if (window.openHistoryExport) window.openHistoryExport(); },
+    'closeHistoryExport': function() { if (window.closeHistoryExport) window.closeHistoryExport(); },
 
     // Income
     'addIncome': function() { if (window.addIncome) window.addIncome(); },

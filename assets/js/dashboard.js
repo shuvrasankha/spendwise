@@ -17,6 +17,7 @@ const setCurrency = window.setCurrency;
 import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from './modules/history-data.js';
+import { buildCsv, exportFileName } from './modules/csv-export.js';
 import { getBudget } from './modules/budget.js';
 import { getGoals } from './modules/goals.js';
 import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
@@ -1459,6 +1460,7 @@ function initHistory() {
     $id("hist-tags").querySelector(`[data-hist-tag="${CSS.escape(g)}"]`)?.focus();
   });
   $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
+  $id("export-go")?.addEventListener("click", downloadHistoryExport);
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
   if (location.hash === "#income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click(); // "All income" link
 }
@@ -1553,55 +1555,62 @@ function renderTable(tbodyId, rows, del) {
 }
 
 
-window.downloadCSV = () => {
-  const pm = document.getElementById('picker-month');
-  const selectedMonth = pm ? pm.value : '';
-  const selectedYear = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
-
-  // If period picker is active, use filtered data
-  if (selectedMonth || selectedYear) {
-    const periodData = getPeriodExpenses();
-    let label = 'Export';
-    if (selectedMonth && selectedYear) {
-      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      label = months[parseInt(selectedMonth)] + '_' + selectedYear;
-    } else if (selectedMonth) {
-      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      label = months[parseInt(selectedMonth)];
-    } else if (selectedYear) {
-      label = 'Year_' + selectedYear;
-    }
-    exportCSV(periodData, "SpendWise_" + label);
-    return;
+// ── History: Export (modules/csv-export.js) ──────────────────────────────────
+// What a download would hold: the rows on screen, or every expense and income entry in the chosen
+// dates (ignoring search and chips), newest first
+function exportEntries(what) {
+  if (what === "both") {
+    const [from, to] = historyDates();
+    const inDates = r => (!from || r.date >= from) && (!to || r.date <= to);
+    return [...allExpenses.filter(inDates).map(row => ({ kind: "expense", row })), ...allIncome.filter(inDates).map(row => ({ kind: "income", row }))]
+      .sort((a, b) => (b.row.date || "").localeCompare(a.row.date || ""));
   }
+  const kind = hist.tab === "income" ? "income" : "expense";
+  return historyRows().map(row => ({ kind, row }));
+}
 
-  // Otherwise, use the current date logic
-  const now = new Date(); const today = todayStr(); let from, label;
-  if (activeTab === "daily") { from = today; label = "Today"; }
-  else if (activeTab === "weekly") { from = getWeekStart(); label = "This_Week"; }
-  else if (activeTab === "monthly") { from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01"; label = "This_Month"; }
-  else { from = now.getFullYear() + "-01-01"; label = "This_Year"; }
-  exportCSV(allExpenses.filter(e => e.date >= from && e.date <= today), "SpendWise_" + label);
+// "This month", or the custom dates
+function exportRangeLabel() {
+  const sel = document.getElementById("hist-range");
+  if (sel?.value !== "custom") return sel?.selectedOptions[0]?.textContent || "All time";
+  const [from, to] = historyDates();
+  return from || to ? `${from ? shortDay(from) : "The start"} – ${to ? shortDay(to) : "today"}` : "All time";
+}
+
+window.openHistoryExport = () => {
+  const t = HISTORY_TABS[hist.tab];
+  const shown = exportEntries("shown"), both = exportEntries("both");
+  if (!shown.length && !both.length) { showToast("Nothing to export in these dates.", "error"); return; }
+  const q = document.getElementById("hist-search").value.trim();
+  const filters = [...hist.kinds, q && `“${q}”`].filter(Boolean);
+  const shownTotal = shown.reduce((sum, e) => sum + e.row.amount, 0);
+  document.getElementById("export-summary").textContent = exportRangeLabel();
+  document.getElementById("export-shown-title").textContent = `What's shown · ${plural(shown.length, t.one, t.many)}`;
+  document.getElementById("export-shown-sub").textContent = [fmt(shownTotal), ...filters].join(" · ");
+  document.getElementById("export-both-sub").textContent = `${plural(both.length, "entry", "entries")} in these dates, without search or chips`;
+  const shownOpt = document.querySelector('input[name="export-what"][value="shown"]');
+  shownOpt.disabled = !shown.length;
+  document.querySelector(`input[name="export-what"][value="${shown.length ? "shown" : "both"}"]`).checked = true;
+  document.getElementById("export-modal").classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
 };
 
-window.downloadHistoryCSV = () => hist.tab === "income" ? window.downloadIncomeHistoryCSV() : exportCSV(historyRows(), "SpendWise_History");
+window.closeHistoryExport = () => document.getElementById("export-modal").classList.add("hidden");
 
-function exportCSV(rows, name) {
-  if (!rows.length) { showToast("No data to export.", "error"); return; }
-  const hdr = ["Date", "Category", "Description", "Payment Method", "Card Name", "Notes", "Amount (Rs)"];
-  const csv = [hdr.join(","), ...rows.map(e => [
-    e.date,
-    '"' + e.category + '"',
-    '"' + (e.description || "").replace(/"/g, '""') + '"',
-    '"' + e.payment + '"',
-    '"' + (e.cardName || "").replace(/"/g, '""') + '"',
-    '"' + (e.notes || "").replace(/"/g, '""') + '"',
-    e.amount.toFixed(2)
-  ].join(","))].join("\n");
+function downloadHistoryExport() {
+  const what = document.querySelector('input[name="export-what"]:checked')?.value || "shown";
+  const entries = exportEntries(what);
+  if (!entries.length) { showToast("Nothing to export.", "error"); return; }
+  const csv = buildCsv(entries, { currency: window.getCurrency?.() || "INR", total: document.getElementById("export-total").checked });
+  const [from, to] = historyDates();
+  const name = exportFileName(what === "both" ? "Expenses-and-income" : hist.tab === "income" ? "Income" : "Expenses", from, to, todayStr());
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = name + "_" + todayStr() + ".csv";
-  a.click(); showToast("CSV downloaded!", "success");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  window.closeHistoryExport();
+  showToast(`Downloaded ${name}`, "success");
 }
 
 // Charts read theme colours when drawn, so redraw when theme.js switches appearance
@@ -2300,27 +2309,6 @@ window.deleteFromIncEdit = () => {
   closeIncEditModal();
   document.getElementById('inc-delete-modal').classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
-};
-
-// ── CSV Download ─────────────────────────────────────────────
-window.downloadIncomeHistoryCSV = () => {
-  const rows = historyRows();
-  if (!rows.length) { showToast('No data to export.', 'error'); return; }
-  const hdr = ['Date', 'Source', 'Payment Type', 'Bank/Wallet', 'Notes', 'Amount (Rs)'];
-  const csv = [hdr.join(','), ...rows.map(i => [
-    i.date,
-    '"' + (i.source || '').replace(/"/g, '""') + '"',
-    '"' + (i.paymentType || '') + '"',
-    '"' + (i.bank || '').replace(/"/g, '""') + '"',
-    '"' + (i.notes || '').replace(/"/g, '""') + '"',
-    i.amount.toFixed(2)
-  ].join(','))].join('\n');
-
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = 'SpendWise_Income_History_' + todayStr() + '.csv';
-  a.click();
-  showToast('CSV downloaded!', 'success');
 };
 
 // Refresh after offline-queue.js writes queued items (replaces the "pending" placeholders)

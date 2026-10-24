@@ -1222,7 +1222,6 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .spend-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 6px; }
 .spend-head h3 { font-size: 1.0625rem; font-weight: 700; color: var(--text); }
 .spend-head p { font-size: 0.8125rem; color: var(--text2); }
-.spend-head .btn-download { flex-shrink: 0; min-height: 40px; }
 .spend-card .table-header { padding: 8px 20px 0; border-bottom: 0; }
 .spend-chart { padding: 12px 20px 16px; border-bottom: 1px solid var(--border); }
 @media (max-width: 559px) {
@@ -1240,3 +1239,33 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 }
 .period-card .period-picker-card { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: none; }
 .period-card .period-summary-bar { margin: 0; border: 0; border-top: 1px solid var(--border-light); border-radius: 0; box-shadow: none; }
+
+/* =====================
+   HISTORY · EXPORT: a labelled button in the header, and a dialog to pick what goes in the file
+===================== */
+.hist-export-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface);
+  color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.hist-export-btn:hover { border-color: var(--text2); }
+.hist-export-btn svg { width: 16px; height: 16px; }
+.export-box { max-width: 440px; }
+.export-box h3 { margin-bottom: 2px; }
+.export-summary { margin-bottom: 16px; font-size: 0.875rem; color: var(--text2); }
+.export-options { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; }
+.export-option {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+}
+.export-option:has(input:checked) { border-color: var(--accent); background: var(--accent-bg); }
+.export-option:has(input:disabled) { opacity: 0.5; cursor: default; }
+.export-option input, .export-check input { margin-top: 3px; accent-color: var(--accent); flex-shrink: 0; }
+.export-option span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.export-option strong { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.export-option small { font-size: 0.8125rem; color: var(--text2); overflow-wrap: anywhere; }
+.export-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 0.9375rem; color: var(--text); cursor: pointer; }
+.export-check input { margin-top: 0; }
+.export-note { margin: 2px 0 16px; font-size: 0.8125rem; color: var(--text2); }
+.export-box .btn-primary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.export-box .btn-primary svg { width: 16px; height: 16px; }
