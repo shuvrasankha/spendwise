@@ -61,6 +61,8 @@
 
     // History
     'openHistoryExport': function() { if (window.openHistoryExport) window.openHistoryExport(); },
+    // A History page cached from before the Export dialog still has the old download icon
+    'downloadHistoryCSV': function() { if (window.openHistoryExport) window.openHistoryExport(); },
     'closeHistoryExport': function() { if (window.closeHistoryExport) window.closeHistoryExport(); },
 
     // Income

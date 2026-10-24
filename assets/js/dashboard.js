@@ -1578,6 +1578,7 @@ function exportRangeLabel() {
 }
 
 window.openHistoryExport = () => {
+  if (!document.getElementById("export-modal")) { downloadHistoryExport(); return; } // a page cached from before the dialog
   const t = HISTORY_TABS[hist.tab];
   const shown = exportEntries("shown"), both = exportEntries("both");
   if (!shown.length && !both.length) { showToast("Nothing to export in these dates.", "error"); return; }
@@ -1601,7 +1602,7 @@ function downloadHistoryExport() {
   const what = document.querySelector('input[name="export-what"]:checked')?.value || "shown";
   const entries = exportEntries(what);
   if (!entries.length) { showToast("Nothing to export.", "error"); return; }
-  const csv = buildCsv(entries, { currency: window.getCurrency?.() || "INR", total: document.getElementById("export-total").checked });
+  const csv = buildCsv(entries, { currency: window.getCurrency?.() || "INR", total: document.getElementById("export-total")?.checked ?? true });
   const [from, to] = historyDates();
   const name = exportFileName(what === "both" ? "Expenses-and-income" : hist.tab === "income" ? "Income" : "Expenses", from, to, todayStr());
   const a = document.createElement("a");
@@ -1609,7 +1610,7 @@ function downloadHistoryExport() {
   a.download = name;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  window.closeHistoryExport();
+  document.getElementById("export-modal")?.classList.add("hidden");
   showToast(`Downloaded ${name}`, "success");
 }
 
