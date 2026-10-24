@@ -1281,3 +1281,18 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .export-custom input { min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
 .export-empty { margin: -4px 0 10px; font-size: 0.875rem; color: var(--danger); }
 #export-go:disabled { opacity: 0.5; cursor: default; }
+
+/* =====================
+   HISTORY · CHIP ROWS ON DESKTOP: a mouse can't swipe a row sideways, so the chips wrap; past two
+   lines the row folds behind "Show all" (dashboard.js fitChips). Phones keep the swipeable row.
+===================== */
+@media (hover: hover) and (pointer: fine) {
+  .hist-kinds { flex-wrap: wrap; overflow: visible; margin: 12px 0 0; padding: 0; }
+  .hist-kinds.is-folded { max-height: var(--two-lines); overflow: hidden; }
+}
+.chips-toggle {
+  display: inline-flex; align-items: center; min-height: 36px; margin-top: 6px; padding: 0 2px;
+  border: 0; background: none; color: var(--accent); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.chips-toggle:hover { text-decoration: underline; }
+.chips-toggle.hidden { display: none; }

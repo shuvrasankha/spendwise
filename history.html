@@ -274,8 +274,10 @@
 
         <!-- Categories (expenses) or sources (income) found in the data; built by dashboard.js renderHistory -->
         <div class="chips hist-kinds" id="hist-kinds" role="group" aria-label="Categories"></div>
+        <button type="button" class="chips-toggle hidden" id="hist-kinds-toggle" aria-controls="hist-kinds" aria-expanded="false"></button>
         <!-- Expense tags (trips, events); a chip searches #tag. Built by dashboard.js renderHistory -->
         <div class="chips hist-kinds hidden" id="hist-tags" role="group" aria-label="Trips and events"></div>
+        <button type="button" class="chips-toggle hidden" id="hist-tags-toggle" aria-controls="hist-tags" aria-expanded="false"></button>
 
         <p class="hist-summary" id="hist-summary" role="status"></p>
         <div class="hist-list" id="history-list" aria-busy="true">

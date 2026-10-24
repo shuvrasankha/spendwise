@@ -1295,7 +1295,30 @@ let dashboardPage = 1;
 // ═══════════════════════════════════════════════════════════════════
 // Filters live in `hist` and the controls, so a list redrawn after an edit or delete keeps them.
 const HISTORY_STEP = 50;
-const hist = { tab: "expenses", kinds: new Set(), shown: HISTORY_STEP };
+const hist = { tab: "expenses", kinds: new Set(), shown: HISTORY_STEP, openRows: new Set() };
+
+// With a mouse (no sideways swipe), a chip row wraps instead of scrolling, and shows two lines until
+// "Show all". Chips past the second line are inert while folded, so Tab can't reach hidden ones; the
+// button says when a selected chip is among them.
+const mouseChips = window.matchMedia("(hover: hover) and (pointer: fine)");
+function fitChips(row) {
+  const btn = document.getElementById(row.id + "-toggle");
+  if (!btn) return;
+  const chips = [...row.children];
+  row.classList.remove("is-folded");
+  chips.forEach(c => { c.inert = false; });
+  const lines = mouseChips.matches && !row.classList.contains("hidden") ? [...new Set(chips.map(c => c.offsetTop))].sort((a, b) => a - b) : [];
+  if (lines.length <= 2) { btn.classList.add("hidden"); return; }
+  const folded = chips.filter(c => c.offsetTop >= lines[2]);
+  const open = hist.openRows.has(row.id);
+  const hiddenPicks = open ? 0 : folded.filter(c => c.getAttribute("aria-pressed") === "true").length;
+  row.style.setProperty("--two-lines", `${lines[2] - lines[0] - 8}px`); // up to the third line, less the gap
+  row.classList.toggle("is-folded", !open);
+  folded.forEach(c => { c.inert = !open; });
+  btn.classList.remove("hidden");
+  btn.textContent = open ? "Show less" : `Show all ${chips.length}${hiddenPicks ? ` · ${hiddenPicks} selected` : ""}`;
+  btn.setAttribute("aria-expanded", String(open));
+}
 const HISTORY_TABS = {
   expenses: {
     rows: () => allExpenses,
@@ -1359,6 +1382,8 @@ function renderHistory() {
   const tagChips = document.getElementById("hist-tags");
   tagChips.classList.toggle("hidden", !tags.length);
   tagChips.innerHTML = tags.map(g => `<button type="button" class="chip" data-hist-tag="${escapeHtml(g)}" aria-pressed="${g.toLowerCase() === tag}">#${escapeHtml(g)}</button>`).join("");
+  fitChips(chips);
+  fitChips(tagChips);
 
   const rows = historyRows();
   const clear = rows.length !== all.length ? ' <button type="button" class="hist-clear" id="hist-clear">Clear filters</button>' : "";
@@ -1462,6 +1487,14 @@ function initHistory() {
   });
   $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
   $id("export-go")?.addEventListener("click", downloadHistoryExport);
+  ["hist-kinds", "hist-tags"].forEach(id => $id(id + "-toggle")?.addEventListener("click", () => {
+    if (hist.openRows.has(id)) hist.openRows.delete(id); else hist.openRows.add(id);
+    fitChips($id(id));
+  }));
+  let refit;
+  const fitAll = () => { cancelAnimationFrame(refit); refit = requestAnimationFrame(() => ["hist-kinds", "hist-tags"].forEach(id => fitChips($id(id)))); };
+  window.addEventListener("resize", fitAll);
+  mouseChips.addEventListener("change", fitAll);
   ["export-range", "export-from", "export-to"].forEach(id => $id(id)?.addEventListener("change", updateExportDialog));
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
   if (location.hash === "#income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click(); // "All income" link
