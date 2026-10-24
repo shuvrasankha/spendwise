@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://spendwise-ai.spendwise-ai.workers.dev https://www.gstatic.com https://unpkg.com https://cdn.jsdelivr.net; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://spendwise-app-f7227.firebaseapp.com;">
+  <title>SpendWise - Investments</title>
+  <link rel="icon" type="image/png" href="assets/images/logo-96.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f1ea">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
+  <script src="assets/js/theme.js"></script>
+  <script src="assets/js/modules/app-lock.js"></script>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/images/logo-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+  <!-- Fetch the Firebase SDK in parallel instead of one import after another -->
+  <link rel="modulepreload" href="assets/js/config/firebase.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js" />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/style.css?v=3" />
+  <link rel="stylesheet" href="assets/css/responsive.css" />
+  <link rel="stylesheet" href="assets/css/reimagine.css" />
+  <script src="https://unpkg.com/lucide@0.378.0/dist/umd/lucide.min.js" crossorigin="anonymous" defer></script>
+</head>
+
+<body>
+
+  <!-- Full-page loader -->
+  <div id="page-loader" class="page-loader">
+    <div class="coin-scene">
+      <div class="coin">
+        <div class="coin-face coin-front">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="coinGrad" cx="40%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#FFE066"/>
+                <stop offset="50%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#B8860B"/>
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#coinGrad)" stroke="#B8860B" stroke-width="2"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#DAA520" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="60" y="72" text-anchor="middle" font-size="42" font-weight="700" fill="#8B6914" font-family="Inter, sans-serif">₹</text>
+          </svg>
+        </div>
+        <div class="coin-face coin-back">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="coinGradBack" cx="60%" cy="35%" r="60%">
+                <stop offset="0%" stop-color="#FFE066"/>
+                <stop offset="50%" stop-color="#FFD700"/>
+                <stop offset="100%" stop-color="#B8860B"/>
+              </radialGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#coinGradBack)" stroke="#B8860B" stroke-width="2"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#DAA520" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <circle cx="60" cy="60" r="22" fill="none" stroke="#8B6914" stroke-width="2"/>
+            <text x="60" y="66" text-anchor="middle" font-size="20" font-weight="700" fill="#8B6914" font-family="Inter, sans-serif">SW</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <span class="page-loader-text">Loading SpendWise…</span>
+  </div>
+
+  <!-- Auth guard — if not signed in, redirect to index.html -->
+  <div id="app" class="app hidden">
+    <nav class="navbar">
+      <div class="nav-left">
+        <a href="index.html" class="nav-logo-link"><img src="assets/images/logo-96.png" alt="" class="nav-logo-image" width="32" height="32"><span class="nav-logo-text">SpendWise</span></a>
+      </div>
+      <div class="nav-right">
+        <button class="theme-toggle" data-action="toggleTheme" title="Toggle Theme" id="theme-btn">
+          <i id="theme-icon" data-lucide="sun"></i>
+        </button>
+        <div class="profile-menu" id="profile-menu">
+          <div class="user-avatar" id="user-avatar" data-action="toggleProfileMenu">U</div>
+          <div class="profile-dropdown hidden" id="profile-dropdown">
+            <div class="profile-who">
+              <strong id="profile-name" class="profile-name"></strong>
+              <span id="profile-email" class="profile-email"></span>
+            </div>
+            <a class="btn-profile-action" href="settings.html" role="menuitem">
+              <i data-lucide="settings"></i><span>Settings</span>
+            </a>
+            <button class="btn-logout profile-logout-btn" data-action="handleLogout" title="Logout" role="menuitem">
+              <i data-lucide="log-out"></i><span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+
+    <!-- Bottom nav (mobile) -->
+    <nav class="bottom-nav" aria-label="Main">
+      <button class="bottom-nav-btn" data-action="navigateToDashboard" id="bnav-dashboard">
+        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+      </button>
+      <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
+        <i data-lucide="history"></i><span>History</span>
+      </button>
+      <button class="bottom-nav-btn bottom-nav-add" data-action="navigateToExpense" id="bnav-add" aria-label="Add expense" title="Add expense (hold for voice)">
+        <i data-lucide="wallet"></i><span>Add</span>
+      </button>
+      <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
+        <i data-lucide="sparkles"></i><span>Insights</span>
+      </button>
+      <button class="bottom-nav-btn active" aria-current="page" id="bnav-more" aria-haspopup="dialog" aria-expanded="false" aria-label="More: Investments and other pages">
+        <i data-lucide="more-horizontal"></i><span>Investments</span>
+      </button>
+    </nav>
+
+    <!-- Sidebar (desktop) -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <button class="sidebar-btn" data-action="navigateToDashboard" id="snav-dashboard">
+          <i data-lucide="layout-dashboard"></i> Dashboard
+        </button>
+        <button class="sidebar-btn" data-action="navigateToExpense" id="snav-add">
+          <i data-lucide="wallet"></i> Expense
+        </button>
+        <button class="sidebar-btn" data-action="navigateToIncome" id="snav-income">
+          <i data-lucide="trending-up"></i> Income
+        </button>
+        <button class="sidebar-btn active" aria-current="page" id="snav-invest">
+          <i data-lucide="piggy-bank"></i> Investments
+        </button>
+        <button class="sidebar-btn" data-action="navigateToHistory" id="snav-history">
+          <i data-lucide="history"></i> History
+        </button>
+        <button class="sidebar-btn" data-action="navigateToDebt" id="snav-debt">
+          <i data-lucide="hand-coins"></i> Debt Tracker
+        </button>
+        <button class="sidebar-btn" data-action="navigateToInsights" id="snav-insights">
+          <i data-lucide="sparkles"></i> AI Insights
+        </button>
+        <button class="sidebar-btn sidebar-btn-settings" data-action="navigateToSettings" id="snav-settings">
+          <i data-lucide="settings"></i> Settings
+        </button>
+      </nav>
+    </aside>
+
+        <main class="main-content" id="main-content">
+      <div class="entry-page invest-page">
+        <header class="hist-head"><h1>Investments</h1></header>
+
+        <!-- Everything invested, at today's worth (invest.js renderHero, invest-data.js portfolio) -->
+        <section class="home-hero" aria-labelledby="inv-hero-label">
+          <h2 class="home-month" id="inv-hero-label">All investments</h2>
+          <p class="home-spent"><span class="home-spent-amount" id="inv-worth">—</span> <span class="home-spent-label">worth now</span></p>
+          <p class="home-pace" id="inv-worth-sub"></p>
+          <p class="home-pace" id="inv-month-sub"></p>
+          <p class="inv-after hidden" id="inv-after"><span>After debts</span> <strong id="inv-after-total"></strong><small id="inv-after-note"></small></p>
+        </section>
+
+        <div class="form-card" id="inv-form">
+          <h2 class="entry-form-title">Put money in</h2>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <span class="entry-label" id="inv-holding-label">Into</span>
+              <!-- One chip per holding, then New holding (invest.js renderHoldingChips) -->
+              <div class="chips inv-holding-chips" id="inv-holding-chips" role="group" aria-labelledby="inv-holding-label"></div>
+            </div>
+            <div class="form-group">
+              <label for="inv-amount">Amount (<span class="currency-symbol">₹</span>)</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="banknote"></i>
+                <input type="number" id="inv-amount" placeholder="0.00" min="0" step="0.01" inputmode="decimal" enterkeyhint="done" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inv-date">Date</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="calendar"></i>
+                <input type="date" id="inv-date" />
+              </div>
+              <div class="date-chips" role="group" aria-label="Quick date">
+                <button type="button" class="date-chip" data-date-offset="0">Today</button>
+                <button type="button" class="date-chip" data-date-offset="1">Yesterday</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inv-payment">Paid with</label>
+              <div class="input-icon-wrap">
+                <i data-lucide="credit-card"></i>
+                <select id="inv-payment">
+                  <option value="Net Banking">Bank or auto-debit</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Debit Card">Debit card</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inv-notes">Notes <span class="optional-tag">optional</span></label>
+              <div class="input-icon-wrap">
+                <i data-lucide="sticky-note"></i>
+                <input type="text" id="inv-notes" maxlength="500" placeholder="e.g. Folio 12345" autocomplete="off" />
+              </div>
+            </div>
+            <div class="form-group full-width">
+              <label class="repeat-row" for="inv-repeat">
+                <span><strong>Every month (SIP)</strong><small>The Dashboard offers it again when it's due</small></span>
+                <input type="checkbox" role="switch" id="inv-repeat" class="reminder-switch">
+              </label>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-primary btn-add" id="inv-add">
+              <i data-lucide="plus-circle"></i> <span>Add</span>
+            </button>
+          </div>
+          <div id="inv-form-msg" class="form-msg hidden" role="status"></div>
+        </div>
+
+        <!-- Each holding: what it's worth, what went in, its SIP and goal (invest.js renderHoldings) -->
+        <section class="home-section" aria-labelledby="inv-holdings-title">
+          <div class="home-section-head">
+            <h3 id="inv-holdings-title">Holdings</h3>
+            <span class="home-section-total" id="inv-holdings-count"></span>
+          </div>
+          <ul class="ins-list inv-list" id="inv-holdings"><li class="hist-empty">Loading…</li></ul>
+          <button type="button" class="goals-new" data-holding-new><i data-lucide="plus" aria-hidden="true"></i>New holding</button>
+        </section>
+
+        <!-- Money put in, newest first: tap one to change or delete it -->
+        <section class="hist-day" aria-labelledby="inv-recent-title">
+          <h2 class="hist-day-head entry-list-head"><span id="inv-recent-title">Put in recently</span><a href="history.html">All in History</a></h2>
+          <ul class="hist-rows" id="inv-recent"><li class="hist-empty">Loading…</li></ul>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="offline-indicator" class="offline-indicator hidden" role="alert" aria-live="polite">
+    <div class="offline-content">
+      <i data-lucide="wifi-off"></i>
+      <span>You're offline. <span id="sync-status" class="sync-status hidden">0 pending</span></span>
+      <button class="sync-btn" id="sync-btn" title="Sync Now"><i data-lucide="refresh-cw"></i></button>
+      <button class="offline-dismiss" aria-label="Dismiss notification" id="offline-dismiss">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="online-indicator" class="online-indicator hidden" role="alert" aria-live="polite">
+    <div class="online-content">
+      <i data-lucide="wifi"></i>
+      <span>Back online! Syncing your changes...</span>
+      <button class="sync-btn" id="sync-btn-online" title="Sync Now"><i data-lucide="refresh-cw"></i></button>
+    </div>
+  </div>
+
+  <div id="pending-badge-container">
+    <span class="offline-queue-badge badge hidden" id="pending-badge" title="Pending transactions to sync">0</span>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- A holding: name, kind, what it's worth now, and the goal it's for -->
+  <div id="holding-modal" class="modal-overlay budget-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="holding-title">
+    <div class="modal-box budget-box">
+      <div class="modal-header">
+        <h3 id="holding-title">New holding</h3>
+        <button type="button" class="modal-close-btn" data-action="closeHolding" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="form-group">
+        <label for="holding-name">Name</label>
+        <input type="text" id="holding-name" maxlength="60" placeholder="e.g. Axis Bluechip Fund" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="holding-kind">Kind</label>
+        <select id="holding-kind"></select>
+      </div>
+      <div class="form-group">
+        <label for="holding-value">Worth now <span class="optional-tag">optional</span></label>
+        <div class="budget-money"><span class="budget-sym currency-symbol">₹</span><input type="text" inputmode="decimal" id="holding-value" placeholder="What your app or passbook says" autocomplete="off"></div>
+        <p class="inv-help" id="holding-value-help">Leave it empty to count what you put in. Update it now and then to see your gain.</p>
+      </div>
+      <div class="form-group">
+        <label for="holding-goal">Saving for</label>
+        <select id="holding-goal"></select>
+        <p class="inv-help">Its worth counts towards that goal on the Dashboard.</p>
+      </div>
+      <p class="form-msg budget-msg hidden" id="holding-msg" aria-live="polite"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="holding-delete">Delete holding</button>
+        <button type="button" class="btn btn-primary btn-add" id="holding-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- One payment into a holding: change it, move it to another holding, or delete it -->
+  <div id="entry-modal" class="modal-overlay budget-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="entry-title">
+    <div class="modal-box budget-box">
+      <div class="modal-header">
+        <h3 id="entry-title">Money put in</h3>
+        <button type="button" class="modal-close-btn" data-action="closeEntry" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="form-group">
+        <label for="entry-holding">Into</label>
+        <select id="entry-holding"></select>
+      </div>
+      <div class="form-group">
+        <label for="entry-amount">Amount</label>
+        <div class="budget-money"><span class="budget-sym currency-symbol">₹</span><input type="text" inputmode="decimal" id="entry-amount" autocomplete="off"></div>
+      </div>
+      <div class="form-group">
+        <label for="entry-date">Date</label>
+        <input type="date" id="entry-date">
+      </div>
+      <p class="form-msg budget-msg hidden" id="entry-msg" aria-live="polite"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="entry-delete">Delete</button>
+        <button type="button" class="btn btn-primary btn-add" id="entry-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/utils/currency.js"></script>
+  <script src="assets/js/modules/network-status.js"></script>
+  <script src="assets/js/modules/offline-queue.js"></script>
+  <script type="module" src="assets/js/invest.js"></script>
+  <script src="assets/js/modules/accessibility.js"></script>
+  <script src="assets/js/modules/pickers.js"></script>
+  <script src="assets/js/modules/nav.js"></script>
+  <script type="module" src="assets/js/modules/budget.js"></script>
+  <script type="module">
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      window.lucide?.createIcons(); // the icon CDN may be unreachable on a first visit
+    });
+  </script>
+  <script type="module" src="assets/js/modules/reminders.js"></script>
+  <script type="module" src="assets/js/modules/notifications.js"></script>
+  <script src="assets/js/event-delegation.js"></script>
+</body>
+
+</html>

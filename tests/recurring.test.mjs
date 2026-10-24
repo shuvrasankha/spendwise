@@ -1,7 +1,7 @@
 // Run: node --test tests/*.test.mjs — repeating expenses, budget limits and savings goals
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dueRecurring, upcomingBills, recurringKey, budgetState, goalPace, emiPlans } from '../assets/js/utils/helpers.js';
+import { dueRecurring, upcomingBills, recurringKey, budgetState, goalPace, emiPlans, forecast } from '../assets/js/utils/helpers.js';
 
 const rent = { id: 'r1', amount: 18000, category: 'Rent', description: 'Flat rent', date: '2026-09-01', repeat: 'monthly' };
 const netflix = { id: 'n1', amount: 649, category: 'Subscription', description: 'Netflix', date: '2026-09-25', repeat: 'monthly' };
@@ -97,4 +97,53 @@ test('EMI plans: paid off ones last, a stopped one left out, plain repeats ignor
   const plans = emiPlans([...done, running, stopped, rent], '2026-10-24');
   assert.deepEqual(plans.map(p => [p.title, p.done]), [['iPhone EMI', false], ['Fridge EMI', true]]);
   assert.equal(plans[1].ends, '2026-06');
+});
+
+// ── Forecast: spent so far + bills still due + usual flexible pace for the days left ──
+test('month-end forecast: spent, bills still due, usual pace; and next month', () => {
+  const today = '2026-10-24'; // 7 days left in October
+  const ex = [
+    // rent paid on the 1st each month (fixed), wifi due on the 28th (not yet this month)
+    { amount: 6500, category: 'Home & Rent', description: 'Rent', date: '2026-09-01', repeat: 'monthly' },
+    { amount: 6500, category: 'Home & Rent', description: 'Rent', date: '2026-10-01', repeat: 'monthly' },
+    { amount: 600, category: 'Bills & Utilities', description: 'Wifi', date: '2026-09-28', repeat: 'monthly' },
+    // an EMI with its last payment due on the 26th: not in next month's bills
+    { amount: 5000, category: 'Shopping', description: 'Phone EMI', date: '2026-09-26', repeat: 'monthly', emiTotal: 2 },
+    // flexible: 90 days of ₹100 a day = 9,000 from 27 Jul to 24 Oct
+    ...Array.from({ length: 90 }, (_, i) => { const d = new Date(2026, 9, 24 - i); return { amount: 100, category: 'Food & Dining', description: 'x', date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }; }),
+    { amount: 5000, category: 'Savings & Investments', description: 'SIP', date: '2026-10-05' }, // not spending
+  ];
+  const f = forecast(ex, today);
+  assert.equal(f.spent, 6500 + 24 * 100);
+  assert.deepEqual(f.billsDue.map(b => [b.title, b.amount, b.due]), [['Phone EMI', 5000, '2026-10-26'], ['Wifi', 600, '2026-10-28']]);
+  assert.equal(Math.round(f.perDay), 100);
+  assert.equal(f.daysLeft, 7);
+  assert.equal(Math.round(f.total), 8900 + 5600 + 700);
+  assert.equal(f.next.bills, 2); // rent and wifi; the EMI ends this month
+  assert.equal(Math.round(f.next.total), 7100 + 30 * 100);
+});
+
+test('forecast: a skipped bill is left out, a new account uses the days it has', () => {
+  const ex = [
+    { amount: 600, category: 'Bills & Utilities', description: 'Wifi', date: '2026-09-28', repeat: 'monthly' },
+    { amount: 300, category: 'Food & Dining', description: 'x', date: '2026-10-20' },
+    { amount: 200, category: 'Food & Dining', description: 'y', date: '2026-10-24' },
+  ];
+  const skipped = (key, month) => key.startsWith('Bills') && month === '2026-10';
+  const f = forecast(ex, '2026-10-24', skipped);
+  assert.equal(f.billsTotal, 0);
+  assert.equal(Math.round(f.perDay), 19); // ₹500 flexible over the 27 days since the first entry (28 Sep), not 90
+});
+
+test('forecast: one-off big expenses are left out of the usual pace', () => {
+  const day = i => { const d = new Date(2026, 9, 24 - i); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const ex = [
+    ...Array.from({ length: 90 }, (_, i) => ({ amount: 100, category: 'Food & Dining', description: 'x', date: day(i) })),
+    { amount: 10000, category: 'Travel', description: 'Hotel', date: day(40) }, // 10% of 19,000: a one-off
+  ];
+  const f = forecast(ex, '2026-10-24');
+  assert.equal(f.oneOffs, 1);
+  assert.equal(Math.round(f.perDay), 100);
+  // too few entries to tell a one-off from a habit: nothing is left out
+  assert.equal(forecast([ex[0], ex[1], ex[90]], '2026-10-24').oneOffs, 0);
 });

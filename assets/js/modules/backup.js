@@ -60,7 +60,8 @@ async function exportData() {
       exportDate: new Date().toISOString(),
       expenses: [],
       income: [],
-      debts: []
+      debts: [],
+      holdings: []
     };
 
     // Fetch expenses
@@ -78,6 +79,12 @@ async function exportData() {
     const debtSnap = await getDocs(debtQuery);
     data.debts = debtSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+    // Fetch holdings (Investments); none before the updated rules are published
+    try {
+      const holdSnap = await getDocs(query(collection(db, 'holdings'), where('uid', '==', uid)));
+      data.holdings = holdSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) { console.warn('Holdings not exported:', e); }
+
     // Create and download JSON file
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -91,7 +98,7 @@ async function exportData() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    const totalItems = data.expenses.length + data.income.length + data.debts.length;
+    const totalItems = data.expenses.length + data.income.length + data.debts.length + data.holdings.length;
     showBackupStatus(`Exported ${totalItems} items successfully!`, 'success');
     showToast('Backup exported!', 'success');
 
@@ -139,6 +146,19 @@ function validateRecord(record, type) {
   return true;
 }
 
+// A holding (Investments) as firestore.rules accepts it; only those fields are restored
+const HOLDING_KINDS = ['mf', 'stocks', 'fd', 'rd', 'ppf', 'nps', 'epf', 'gold', 'other'];
+function holdingRecord(r) {
+  if (!r || typeof r !== 'object' || typeof r.name !== 'string' || !r.name.trim() || r.name.length > 60) return null;
+  if (!HOLDING_KINDS.includes(r.kind)) return null;
+  const valued = typeof r.value === 'number' && r.value >= 0 && /^\d{4}-\d{2}-\d{2}$/.test(r.valueDate || '');
+  return {
+    id: r.id, uid: r.uid, name: r.name, kind: r.kind,
+    ...(valued && { value: r.value, valueDate: r.valueDate }),
+    ...(typeof r.goalId === 'string' && r.goalId && r.goalId.length <= 40 && { goalId: r.goalId }),
+  };
+}
+
 async function importData(file) {
   if (!currentUser) {
     showToast('Please log in first.', 'error');
@@ -168,6 +188,11 @@ async function importData(file) {
 
     showBackupStatus('Preparing import…', 'loading');
 
+    // Holdings keep their ids, so restored investment entries still point at them
+    for (const record of Array.isArray(data.holdings) ? data.holdings : []) {
+      const h = record?.uid === uid && holdingRecord(record);
+      if (h) writes.push(['holdings', h]);
+    }
     for (const [type, coll, records] of [['expense', 'expenses', data.expenses], ['income', 'income', data.income], ['debt', 'debts', data.debts]]) {
       for (const record of records) {
         if (record.uid !== uid) continue;

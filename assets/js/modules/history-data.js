@@ -22,13 +22,17 @@ export const searchTag = q => /^#\S+$/.test(q.trim()) ? q.trim().slice(1).toLowe
 
 // Rows within the dates, in the chosen kinds (categories or sources), matching the search, sorted.
 // kindOf(row), textOf(row) and tagsOf(row) come from the tab: expenses and income keep different fields.
-// A '#tag' search matches that tag exactly, for a trip's or event's entries.
+// A '#tag' search matches that tag exactly, for a trip's or event's entries. Otherwise every word
+// must appear in some field ("icici credit card" is Payment "Credit Card" with card "Icici").
 export function filterHistory(rows, { from = '', to = '', kinds = new Set(), kindOf, q = '', textOf, tagsOf, sort = 'newest' }) {
   const tag = tagsOf && searchTag(q);
   q = q.toLowerCase().trim();
-  const matches = r => tag
-    ? tagsOf(r).some(t => String(t).toLowerCase() === tag)
-    : textOf(r).some(v => v && String(v).toLowerCase().includes(q));
+  const words = q.split(/\s+/).filter(Boolean);
+  const matches = r => {
+    if (tag) return tagsOf(r).some(t => String(t).toLowerCase() === tag);
+    const hay = textOf(r).filter(Boolean).map(v => String(v).toLowerCase()).join('\u0001');
+    return words.every(w => hay.includes(w));
+  };
   const out = rows.filter(r =>
     (!from || r.date >= from) && (!to || r.date <= to) &&
     (!kinds.size || kinds.has(kindOf(r))) &&

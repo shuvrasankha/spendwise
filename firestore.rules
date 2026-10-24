@@ -71,6 +71,24 @@ service cloud.firestore {
       return signedIn() && emailVerified() && resource.data.get('withEmail', '') == myEmail();
     }
 
+    // An investment (a fund, an FD, a PPF account): what it's worth now and on which day, and the
+    // goal it's for. The money put in is in expenses ('Savings & Investments', with holdingId).
+    function validHolding(d) {
+      return d.keys().hasOnly(['uid', 'name', 'kind', 'value', 'valueDate', 'goalId', 'createdAt'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.kind in ['mf', 'stocks', 'fd', 'rd', 'ppf', 'nps', 'epf', 'gold', 'other']
+        && (!('value' in d) || (d.value is number && d.value >= 0))
+        && (!('valueDate' in d) || (d.valueDate is string
+          && d.valueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+        && (!('goalId' in d) || (d.goalId is string && d.goalId.size() <= 40));
+    }
+
+    match /holdings/{id} {
+      allow read, delete: if owns();
+      allow create: if createsOwn() && validHolding(request.resource.data);
+      allow update: if owns() && keepsOwner() && validHolding(request.resource.data);
+    }
+
     // One doc per user, id = uid:
     // { budget: {total, cats}, goals: [...], remindAt: "HH:MM" }
     function validSettings(d) {

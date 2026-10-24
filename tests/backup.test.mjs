@@ -89,3 +89,16 @@ test('records without a usable id get a new id; other accounts are skipped', asy
 
   assert.deepEqual(refs(), ['expenses/AUTO', 'expenses/AUTO']);
 });
+
+test('holdings come back with their ids and only the fields the rules allow; older backups have none', async () => {
+  const fund = { id: 'h1', uid: 'me', name: 'Axis Bluechip', kind: 'mf', value: 12000, valueDate: '2026-10-01', goalId: 'g1', extra: 'x' };
+  fileText = JSON.stringify({ version: '1.0', expenses: [expense(1, { holdingId: 'h1' })], income: [], debts: [],
+    holdings: [fund, { id: 'h2', uid: 'me', name: 'Crypto', kind: 'crypto' }, { id: 'h3', uid: 'someone-else', name: 'FD', kind: 'fd' }] });
+
+  await window.handleImportClick();
+
+  assert.deepEqual(refs(), ['holdings/h1', 'expenses/exp1']);
+  const { createdAt, ...saved } = fb.commits[0][0].data;
+  assert.deepEqual(saved, { uid: 'me', name: 'Axis Bluechip', kind: 'mf', value: 12000, valueDate: '2026-10-01', goalId: 'g1' });
+  assert.equal(fb.commits[0][1].data.holdingId, 'h1');
+});

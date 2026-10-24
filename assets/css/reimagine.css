@@ -1428,6 +1428,8 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .ins-ask-form > svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--text2); }
 .ins-ask-form input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--text); font: inherit; font-size: 1rem; outline: none; }
 .ins-ask-form input::placeholder { color: var(--text2); opacity: 0.8; }
+/* the pill shows focus; the field inside it stays plain (a general input:focus rule boxed it) */
+.ins-ask-form input:focus, .ins-ask-form input:focus-visible { border: 0; background: none; box-shadow: none; outline: none; }
 .ins-ask-go {
   display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 0; border-radius: 50%;
   background: var(--accent); color: #fff; cursor: pointer;
@@ -1448,3 +1450,101 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
   .ins-ask-examples::-webkit-scrollbar { display: none; }
   .ins-ask-examples .chip { flex-shrink: 0; white-space: nowrap; }
 }
+
+/* Ask: the send arrow spins while working, the answer's place shimmers, then the answer arrives in
+   order: figure (counting up), sentence, what was searched, each entry, the link. All quick; the
+   reduced-motion rule (style.css) turns it off. */
+.ins-ask-go.is-busy:disabled { opacity: 1; } /* busy, not unavailable */
+.ins-ask-go.is-busy svg { animation: voiceSpin 0.9s linear infinite; }
+.ins-ask-loading { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 6px; }
+.ins-ask-loading span {
+  display: block; height: 14px; border-radius: 7px;
+  background: linear-gradient(90deg, var(--bg2) 25%, color-mix(in srgb, var(--text) 10%, var(--bg2)) 50%, var(--bg2) 75%);
+  background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite;
+}
+.ins-ask-loading span:nth-child(1) { width: 38%; height: 30px; border-radius: 10px; }
+.ins-ask-loading span:nth-child(2) { width: 72%; }
+.ins-ask-loading span:nth-child(3) { width: 52%; }
+.ins-ask-result.is-answer > * { animation: content-in 360ms var(--ease-smooth) both; }
+.ins-ask-result.is-answer > .ins-ask-sentence { animation-delay: 60ms; }
+.ins-ask-result.is-answer > .ins-ask-searched { animation-delay: 110ms; }
+.ins-ask-result.is-answer > .ins-list { animation: none; }
+.ins-ask-result.is-answer .ins-row { animation: content-in 360ms var(--ease-smooth) both; }
+.ins-ask-result.is-answer .ins-row:nth-child(1) { animation-delay: 150ms; }
+.ins-ask-result.is-answer .ins-row:nth-child(2) { animation-delay: 200ms; }
+.ins-ask-result.is-answer .ins-row:nth-child(3) { animation-delay: 250ms; }
+.ins-ask-result.is-answer .ins-row:nth-child(4) { animation-delay: 300ms; }
+.ins-ask-result.is-answer .ins-row:nth-child(5) { animation-delay: 350ms; }
+.ins-ask-result.is-answer > .home-more { animation-delay: 400ms; }
+.ins-ask-examples .chip { transition: transform var(--transition), background-color var(--transition); }
+.ins-ask-examples .chip:active, .ins-ask-go:active:not(:disabled) { transform: scale(0.96); }
+
+/* Insights · Forecast: the month-end figure, a three-part bar (spent, bills still due, usual pace)
+   with its legend, and next month underneath */
+#insights-forecast > .home-section { margin-bottom: 16px; }
+.ins-stack { display: flex; height: 10px; margin: 12px 0 14px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.ins-stack span { display: block; height: 100%; }
+.ins-stack .s1, .ins-dot.s1 { background: var(--gold); }
+.ins-stack .s2, .ins-dot.s2 { background: color-mix(in srgb, var(--gold) 55%, var(--bg2)); }
+.ins-stack .s3, .ins-dot.s3 { background: color-mix(in srgb, var(--gold) 25%, var(--bg2)); }
+.ins-forecast-next { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.ins-forecast-next span { font-size: 0.875rem; font-weight: 600; color: var(--text2); }
+.ins-forecast-next strong { font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ins-forecast-next small { flex-basis: 100%; font-size: 0.8125rem; color: var(--text2); }
+
+/* ===== SECTION: Investments page (invest.html): holdings with what they're worth, money put in.
+   The hero holds the one big figure (worth now) and, under a hairline, what's left after debts.
+   Holdings are an inset grouped list: kind icon, name over kind · SIP · goal, worth over gain.
+   Gain/loss says "gain"/"loss" in words, so colour is never the only sign. ===== */
+.inv-after {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hero-line);
+}
+.home-hero .inv-after span { font-size: 0.875rem; font-weight: 600; color: var(--hero-text2); }
+.home-hero .inv-after strong { font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--hero-text); }
+.home-hero .inv-after small { flex-basis: 100%; font-size: 0.8125rem; line-height: 1.4; color: var(--hero-text2); }
+.inv-after.hidden { display: none; }
+
+.inv-holding-chips { margin-top: 8px; }
+.inv-holding-chips .chip { min-height: 44px; }
+.chip-new { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); border-style: dashed; }
+.chip-new svg { width: 16px; height: 16px; stroke-width: 2.2; }
+.inv-help { margin-top: 6px; font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+
+.inv-list { margin: 0 -8px; }
+.inv-row { display: block; }
+.inv-row-btn {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 0 8px; border: 0; border-radius: 12px;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color var(--transition), transform var(--transition);
+}
+.inv-row > .ins-icon { margin-left: 8px; }
+.inv-row:not(:has(.inv-row-btn)) { display: flex; align-items: center; gap: 12px; padding-right: 8px; }
+.inv-row-btn:hover { background: var(--surface2); }
+.inv-row-btn:active { transform: scale(0.985); }
+.inv-row-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* the hairline starts after the icon, from the second row on */
+.inv-row + .inv-row .ins-row-body { border-top: 1px solid var(--border-light); }
+.inv-row-figures { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.inv-row-gain { font-size: 0.8125rem; color: var(--text2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inv-row-gain.up { color: var(--success); }
+.inv-row-gain.down { color: var(--danger); }
+.inv-icon-quiet { background: var(--bg2); color: var(--text2); }
+.invest-page .goals-new { margin-top: 12px; }
+.invest-page .goals-empty { margin-bottom: 4px; }
+.goal-amounts a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.goal-amounts a:hover { text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .inv-row-btn:active { transform: none; } }
+
+/* ===== SECTION: Dashboard table on phones: "Show more" instead of page numbers. Small page buttons
+   are hard to hit with a thumb; one full-width button adds the next 10 rows to the same list. ===== */
+.table-show-more {
+  flex: 1 1 100%; min-height: 44px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); color: var(--accent); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer;
+  transition: background-color var(--transition), transform var(--transition);
+}
+@media (hover: hover) and (pointer: fine) { .table-show-more:hover { background: var(--accent-bg); } }
+.table-show-more:active { transform: scale(0.97); }
+.table-show-more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.table-show-count { flex: 1 1 100%; text-align: center; font-size: 0.8125rem; color: var(--text2); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .table-show-more:active { transform: none; } }

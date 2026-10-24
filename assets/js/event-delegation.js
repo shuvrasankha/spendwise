@@ -30,6 +30,7 @@
     'navigateToDashboard': function() { window.location.href = 'index.html'; },
     'navigateToExpense': function() { window.location.href = 'expense.html'; },
     'navigateToIncome': function() { window.location.href = 'income.html'; },
+    'navigateToInvest': function() { window.location.href = 'invest.html'; },
     'navigateToHistory': function() { window.location.href = 'history.html'; },
     'navigateToDebt': function() { window.location.href = 'debt.html'; },
     'navigateToInsights': function() { window.location.href = 'insights.html'; },
