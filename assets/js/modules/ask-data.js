@@ -69,7 +69,7 @@ const CATEGORY_WORDS = [
 const BRANDS = /\b(swiggy|zomato|blinkit|zepto|bigbasket|uber|ola)\b/;
 const STOP = new Set(('how much many what was were is are did do does i me my we our you on in at for from to of the a an all ' +
   'spend spent send sent spending pay paid cost costs total sum show list tell expense expenses money rupees rs ' +
-  'this last past previous so far till until today yesterday week weeks month months year years day days ' +
+  'this last past previous so far till until now date ever overall upto today yesterday week weeks month months year years day days ' +
   'biggest largest most expensive count number times income earn earned earning received get got salary ' +
   'order ordered orders buy bought purchase purchased purchases use used go went have had give gave put').split(' '));
 
@@ -118,12 +118,26 @@ export function guessSpec(question, today) {
   return { type, text: type === 'income' && !text && /\bsalary\b/.test(q) ? 'salary' : text, tag, categories, from, to, measure };
 }
 
+// Words that never name what to look for: question words, time words and verbs. Dropped from the
+// search text however it was read (by the AI or guessSpec), so "garden now" still finds the garden.
+// Smaller than STOP: words like "salary", "card" or "income" can be what an entry says.
+const FILLER = new Set(('how much many what was were is are did do does i me my we our you on in at for from to of the a an all ' +
+  'spend spent send sent spending pay paid total sum show list tell expense expenses money rupees rs ' +
+  'this last past previous so far till until now date ever overall upto today yesterday week weeks month months year years day days ' +
+  'order ordered buy bought purchase purchased use used go went have had').split(' '));
+// The words to match: filler dropped, and a plural matches its singular ("cards" finds "card")
+export function searchWords(text) {
+  return String(text || '').toLowerCase().split(/[^\p{L}\p{N}#_-]+/u)
+    .filter(w => w && !FILLER.has(w))
+    .map(w => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w));
+}
+
 // The entries a spec picks, newest first, with the total, count and biggest
 export function runQuery(spec, { expenses = [], income = [] }) {
   const inDates = r => (!spec.from || r.date >= spec.from) && (!spec.to || r.date <= spec.to);
   // Every word of the text, each in any field: "icici credit card" is Payment "Credit Card" with card
   // "Icici". The fields are joined with a separator no word contains, so a word can't span two.
-  const words = spec.text ? spec.text.split(/\s+/).filter(Boolean) : [];
+  const words = searchWords(spec.text);
   const has = fields => { const hay = fields.filter(Boolean).join('\u0001').toLowerCase(); return words.every(w => hay.includes(w)); };
   const wantInvest = spec.categories.includes('Savings & Investments');
   const rows = [];
@@ -175,7 +189,10 @@ const title = s => s.replace(/\b\p{L}/gu, c => c.toUpperCase());
 // What was searched for, in a few words: "Amazon", "#goa2026", "Food & Dining"
 export function subjectText(spec) {
   if (spec.tag) return `#${spec.tag}`;
-  if (spec.text) return title(spec.text);
+  if (spec.text) {
+    const shown = String(spec.text).split(/\s+/).filter(w => w && !FILLER.has(w.toLowerCase())).join(' ');
+    if (shown) return title(shown);
+  }
   if (spec.categories.length) return spec.categories.join(', ');
   return '';
 }

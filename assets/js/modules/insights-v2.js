@@ -10,7 +10,7 @@ import { todayStr, normalizeCategory, countTo, forecast, isSkippedBill, addMonth
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
-import { askPrompt, readSpec, guessSpec, runQuery, answerFor, subjectText, dayText } from './ask-data.js';
+import { askPrompt, readSpec, guessSpec, runQuery, answerFor, subjectText, dayText, searchWords } from './ask-data.js';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -554,7 +554,7 @@ function historyLink(spec) {
   if (spec.type === 'both') return '';
   const p = new URLSearchParams();
   if (spec.type === 'income') p.set('tab', 'income');
-  const q = spec.tag ? '#' + spec.tag : spec.text;
+  const q = spec.tag ? '#' + spec.tag : searchWords(spec.text).join(' '); // the words that matched, filler dropped
   if (q) p.set('q', q);
   if (spec.from) p.set('from', spec.from);
   if (spec.to) p.set('to', spec.to);

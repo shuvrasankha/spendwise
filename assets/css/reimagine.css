@@ -1428,6 +1428,8 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .ins-ask-form > svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--text2); }
 .ins-ask-form input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--text); font: inherit; font-size: 1rem; outline: none; }
 .ins-ask-form input::placeholder { color: var(--text2); opacity: 0.8; }
+/* the pill shows focus; the field inside it stays plain (a general input:focus rule boxed it) */
+.ins-ask-form input:focus, .ins-ask-form input:focus-visible { border: 0; background: none; box-shadow: none; outline: none; }
 .ins-ask-go {
   display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 0; border-radius: 50%;
   background: var(--accent); color: #fff; cursor: pointer;

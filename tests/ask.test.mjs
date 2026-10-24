@@ -2,7 +2,7 @@
 process.env.TZ = 'Asia/Kolkata';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { guessSpec, readSpec, runQuery, answerFor, periodText, askPrompt } from '../assets/js/modules/ask-data.js';
+import { guessSpec, readSpec, runQuery, answerFor, periodText, askPrompt, searchWords } from '../assets/js/modules/ask-data.js';
 
 const today = '2026-10-24'; // a Saturday
 const money = n => `₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -63,6 +63,23 @@ test('a card and payment method in two fields: "icici credit card"', () => {
   const r = runQuery(spec, { expenses: card });
   assert.deepEqual([r.count, r.total], [2, 3361]);
   assert.equal(runQuery(guessSpec('credit card spending this year', today), { expenses: card }).count, 3);
+});
+
+test('filler words never stop a match: "spending on garden till now"', () => {
+  const garden = [
+    { amount: 600, category: 'Shopping', description: 'Gardening', date: '2026-10-10' },
+    { amount: 105, category: 'Other', description: 'Garden fertilizer', date: '2026-10-22' },
+    { amount: 200, category: 'Shopping', description: 'Flower plants', date: '2026-09-27', tags: ['garden'] },
+    { amount: 300, category: 'Groceries', description: 'Vegetables', date: '2026-10-21' },
+  ];
+  const spec = guessSpec('spending on garden till now', today);
+  assert.deepEqual([spec.text, spec.from], ['garden', null]);
+  assert.equal(runQuery(spec, { expenses: garden }).total, 905);
+  // the same when the AI leaves a filler word in its text
+  assert.equal(runQuery({ ...spec, text: 'garden now' }, { expenses: garden }).total, 905);
+  assert.deepEqual(searchWords('icici credit cards spend'), ['icici', 'credit', 'card']);
+  assert.deepEqual(searchWords('glass'), ['glass']);
+  assert.equal(answerFor({ ...spec, text: 'garden now' }, runQuery({ ...spec, text: 'garden now' }, { expenses: garden }), money, today).sentence, 'Spent on Garden in all your entries · 3 expenses.');
 });
 
 test('nothing found says so, in the same words', () => {
