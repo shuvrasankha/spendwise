@@ -59,6 +59,10 @@ nothing that shouts.
 - Breakpoints: phones `max-width: 767px`, desktop grid `min-width: 1024px`. Desktop pages are
   two-column (form left, cards right) or centred single column (`.settings-page`, 640px).
 - Pin a card's footer link to the bottom (`margin-top: auto`) so short content still fills it.
+- **No page repeats another.** The Dashboard shows the month's status (spent, income, saved,
+  debts, score, categories, goals). Insights shows only analysis: comparison with the previous
+  period, what changed, biggest expenses, weekdays, payment methods, fixed vs flexible. Before
+  adding a figure to either page, check the other doesn't already show it.
 
 ### Touch and input
 - Touch targets ≥ 44px tall.

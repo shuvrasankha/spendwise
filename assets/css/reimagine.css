@@ -1356,3 +1356,60 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 
 /* The wordmark links to the Dashboard: no link underline or fade on hover */
 .nav-logo-link:hover { text-decoration: none; opacity: 1; }
+
+/* =====================
+   INSIGHTS: analysis only (the Dashboard has the totals). A comparison with the previous period,
+   what changed, biggest expenses, weekdays, payment methods, fixed vs flexible.
+   Up = spent more (red), down = spent less (green); the words always say which.
+===================== */
+#insights-glance > .home-section { margin-bottom: 16px; }
+.ins-figure { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 2px 0 4px; }
+.ins-figure-amount { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text); }
+.ins-figure-unit { font-size: 0.9375rem; color: var(--text2); }
+.ins-compare-pct { font-size: 0.875rem; font-weight: 600; }
+.ins-compare-pct.up, .ins-row-value.up { color: var(--danger); }
+.ins-compare-pct.down, .ins-row-value.down { color: var(--success); }
+.ins-compare-none, .ins-lead, .ins-none { font-size: 0.9375rem; line-height: 1.45; color: var(--text2); }
+.ins-lead strong { color: var(--text); }
+.ins-compare-rows { list-style: none; margin: 14px 0 0; border-top: 1px solid var(--border-light); }
+.ins-compare-rows li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 0.9375rem; }
+.ins-compare-rows li + li { border-top: 1px solid var(--border-light); }
+.ins-compare-rows span { color: var(--text2); }
+.ins-compare-rows strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.ins-list { list-style: none; margin: 0; }
+.ins-row { display: flex; align-items: center; gap: 12px; }
+.ins-row-body { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; min-height: 60px; padding: 10px 0; }
+.ins-row + .ins-row .ins-row-body { border-top: 1px solid var(--border-light); }
+.ins-row .home-row-title { font-size: 0.9375rem; font-weight: 600; }
+.ins-row .home-row-meta { font-size: 0.8125rem; }
+.ins-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--gold-bg); color: var(--gold); }
+.ins-icon.up { background: var(--danger-bg); color: var(--danger); }
+.ins-icon.down { background: var(--success-bg); color: var(--success); }
+.ins-icon svg { width: 18px; height: 18px; }
+.ins-row-value { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.ins-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; list-style: none; margin: 14px 0 0; }
+.ins-day { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ins-day-bar { display: flex; align-items: flex-end; width: 100%; max-width: 28px; height: 88px; border-radius: 8px; background: var(--bg2); overflow: hidden; }
+.ins-day-bar span { display: block; width: 100%; border-radius: 8px; background: color-mix(in srgb, var(--gold) 45%, var(--bg2)); }
+.ins-day.top .ins-day-bar span { background: var(--gold); }
+.ins-day-name { font-size: 0.75rem; font-weight: 600; color: var(--text2); }
+.ins-day.top .ins-day-name { color: var(--text); }
+
+.ins-pays { list-style: none; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.ins-pay-row { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: 0.9375rem; font-weight: 600; }
+.ins-pay-amount { font-weight: 500; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ins-bar { height: 6px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.ins-bar span { display: block; height: 100%; border-radius: inherit; background: var(--gold); }
+
+.ins-split { display: flex; height: 10px; margin: 6px 0 14px; border-radius: 999px; background: color-mix(in srgb, var(--gold) 30%, var(--bg2)); overflow: hidden; }
+.ins-split span { display: block; height: 100%; background: var(--gold); }
+.ins-legend { list-style: none; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.ins-legend li { display: flex; align-items: flex-start; gap: 10px; }
+.ins-legend div { display: flex; flex-direction: column; gap: 2px; }
+.ins-legend strong { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ins-legend div span { font-size: 0.8125rem; color: var(--text2); }
+.ins-dot { flex-shrink: 0; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; }
+.ins-dot.fixed { background: var(--gold); }
+.ins-dot.flex { background: color-mix(in srgb, var(--gold) 30%, var(--bg2)); }
