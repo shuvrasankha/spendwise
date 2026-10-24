@@ -888,7 +888,7 @@ function renderRecentExpenses() {
 }
 
 function refreshExpenseViews() {
-  dashboardPage = 1;
+  dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
   updateCards();
   renderDashboardTable();
   renderHistory();
@@ -978,7 +978,7 @@ window.addExpense = async () => {
         const tempId = 'offline-' + Date.now();
         allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-        dashboardPage = 1;
+        dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
         updateCards();
         renderDashboardTable();
         renderHistory();
@@ -1007,7 +1007,7 @@ window.addExpense = async () => {
     announceDebts(debtRefs, debts);
     allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat, ...emi }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-    dashboardPage = 1;
+    dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -1036,7 +1036,7 @@ window.addExpense = async () => {
       const tempId = 'offline-' + Date.now();
       allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
-      dashboardPage = 1;
+      dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
       updateCards();
       renderDashboardTable();
       renderHistory();
@@ -1090,7 +1090,7 @@ window.confirmDelete = async () => {
     showLoader();
     await deleteDoc(doc(db, "expenses", deleteTarget));
     allExpenses = allExpenses.filter(e => e.id !== deleteTarget);
-    dashboardPage = 1;
+    dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -1218,7 +1218,7 @@ window.saveEditExpense = async () => {
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
 
-    dashboardPage = 1;
+    dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
     updateCards();
     renderDashboardTable();
     renderHistory();
@@ -1261,7 +1261,7 @@ function syncPush() {
 
 window.switchTableTab = (tab) => {
   activeTab = tab;
-  dashboardPage = 1;
+  dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
   document.querySelectorAll(".table-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("ttab-" + tab).classList.add("active");
   renderDashboardTable();
@@ -1282,16 +1282,38 @@ function renderDashboardTable() {
   else if (activeTab === "monthly") from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01";
   else from = now.getFullYear() + "-01-01";
 
-  const filteredData = allExpenses.filter(e => e.date >= from && e.date <= today);
-  const totalPages = Math.max(1, Math.ceil(filteredData.length / DASHBOARD_PER_PAGE));
+  showTableRows(allExpenses.filter(e => e.date >= from && e.date <= today));
+}
+
+// The table's rows: phones get one growing list with "Show more", wider screens page numbers
+function showTableRows(rows) {
+  if (phoneTable.matches) {
+    renderTable("table-body", rows.slice(0, dashboardShown), false);
+    renderDashboardShowMore(rows.length);
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(rows.length / DASHBOARD_PER_PAGE));
   if (dashboardPage > totalPages) dashboardPage = totalPages;
-
   const start = (dashboardPage - 1) * DASHBOARD_PER_PAGE;
-  const end = start + DASHBOARD_PER_PAGE;
-  const pageData = filteredData.slice(start, end);
+  renderTable("table-body", rows.slice(start, start + DASHBOARD_PER_PAGE), false);
+  renderDashboardPagination(rows.length, totalPages);
+}
 
-  renderTable("table-body", pageData, false);
-  renderDashboardPagination(filteredData.length, totalPages);
+function renderDashboardShowMore(totalItems) {
+  const el = document.getElementById("dashboard-pagination");
+  if (!el) return;
+  const shown = Math.min(dashboardShown, totalItems);
+  if (shown >= totalItems) { el.innerHTML = ""; return; }
+  const next = Math.min(DASHBOARD_PER_PAGE, totalItems - shown);
+  el.innerHTML = `<button type="button" class="table-show-more" id="dashboard-show-more">Show ${next} more</button>
+    <span class="table-show-count">${shown} of ${totalItems}</span>`;
+  document.getElementById("dashboard-show-more").addEventListener("click", () => {
+    dashboardShown += DASHBOARD_PER_PAGE;
+    renderDashboardTable();
+    // Keep focus on the button (or the last row once everything is shown)
+    const more = document.getElementById("dashboard-show-more");
+    if (more) more.focus({ preventScroll: true });
+  });
 }
 
 function renderDashboardPagination(totalItems, totalPages) {
@@ -1351,6 +1373,9 @@ function renderDashboardPagination(totalItems, totalPages) {
 // ── Pagination & Sorting state ────────────────────────────────
 const DASHBOARD_PER_PAGE = 10;
 let dashboardPage = 1;
+let dashboardShown = DASHBOARD_PER_PAGE; // phones: rows shown so far
+const phoneTable = window.matchMedia("(max-width: 767px)");
+phoneTable.addEventListener("change", () => { dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE; renderDashboardTable(); });
 
 // ═══════════════════════════════════════════════════════════════════
 // HISTORY PAGE: one searchable list for expenses or income
@@ -2144,7 +2169,7 @@ function initPeriodPicker() {
 }
 
 window.onPeriodChange = function () {
-  dashboardPage = 1;
+  dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
   updatePeriodLabel();
   renderDashboardTable();
   // Defer chart updates
@@ -2157,7 +2182,7 @@ window.resetPeriodPicker = function () {
   const now = new Date();
   document.getElementById('picker-month').value = String(now.getMonth() + 1).padStart(2, '0');
   document.getElementById('picker-year').value = now.getFullYear();
-  dashboardPage = 1;
+  dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
   updatePeriodLabel(); renderDashboardTable();
 }
 
@@ -2245,17 +2270,8 @@ renderDashboardTable = function () {
     rows = periodRows;
   }
 
-  // Apply pagination
-  const totalPages = Math.max(1, Math.ceil(rows.length / DASHBOARD_PER_PAGE));
-  if (dashboardPage > totalPages) dashboardPage = totalPages;
-
-  const start = (dashboardPage - 1) * DASHBOARD_PER_PAGE;
-  const end = start + DASHBOARD_PER_PAGE;
-  const pageData = rows.slice(start, end);
-
-  renderTable('table-body', pageData, false);
+  showTableRows(rows);
   updatePeriodSummary();
-  renderDashboardPagination(rows.length, totalPages);
 };
 
 // After data loads, init the picker
