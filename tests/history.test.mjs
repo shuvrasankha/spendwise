@@ -57,6 +57,9 @@ test('search looks at description, notes, payment, card name and tags, ignoring 
   assert.equal(ids({ q: 'icici' }), 'c');
   assert.equal(ids({ q: 'work' }), 'a');
   assert.equal(ids({ q: 'cash' }), 'e');
+  // every word, each in any field: card name ICICI with payment Card
+  assert.equal(ids({ q: 'icici card' }), 'c');
+  assert.equal(ids({ q: 'icici upi' }), '');
   assert.equal(ids({ q: '  ' }), ids({}));
   assert.equal(ids({ q: 'nothing like this' }), '');
 });

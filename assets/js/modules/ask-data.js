@@ -121,7 +121,10 @@ export function guessSpec(question, today) {
 // The entries a spec picks, newest first, with the total, count and biggest
 export function runQuery(spec, { expenses = [], income = [] }) {
   const inDates = r => (!spec.from || r.date >= spec.from) && (!spec.to || r.date <= spec.to);
-  const has = (fields, needle) => fields.some(f => f && String(f).toLowerCase().includes(needle));
+  // Every word of the text, each in any field: "icici credit card" is Payment "Credit Card" with card
+  // "Icici". The fields are joined with a separator no word contains, so a word can't span two.
+  const words = spec.text ? spec.text.split(/\s+/).filter(Boolean) : [];
+  const has = fields => { const hay = fields.filter(Boolean).join('\u0001').toLowerCase(); return words.every(w => hay.includes(w)); };
   const wantInvest = spec.categories.includes('Savings & Investments');
   const rows = [];
   if (spec.type !== 'income') {
@@ -130,14 +133,14 @@ export function runQuery(spec, { expenses = [], income = [] }) {
       if (spec.categories.length && !spec.categories.includes(normalizeCategory(e.category))) continue;
       const tags = (e.tags || []).map(t => String(t).toLowerCase());
       if (spec.tag && !tags.includes(spec.tag)) continue;
-      if (spec.text && !has([e.description, e.notes, e.cardName, ...tags], spec.text)) continue;
+      if (words.length && !has([e.description, e.notes, e.category, e.payment, e.cardName, ...tags])) continue;
       rows.push({ kind: 'expense', ...e });
     }
   }
   if (spec.type !== 'expense' && !spec.categories.length && !spec.tag) {
     for (const i of income) {
       if (!inDates(i)) continue;
-      if (spec.text && !has([i.source, i.notes, i.bank], spec.text)) continue;
+      if (words.length && !has([i.source, i.notes, i.paymentType, i.bank])) continue;
       rows.push({ kind: 'income', ...i });
     }
   }

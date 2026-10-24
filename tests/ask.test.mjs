@@ -51,6 +51,20 @@ test('spending leaves investments out unless they are asked for', () => {
   assert.equal(ask('how much did I invest this month').result.total, 5000);
 });
 
+test('a card and payment method in two fields: "icici credit card"', () => {
+  const card = [
+    { amount: 961, category: 'Bills & Utilities', description: 'LPG', payment: 'Credit Card', cardName: 'Icici', date: '2026-10-22' },
+    { amount: 2400, category: 'Bills & Utilities', description: 'Claude subscription', payment: 'Credit Card', cardName: 'ICICI', date: '2026-10-21' },
+    { amount: 695, category: 'Shopping', description: 'Pujo shopping', payment: 'Credit Card', cardName: 'Axis', date: '2026-10-04' },
+    { amount: 1700, category: 'Groceries', description: 'Amazon', payment: 'Debit Card', cardName: 'Sbi', date: '2026-09-16' },
+  ];
+  const spec = guessSpec('how much spend on icici credit card this year', today);
+  assert.equal(spec.text, 'icici credit card');
+  const r = runQuery(spec, { expenses: card });
+  assert.deepEqual([r.count, r.total], [2, 3361]);
+  assert.equal(runQuery(guessSpec('credit card spending this year', today), { expenses: card }).count, 3);
+});
+
 test('nothing found says so, in the same words', () => {
   assert.deepEqual(ask('netflix last month').answer, { headline: '₹0', sentence: 'Nothing on Netflix in September.' });
 });
