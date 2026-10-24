@@ -188,13 +188,13 @@
 
     <nav class="bottom-nav" aria-label="Main">
       <button class="bottom-nav-btn active" aria-current="page" id="bnav-dashboard">
-        <i data-lucide="layout-dashboard"></i><span>Home</span>
+        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToHistory" id="bnav-history">
         <i data-lucide="history"></i><span>History</span>
       </button>
       <button class="bottom-nav-btn bottom-nav-add" data-action="navigateToExpense" id="bnav-add" aria-label="Add expense" title="Add expense (hold for voice)">
-        <i data-lucide="plus"></i><span>Add expense</span>
+        <i data-lucide="wallet"></i><span>Add</span>
       </button>
       <button class="bottom-nav-btn" data-action="navigateToInsights" id="bnav-insights">
         <i data-lucide="sparkles"></i><span>Insights</span>
@@ -324,7 +324,67 @@
           <ul class="glance-cats" id="home-categories"></ul>
         </section>
 
+        <!-- Browse by period: pick a month (or a whole year) and see its totals underneath (dashboard.js updatePeriodSummary) -->
+        <section class="period-card" aria-labelledby="period-picker-label">
+          <div class="period-picker-card">
+            <div class="period-picker-left">
+              <div class="period-picker-icon"><i data-lucide="calendar-search"></i></div>
+              <div>
+                <div class="period-picker-label" id="period-picker-label">Browse by Period</div>
+                <div class="period-picker-sub" id="period-picker-sub">Showing all time</div>
+              </div>
+            </div>
+            <div class="period-picker-controls">
+              <div class="period-select-wrap">
+                <select id="picker-month" aria-label="Month">
+                  <option value="">All Months</option>
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+              <div class="period-select-wrap">
+                <select id="picker-year" aria-label="Year">
+                  <option value="">All Years</option>
+                </select>
+              </div>
+              <button class="btn-period-reset" data-action="resetPeriodPicker" title="Reset to current month">
+                <i data-lucide="rotate-ccw"></i>
+              </button>
+            </div>
+          </div>
+          <div class="period-summary-bar" id="period-summary-bar">
+            <div class="period-summary-item">
+              <span class="period-summary-label">Total Spent</span>
+              <span class="period-summary-value" id="period-total"><span class="currency-symbol">₹</span> 0.00</span>
+            </div>
 
+            <div class="period-summary-divider"></div>
+            <div class="period-summary-item">
+              <span class="period-summary-label">Transactions</span>
+              <span class="period-summary-value" id="period-count">0</span>
+            </div>
+            <div class="period-summary-divider"></div>
+            <div class="period-summary-item">
+              <span class="period-summary-label">Avg Spend/Day</span>
+              <span class="period-summary-value" id="period-avg"><span class="currency-symbol">₹</span> 0.00</span>
+            </div>
+            <div class="period-summary-divider"></div>
+            <div class="period-summary-item">
+              <span class="period-summary-label">Highest Spend</span>
+              <span class="period-summary-value" id="period-max"><span class="currency-symbol">₹</span> 0.00</span>
+            </div>
+          </div>
+        </section>
 
         <!-- Spending over time: the tabs pick the range for both the chart and the list under it
              (dashboard.js switchTableTab) -->
@@ -334,9 +394,6 @@
               <h3 id="spend-title">Spending over time</h3>
               <p>Today, this week, this month or this year</p>
             </div>
-            <button class="btn-download" data-action="downloadCSV">
-              <i data-lucide="download"></i> Download CSV
-            </button>
           </div>
           <div class="table-header">
             <div class="table-tabs" role="group" aria-label="Range">
@@ -374,206 +431,11 @@
           <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
         </section>
 
-        <!-- Look back at any month -->
-        <div class="period-picker-card">
-          <div class="period-picker-left">
-            <div class="period-picker-icon"><i data-lucide="calendar-search"></i></div>
-            <div>
-              <div class="period-picker-label">Browse by Period</div>
-              <div class="period-picker-sub" id="period-picker-sub">Showing all time</div>
-            </div>
-          </div>
-          <div class="period-picker-controls">
-            <div class="period-select-wrap">
-              <select id="picker-month" aria-label="Month">
-                <option value="">All Months</option>
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
-            <div class="period-select-wrap">
-              <select id="picker-year" aria-label="Year">
-                <option value="">All Years</option>
-              </select>
-            </div>
-            <button class="btn-period-reset" data-action="resetPeriodPicker" title="Reset to current month">
-              <i data-lucide="rotate-ccw"></i>
-            </button>
-          </div>
-        </div>
-        <div class="period-summary-bar" id="period-summary-bar">
-          <div class="period-summary-item">
-            <span class="period-summary-label">Total Spent</span>
-            <span class="period-summary-value" id="period-total"><span class="currency-symbol">₹</span> 0.00</span>
-          </div>
-
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Transactions</span>
-            <span class="period-summary-value" id="period-count">0</span>
-          </div>
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Avg Spend/Day</span>
-            <span class="period-summary-value" id="period-avg"><span class="currency-symbol">₹</span> 0.00</span>
-          </div>
-          <div class="period-summary-divider"></div>
-          <div class="period-summary-item">
-            <span class="period-summary-label">Highest Spend</span>
-            <span class="period-summary-value" id="period-max"><span class="currency-symbol">₹</span> 0.00</span>
-          </div>
-        </div>
 
       </div>
     </main>
   </div>
 
-  <!-- ═══ CSV IMPORT MODAL ═══ -->
-  <div id="csv-import-overlay" class="csv-overlay hidden">
-    <div id="csv-import-modal" class="csv-modal">
-      <div class="csv-modal-header">
-        <div class="csv-modal-title">
-          <i data-lucide="file-spreadsheet"></i>
-          <span>Import CSV via AI</span>
-        </div>
-        <button id="csv-close-btn" class="csv-close-btn" title="Close">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-
-      <!-- Phase: Upload -->
-      <div id="csv-phase-upload" class="csv-phase">
-        <div class="csv-drop-zone" id="csv-drop-zone">
-          <div class="csv-drop-icon">
-            <i data-lucide="upload-cloud"></i>
-          </div>
-          <p class="csv-drop-text">Drag & drop your CSV file here</p>
-          <p class="csv-drop-sub">or click to browse</p>
-          <input type="file" id="csv-file-input" accept=".csv" class="csv-file-input" />
-          <span id="csv-file-name" class="csv-file-name">No file selected</span>
-        </div>
-        <div class="csv-upload-info">
-          <div class="csv-info-item">
-            <i data-lucide="sparkles"></i>
-            <span>AI will automatically detect columns, categories & dates</span>
-          </div>
-          <div class="csv-info-item">
-            <i data-lucide="shield-check"></i>
-            <span>Your data is processed securely, max 200 rows</span>
-          </div>
-          <div class="csv-info-item">
-            <i data-lucide="eye"></i>
-            <span>Preview & edit before importing</span>
-          </div>
-        </div>
-        <button class="btn-primary csv-action-btn" id="csv-parse-btn">
-          <i data-lucide="brain"></i> Analyze with AI
-        </button>
-      </div>
-
-      <!-- Phase: Processing -->
-      <div id="csv-phase-processing" class="csv-phase hidden">
-        <div class="csv-processing-anim">
-          <div class="csv-orb">
-            <div class="csv-orb-ring"></div>
-            <div class="csv-orb-ring"></div>
-            <div class="csv-orb-ring"></div>
-            <div class="csv-orb-core">
-              <i data-lucide="brain"></i>
-            </div>
-          </div>
-        </div>
-        <div class="csv-processing-steps">
-          <div class="csv-proc-step active" id="csv-step-1">
-            <div class="csv-step-dot"></div>
-            <span>Reading your CSV file…</span>
-          </div>
-          <div class="csv-proc-step" id="csv-step-2">
-            <div class="csv-step-dot"></div>
-            <span>AI is analyzing your data…</span>
-          </div>
-          <div class="csv-proc-step" id="csv-step-3">
-            <div class="csv-step-dot"></div>
-            <span>Preparing preview…</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Phase: Preview -->
-      <div id="csv-phase-preview" class="csv-phase hidden">
-        <div class="csv-preview-header">
-          <div id="csv-preview-count" class="csv-preview-count"></div>
-          <button class="btn-secondary csv-back-btn" id="csv-back-btn">
-            <i data-lucide="arrow-left"></i> Back
-          </button>
-        </div>
-        <div class="csv-preview-table-wrap">
-          <table class="csv-preview-table">
-            <thead>
-              <tr>
-                <th><input type="checkbox" id="csv-select-all" checked /></th>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Payment</th>
-                <th class="text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody id="csv-preview-body"></tbody>
-          </table>
-        </div>
-        <button class="btn-primary csv-action-btn" id="csv-confirm-btn">
-          <i data-lucide="download"></i> Import Selected
-        </button>
-      </div>
-
-      <!-- Phase: Saving -->
-      <div id="csv-phase-saving" class="csv-phase hidden">
-        <div class="csv-saving-anim">
-          <div class="csv-spinner"></div>
-          <p>Saving transactions to your account…</p>
-        </div>
-      </div>
-
-      <!-- Phase: Done -->
-      <div id="csv-phase-done" class="csv-phase hidden">
-        <div class="csv-done-content">
-          <div class="csv-done-icon">
-            <i data-lucide="check-circle"></i>
-          </div>
-          <h3>Import Complete!</h3>
-          <p id="csv-done-text">Your transactions have been imported successfully.</p>
-          <button class="btn-primary csv-action-btn" id="csv-done-btn">
-            <i data-lucide="refresh-cw"></i> Reload Dashboard
-          </button>
-        </div>
-      </div>
-
-      <!-- Phase: Error -->
-      <div id="csv-phase-error" class="csv-phase hidden">
-        <div class="csv-error-content">
-          <div class="csv-error-icon">
-            <i data-lucide="alert-circle"></i>
-          </div>
-          <p id="csv-error-text">Something went wrong.</p>
-          <button class="btn-secondary csv-action-btn" id="csv-retry-btn">
-            <i data-lucide="rotate-ccw"></i> Try Again
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- Offline Indicator -->
   <div id="offline-indicator" class="offline-indicator hidden" role="alert" aria-live="polite">
@@ -821,7 +683,7 @@
           </div>
           <div class="form-group full-width">
             <label class="repeat-row" for="edit-repeat">
-              <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+              <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: the Dashboard offers it again when it's due</small></span>
               <input type="checkbox" role="switch" id="edit-repeat" class="reminder-switch">
             </label>
           </div>

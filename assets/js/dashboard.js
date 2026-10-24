@@ -14,9 +14,10 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart, emiPlans } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from './modules/history-data.js';
+import { buildCsv, exportFileName } from './modules/csv-export.js';
 import { getBudget } from './modules/budget.js';
 import { getGoals } from './modules/goals.js';
 import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
@@ -616,7 +617,7 @@ function renderDue() {
     return `<li class="home-row due-row">
       <div class="home-row-main">
         <span class="home-row-title">${escapeHtml(title)}</span>
-        <span class="home-row-meta">${escapeHtml(t.category)} · due ${escapeHtml(shortDay(d.due))}</span>
+        <span class="home-row-meta">${d.emi ? `EMI ${d.emi.paid + 1} of ${d.emi.total} · ` : ""}${escapeHtml(t.category)} · due ${escapeHtml(shortDay(d.due))}</span>
       </div>
       <span class="home-row-amount">${moneyWhole(t.amount)}</span>
       <div class="due-actions">
@@ -631,7 +632,9 @@ function renderDue() {
 async function addDue(item) {
   const t = item.template;
   const data = { uid: currentUser.uid, amount: t.amount, category: t.category, date: item.due, payment: t.payment || "UPI",
-    cardName: t.cardName || "", description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain" };
+    cardName: t.cardName || "", description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain",
+    // The newest entry is the series' template, so it carries the EMI on
+    ...(t.emiTotal && { emiTotal: t.emiTotal, ...(t.emiPaidBefore && { emiPaidBefore: t.emiPaidBefore }) }) };
   const local = { ...data, uid: undefined, encoding: undefined };
   if (window.isOffline?.() && window.addToOfflineQueue) {
     const queueId = window.addToOfflineQueue("expense", { ...data, createdAt: serverTimestamp() });
@@ -690,9 +693,37 @@ window.addEventListener("spendwise:goals", e => { celebrateGoal = e.detail?.comp
 function updateDebtCards() { renderHome(); }
 function updateIncomeCards() { renderHome(); }
 
+// ── EMIs (expense page): progress, what is left, the next payment and the last ──
+function renderEmis() {
+  const card = document.getElementById("emi-card");
+  if (!card) return;
+  const plans = emiPlans(allExpenses, todayStr());
+  card.classList.toggle("hidden", !plans.length);
+  if (!plans.length) return;
+  const running = plans.filter(p => !p.done);
+  document.getElementById("emi-card-total").textContent = running.length
+    ? `${moneyWhole(running.reduce((sum, p) => sum + p.monthly, 0))} a month` : "All paid off";
+  const monthName = m => new Date(m + "-01T00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  document.getElementById("emi-list").innerHTML = plans.map(p => {
+    const pct = Math.round((p.paid / p.total) * 100);
+    const facts = p.done
+      ? [`Paid off ${monthName(p.ends)}`]
+      : [`${moneyWhole(p.left)} left`, p.next < todayStr() ? `Due ${shortDay(p.next)}` : `Next ${shortDay(p.next)}`, `Ends ${monthName(p.ends)}`];
+    return `<li class="emi-item${p.done ? " done" : ""}">
+      <div class="emi-row">
+        <span class="emi-name">${escapeHtml(p.title)}</span>
+        <span class="emi-amount">${moneyWhole(p.monthly)}<small>/mo</small></span>
+      </div>
+      <div class="emi-bar" role="progressbar" aria-label="${escapeHtml(p.title)}: ${p.paid} of ${p.total} payments" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.paid}"><span style="width:${Math.max(pct, 2)}%"></span></div>
+      <div class="emi-meta"><strong>${p.paid} of ${p.total} paid</strong> · ${facts.map(escapeHtml).join(" · ")}</div>
+    </li>`;
+  }).join("");
+}
+
 // ── Update Expense Summary Cards (expense page) ─────────────────────────────
 function updateExpenseCards() {
   renderRecentExpenses();
+  renderEmis();
   orderCategoryTiles();
   const monthlyEl = document.getElementById("exp-monthly");
   const yearlyEl = document.getElementById("exp-yearly");
@@ -883,7 +914,18 @@ window.addExpense = async () => {
   const notes = sanitize(document.getElementById("exp-notes").value.trim(), 500);
   const tags = getExpenseTags("exp");
   const repeat = document.getElementById("exp-repeat")?.checked ? "monthly" : null; // "Repeats every month"
+  // An EMI: how many payments in all, and how many were made before SpendWise (this one not counted)
+  const emiTotalRaw = repeat ? document.getElementById("exp-emi-total")?.value.trim() : "";
+  const emiBeforeRaw = repeat ? document.getElementById("exp-emi-before")?.value.trim() : "";
+  const emiTotal = emiTotalRaw ? Number(emiTotalRaw) : 0;
+  const emiPaidBefore = emiBeforeRaw ? Number(emiBeforeRaw) : 0;
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
+  if (emiTotalRaw && !(Number.isInteger(emiTotal) && emiTotal >= 2 && emiTotal <= 600)) { showFormMsg("Total payments should be a whole number from 2 to 600.", "error"); return; }
+  if (emiBeforeRaw && !(Number.isInteger(emiPaidBefore) && emiPaidBefore >= 0 && (!emiTotal || emiPaidBefore < emiTotal))) {
+    showFormMsg(emiTotal ? `Already paid should be a whole number below ${emiTotal}, counting this payment out.` : "Already paid needs Total payments too.", "error"); return;
+  }
+  if (emiBeforeRaw && emiPaidBefore > 0 && !emiTotal) { showFormMsg("Add Total payments for this EMI.", "error"); return; }
+  const emi = emiTotal ? { emiTotal, ...(emiPaidBefore && { emiPaidBefore }) } : {};
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   // Split: your share becomes the expense, and each person owes you theirs (modules/split.js)
@@ -906,14 +948,14 @@ window.addExpense = async () => {
   try {
     const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
     const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
-    if (repeat) expenseData.repeat = repeat;
+    if (repeat) Object.assign(expenseData, { repeat, ...emi });
     
     if (window.isOffline && window.isOffline()) {
       if (typeof window.addToOfflineQueue === 'function') {
         const queueId = window.addToOfflineQueue('expense', expenseData);
         const debtQueueIds = queueDebts();
         const tempId = 'offline-' + Date.now();
-        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
+        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
         dashboardPage = 1;
         updateCards();
@@ -942,7 +984,7 @@ window.addExpense = async () => {
     const debtRefs = debts.map(d => { const r = doc(collection(db, "debts")); batch.set(r, d); return r; });
     await batch.commit();
     announceDebts(debtRefs, debts);
-    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat }) });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat, ...emi }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1;
     updateCards();
@@ -967,11 +1009,11 @@ window.addExpense = async () => {
     if (window.addToOfflineQueue && navigator.onLine === false) {
       const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
       const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
-    if (repeat) expenseData.repeat = repeat;
+    if (repeat) Object.assign(expenseData, { repeat, ...emi });
       const queueId = window.addToOfflineQueue('expense', expenseData);
       const debtQueueIds = queueDebts();
       const tempId = 'offline-' + Date.now();
-      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
+      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
       dashboardPage = 1;
       updateCards();
@@ -1294,7 +1336,30 @@ let dashboardPage = 1;
 // ═══════════════════════════════════════════════════════════════════
 // Filters live in `hist` and the controls, so a list redrawn after an edit or delete keeps them.
 const HISTORY_STEP = 50;
-const hist = { tab: "expenses", kinds: new Set(), shown: HISTORY_STEP };
+const hist = { tab: "expenses", kinds: new Set(), shown: HISTORY_STEP, openRows: new Set() };
+
+// With a mouse (no sideways swipe), a chip row wraps instead of scrolling, and shows two lines until
+// "Show all". Chips past the second line are inert while folded, so Tab can't reach hidden ones; the
+// button says when a selected chip is among them.
+const mouseChips = window.matchMedia("(hover: hover) and (pointer: fine)");
+function fitChips(row) {
+  const btn = document.getElementById(row.id + "-toggle");
+  if (!btn) return;
+  const chips = [...row.children];
+  row.classList.remove("is-folded");
+  chips.forEach(c => { c.inert = false; });
+  const lines = mouseChips.matches && !row.classList.contains("hidden") ? [...new Set(chips.map(c => c.offsetTop))].sort((a, b) => a - b) : [];
+  if (lines.length <= 2) { btn.classList.add("hidden"); return; }
+  const folded = chips.filter(c => c.offsetTop >= lines[2]);
+  const open = hist.openRows.has(row.id);
+  const hiddenPicks = open ? 0 : folded.filter(c => c.getAttribute("aria-pressed") === "true").length;
+  row.style.setProperty("--two-lines", `${lines[2] - lines[0] - 8}px`); // up to the third line, less the gap
+  row.classList.toggle("is-folded", !open);
+  folded.forEach(c => { c.inert = !open; });
+  btn.classList.remove("hidden");
+  btn.textContent = open ? "Show less" : `Show all ${chips.length}${hiddenPicks ? ` · ${hiddenPicks} selected` : ""}`;
+  btn.setAttribute("aria-expanded", String(open));
+}
 const HISTORY_TABS = {
   expenses: {
     rows: () => allExpenses,
@@ -1324,10 +1389,11 @@ function historyDates() {
 }
 
 // The rows on screen: tab, dates, chips, search and sort applied (also what Download exports)
-function historyRows() {
+// dates: [from, to], History's own range unless Export picked another
+function historyRows(dates = historyDates()) {
   const t = HISTORY_TABS[hist.tab];
   const $id = id => document.getElementById(id);
-  const [from, to] = historyDates();
+  const [from, to] = dates;
   return filterHistory(t.rows(), { from, to, kinds: hist.kinds, kindOf: t.kind, q: $id("hist-search")?.value || "", textOf: t.text, tagsOf: t.tags, sort: $id("hist-sort")?.value });
 }
 
@@ -1357,6 +1423,8 @@ function renderHistory() {
   const tagChips = document.getElementById("hist-tags");
   tagChips.classList.toggle("hidden", !tags.length);
   tagChips.innerHTML = tags.map(g => `<button type="button" class="chip" data-hist-tag="${escapeHtml(g)}" aria-pressed="${g.toLowerCase() === tag}">#${escapeHtml(g)}</button>`).join("");
+  fitChips(chips);
+  fitChips(tagChips);
 
   const rows = historyRows();
   const clear = rows.length !== all.length ? ' <button type="button" class="hist-clear" id="hist-clear">Clear filters</button>' : "";
@@ -1390,7 +1458,7 @@ function renderHistory() {
     if (!byDate) meta.unshift(formatDate(r.date));
     // An offline entry has no record yet: deleting it here would let the queue re-add it later
     if (r.pending) meta.push("Waiting to sync");
-    if (r.repeat === "monthly") meta.push("Repeats monthly");
+    if (r.repeat === "monthly") meta.push(r.emiTotal ? `EMI · ${r.emiTotal} payments` : "Repeats monthly");
     return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}"${r.pending ? " disabled" : ""}>
       <span class="hist-row-main">
         <span class="hist-row-title">${escapeHtml(t.title(r))}</span>
@@ -1459,6 +1527,16 @@ function initHistory() {
     $id("hist-tags").querySelector(`[data-hist-tag="${CSS.escape(g)}"]`)?.focus();
   });
   $id("hist-more").addEventListener("click", () => { hist.shown += HISTORY_STEP; renderHistory(); });
+  $id("export-go")?.addEventListener("click", downloadHistoryExport);
+  ["hist-kinds", "hist-tags"].forEach(id => $id(id + "-toggle")?.addEventListener("click", () => {
+    if (hist.openRows.has(id)) hist.openRows.delete(id); else hist.openRows.add(id);
+    fitChips($id(id));
+  }));
+  let refit;
+  const fitAll = () => { cancelAnimationFrame(refit); refit = requestAnimationFrame(() => ["hist-kinds", "hist-tags"].forEach(id => fitChips($id(id)))); };
+  window.addEventListener("resize", fitAll);
+  mouseChips.addEventListener("change", fitAll);
+  ["export-range", "export-from", "export-to"].forEach(id => $id(id)?.addEventListener("change", updateExportDialog));
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
   if (location.hash === "#income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click(); // "All income" link
 }
@@ -1553,55 +1631,80 @@ function renderTable(tbodyId, rows, del) {
 }
 
 
-window.downloadCSV = () => {
-  const pm = document.getElementById('picker-month');
-  const selectedMonth = pm ? pm.value : '';
-  const selectedYear = document.getElementById('picker-year') ? document.getElementById('picker-year').value : '';
+// ── History: Export (modules/csv-export.js) ──────────────────────────────────
+// [from, to] picked in the Export dialog (its own time frame, which starts as History's). Custom
+// dates entered backwards are swapped.
+function exportDates() {
+  const $id = id => document.getElementById(id);
+  if (!$id("export-range")) return historyDates(); // a page cached from before the dialog
+  const [from, to] = historyRange($id("export-range").value, new Date(), { from: $id("export-from").value, to: $id("export-to").value });
+  return from && to && from > to ? [to, from] : [from, to];
+}
 
-  // If period picker is active, use filtered data
-  if (selectedMonth || selectedYear) {
-    const periodData = getPeriodExpenses();
-    let label = 'Export';
-    if (selectedMonth && selectedYear) {
-      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      label = months[parseInt(selectedMonth)] + '_' + selectedYear;
-    } else if (selectedMonth) {
-      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      label = months[parseInt(selectedMonth)];
-    } else if (selectedYear) {
-      label = 'Year_' + selectedYear;
-    }
-    exportCSV(periodData, "SpendWise_" + label);
-    return;
+// What a download would hold, in the Export dialog's dates: the rows History shows (tab, chips,
+// search), or every expense and income entry (ignoring search and chips), newest first
+function exportEntries(what) {
+  if (what === "both") {
+    const [from, to] = exportDates();
+    const inDates = r => (!from || r.date >= from) && (!to || r.date <= to);
+    return [...allExpenses.filter(inDates).map(row => ({ kind: "expense", row })), ...allIncome.filter(inDates).map(row => ({ kind: "income", row }))]
+      .sort((a, b) => (b.row.date || "").localeCompare(a.row.date || ""));
   }
+  const kind = hist.tab === "income" ? "income" : "expense";
+  return historyRows(exportDates()).map(row => ({ kind, row }));
+}
 
-  // Otherwise, use the current date logic
-  const now = new Date(); const today = todayStr(); let from, label;
-  if (activeTab === "daily") { from = today; label = "Today"; }
-  else if (activeTab === "weekly") { from = getWeekStart(); label = "This_Week"; }
-  else if (activeTab === "monthly") { from = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-01"; label = "This_Month"; }
-  else { from = now.getFullYear() + "-01-01"; label = "This_Year"; }
-  exportCSV(allExpenses.filter(e => e.date >= from && e.date <= today), "SpendWise_" + label);
+// Counts and totals for the dialog's time frame; an option with nothing in it can't be picked
+function updateExportDialog() {
+  const $id = id => document.getElementById(id);
+  const t = HISTORY_TABS[hist.tab];
+  $id("export-custom").classList.toggle("hidden", $id("export-range").value !== "custom");
+  const shown = exportEntries("shown"), both = exportEntries("both");
+  const q = $id("hist-search").value.trim();
+  const filters = [...hist.kinds, q && `“${q}”`].filter(Boolean);
+  $id("export-shown-title").textContent = filters.length ? `What's shown · ${plural(shown.length, t.one, t.many)}` : `All ${t.many} · ${shown.length}`;
+  $id("export-shown-sub").textContent = [fmt(shown.reduce((sum, e) => sum + e.row.amount, 0)), ...filters].join(" · ");
+  $id("export-both-sub").textContent = `${plural(both.length, "entry", "entries")}, without search or chips`;
+  const pick = value => document.querySelector(`input[name="export-what"][value="${value}"]`);
+  pick("shown").disabled = !shown.length;
+  pick("both").disabled = !both.length;
+  if (pick("shown").checked && !shown.length && both.length) pick("both").checked = true;
+  if (pick("both").checked && !both.length && shown.length) pick("shown").checked = true;
+  $id("export-go").disabled = !shown.length && !both.length;
+  $id("export-empty").classList.toggle("hidden", !!(shown.length || both.length));
+}
+
+window.openHistoryExport = () => {
+  const $id = id => document.getElementById(id);
+  if (!$id("export-modal")) { downloadHistoryExport(); return; } // a page cached from before the dialog
+  // The dialog's time frame starts as History's own
+  $id("export-range").innerHTML = $id("hist-range").innerHTML;
+  $id("export-range").value = $id("hist-range").value;
+  const [from, to] = historyDates();
+  $id("export-from").value = $id("hist-from").value || from || todayStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  $id("export-to").value = $id("hist-to").value || to || todayStr();
+  document.querySelector('input[name="export-what"][value="shown"]').checked = true;
+  updateExportDialog();
+  $id("export-modal").classList.remove("hidden");
+  if (window.lucide) lucide.createIcons();
 };
 
-window.downloadHistoryCSV = () => hist.tab === "income" ? window.downloadIncomeHistoryCSV() : exportCSV(historyRows(), "SpendWise_History");
+window.closeHistoryExport = () => document.getElementById("export-modal").classList.add("hidden");
 
-function exportCSV(rows, name) {
-  if (!rows.length) { showToast("No data to export.", "error"); return; }
-  const hdr = ["Date", "Category", "Description", "Payment Method", "Card Name", "Notes", "Amount (Rs)"];
-  const csv = [hdr.join(","), ...rows.map(e => [
-    e.date,
-    '"' + e.category + '"',
-    '"' + (e.description || "").replace(/"/g, '""') + '"',
-    '"' + e.payment + '"',
-    '"' + (e.cardName || "").replace(/"/g, '""') + '"',
-    '"' + (e.notes || "").replace(/"/g, '""') + '"',
-    e.amount.toFixed(2)
-  ].join(","))].join("\n");
+function downloadHistoryExport() {
+  const what = document.querySelector('input[name="export-what"]:checked')?.value || "shown";
+  const entries = exportEntries(what);
+  if (!entries.length) { showToast("Nothing to export.", "error"); return; }
+  const csv = buildCsv(entries, { currency: window.getCurrency?.() || "INR", total: document.getElementById("export-total")?.checked ?? true });
+  const [from, to] = exportDates();
+  const name = exportFileName(what === "both" ? "Expenses-and-income" : hist.tab === "income" ? "Income" : "Expenses", from, to, todayStr());
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = name + "_" + todayStr() + ".csv";
-  a.click(); showToast("CSV downloaded!", "success");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  document.getElementById("export-modal")?.classList.add("hidden");
+  showToast(`Downloaded ${name}`, "success");
 }
 
 // Charts read theme colours when drawn, so redraw when theme.js switches appearance
@@ -1934,6 +2037,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === "Enter") { e.preventDefault(); window.addExpense(); }
   }));
   document.getElementById("exp-payment")?.addEventListener("change", updatePaymentHint);
+  document.getElementById("exp-repeat")?.addEventListener("change", syncEmiFields);
   applyLastPayment();
   syncDateChips();
 
@@ -1959,6 +2063,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Patch resetForm to also clear category tiles
+// The EMI boxes show while "Repeats every month" is on
+function syncEmiFields() {
+  const box = document.getElementById("exp-emi");
+  if (box) box.classList.toggle("hidden", !document.getElementById("exp-repeat")?.checked);
+}
+
 const _baseReset = window.resetForm;
 window.resetForm = () => {
   _baseReset();
@@ -1966,6 +2076,8 @@ window.resetForm = () => {
   document.getElementById('exp-category').value = '';
   const repeatSwitch = document.getElementById('exp-repeat');
   if (repeatSwitch) repeatSwitch.checked = false;
+  ["exp-emi-total", "exp-emi-before"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  syncEmiFields();
   applyLastPayment();
   syncDateChips();
 };
@@ -2300,27 +2412,6 @@ window.deleteFromIncEdit = () => {
   closeIncEditModal();
   document.getElementById('inc-delete-modal').classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
-};
-
-// ── CSV Download ─────────────────────────────────────────────
-window.downloadIncomeHistoryCSV = () => {
-  const rows = historyRows();
-  if (!rows.length) { showToast('No data to export.', 'error'); return; }
-  const hdr = ['Date', 'Source', 'Payment Type', 'Bank/Wallet', 'Notes', 'Amount (Rs)'];
-  const csv = [hdr.join(','), ...rows.map(i => [
-    i.date,
-    '"' + (i.source || '').replace(/"/g, '""') + '"',
-    '"' + (i.paymentType || '') + '"',
-    '"' + (i.bank || '').replace(/"/g, '""') + '"',
-    '"' + (i.notes || '').replace(/"/g, '""') + '"',
-    i.amount.toFixed(2)
-  ].join(','))].join('\n');
-
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = 'SpendWise_Income_History_' + todayStr() + '.csv';
-  a.click();
-  showToast('CSV downloaded!', 'success');
 };
 
 // Refresh after offline-queue.js writes queued items (replaces the "pending" placeholders)

@@ -76,48 +76,35 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
 .sidebar-btn.active svg { color: var(--gold-bright); }
 
 /* =====================
-   TAB DOCK (phones): floats above the content, thumb-height
+   TAB BAR (phones), after iOS: a floating glass capsule of five equal icon-only tabs (each keeps its
+   name for screen readers).
+   The selected tab is tinted gold on a soft highlight. Add is a tab like the others, a wallet
+   (tap adds an expense, hold opens voice: nav.js).
 ===================== */
 @media (max-width: 767px) {
   .bottom-nav {
-    left: 12px; right: 12px; bottom: calc(10px + var(--safe-bottom)); height: 64px; padding: 6px;
-    border: 1px solid var(--border); border-radius: 24px; gap: 2px;
-    background: color-mix(in srgb, var(--surface) 86%, transparent);
-    backdrop-filter: saturate(170%) blur(20px); -webkit-backdrop-filter: saturate(170%) blur(20px);
-    box-shadow: var(--shadow-lg);
+    left: 12px; right: 12px; bottom: calc(8px + var(--safe-bottom)); height: 56px; padding: 5px;
+    border: 0.5px solid color-mix(in srgb, var(--text) 12%, transparent); border-radius: 28px; gap: 0;
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
   }
-  [data-theme="dark"] .bottom-nav { border-top-color: var(--border); }
+  [data-theme="dark"] .bottom-nav { border-color: color-mix(in srgb, var(--text) 14%, transparent); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4); }
   .bottom-nav-btn {
-    flex: 1 1 0; border-radius: 18px; color: var(--text2); gap: 3px; min-width: 0;
-    font-size: 12px; font-weight: 600; letter-spacing: 0;
+    flex: 1 1 0; min-width: 0; gap: 0; border-radius: 23px; color: var(--text2);
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em;
+    transition: color var(--transition), background-color var(--transition);
   }
-  .bottom-nav-btn svg, .bottom-nav-btn i { width: 22px; height: 22px; }
-  .bottom-nav-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* Centre +: a raised gold coin. Tap adds an expense, hold opens voice (nav.js). */
-  .bottom-nav .bottom-nav-add, [data-theme="dark"] .bottom-nav .bottom-nav-add,
-  .bottom-nav .bottom-nav-add.active, [data-theme="dark"] .bottom-nav .bottom-nav-add.active { background: none; box-shadow: none; color: var(--gold-on); }
-  /* fixed slot: the raised coin and its ring are wider than a shared slot on 320px phones */
-  .bottom-nav .bottom-nav-add { flex: 0 0 72px; }
-  .bottom-nav-add span {
-    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; /* name for screen readers only */
+  .bottom-nav-btn svg, .bottom-nav-btn i { width: 26px; height: 26px; stroke-width: 1.8; }
+  /* the tab's name, for screen readers only */
+  .bottom-nav-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+  .bottom-nav-btn:active { transform: scale(0.96); }
+  .bottom-nav-btn.active, [data-theme="dark"] .bottom-nav-btn.active {
+    color: var(--gold); background: color-mix(in srgb, var(--text) 8%, transparent); box-shadow: none;
   }
-  .bottom-nav-add svg, .bottom-nav-add i {
-    box-sizing: content-box; width: 26px; height: 26px; padding: 13px; margin-top: -22px; border-radius: 50%;
-    background: var(--gold); color: var(--gold-on); stroke-width: 2.5;
-    box-shadow: 0 0 0 5px var(--bg), 0 8px 20px color-mix(in srgb, var(--gold) 45%, transparent);
-    transition: transform var(--transition);
-  }
-  .bottom-nav-add:active svg { transform: scale(0.94); }
-  .bottom-nav-add.active svg { box-shadow: 0 0 0 5px var(--bg), 0 0 0 7px var(--gold); }
-  .bottom-nav-add:focus-visible { outline: none; }
-  .bottom-nav-add:focus-visible svg { outline: 2px solid var(--accent); outline-offset: 4px; }
-  .bottom-nav-btn.active { background: var(--hero-bg); color: var(--hero-text); }
-  .bottom-nav-btn.active svg { color: var(--gold-bright); }
+  .bottom-nav-btn.active svg, [data-theme="dark"] .bottom-nav-btn.active svg { color: var(--gold); stroke-width: 2.2; }
   .bottom-nav-btn:hover:not(.active) { color: var(--text); }
-  /* the ink pill disappears on a dark dock: use the gold tint there */
-  [data-theme="dark"] .bottom-nav-btn.active { background: var(--gold-bg); color: var(--gold); box-shadow: inset 0 0 0 1px var(--hero-line); }
-  [data-theme="dark"] .bottom-nav-btn.active svg { color: var(--gold); }
+
   /* content scrolling under the dock fades and blurs out instead of showing sliced through it.
      On .app, not the dock: a backdrop-filter inside the dock's own backdrop-filter would see nothing. */
   .app::after {
@@ -174,7 +161,8 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
 }
 .summary-card:hover { transform: none; box-shadow: var(--shadow-sm); }
 a.home-tile { transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition); }
-a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+/* A card that is a link shows hover by lifting, not with the page's link underline and fade */
+a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box-shadow: var(--shadow-md); text-decoration: none; opacity: 1; }
 
 /* Small caps-style labels */
 .home-tile-label, .summary-label, .period-summary-label {
@@ -1222,7 +1210,6 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .spend-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 6px; }
 .spend-head h3 { font-size: 1.0625rem; font-weight: 700; color: var(--text); }
 .spend-head p { font-size: 0.8125rem; color: var(--text2); }
-.spend-head .btn-download { flex-shrink: 0; min-height: 40px; }
 .spend-card .table-header { padding: 8px 20px 0; border-bottom: 0; }
 .spend-chart { padding: 12px 20px 16px; border-bottom: 1px solid var(--border); }
 @media (max-width: 559px) {
@@ -1230,3 +1217,99 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
   .spend-card .table-header { padding: 8px 16px 0; }
   .spend-chart { padding: 10px 12px 14px; }
 }
+
+/* =====================
+   HOME · BROWSE BY PERIOD: the month picker and that period's totals in one card, a hairline between
+===================== */
+.period-card {
+  margin-bottom: 16px; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-xs);
+}
+.period-card .period-picker-card { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: none; }
+.period-card .period-summary-bar { margin: 0; border: 0; border-top: 1px solid var(--border-light); border-radius: 0; box-shadow: none; }
+
+/* =====================
+   HISTORY · EXPORT: a labelled button in the header, and a dialog to pick what goes in the file
+===================== */
+.hist-export-btn {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface);
+  color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.hist-export-btn:hover { border-color: var(--text2); }
+.hist-export-btn svg { width: 16px; height: 16px; }
+.export-box { max-width: 440px; }
+.export-box h3 { margin-bottom: 2px; }
+.export-summary { margin-bottom: 16px; font-size: 0.875rem; color: var(--text2); }
+.export-options { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; }
+.export-option {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+}
+.export-option:has(input:checked) { border-color: var(--accent); background: var(--accent-bg); }
+.export-option:has(input:disabled) { opacity: 0.5; cursor: default; }
+.export-option input, .export-check input { margin-top: 3px; accent-color: var(--accent); flex-shrink: 0; }
+.export-option span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.export-option strong { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.export-option small { font-size: 0.8125rem; color: var(--text2); overflow-wrap: anywhere; }
+.export-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 0.9375rem; color: var(--text); cursor: pointer; }
+.export-check input { margin-top: 0; }
+.export-note { margin: 2px 0 16px; font-size: 0.8125rem; color: var(--text2); }
+.export-box .btn-primary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.export-box .btn-primary svg { width: 16px; height: 16px; }
+.export-range { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.export-label { font-size: 0.8125rem; font-weight: 600; color: var(--text2); }
+.export-range select {
+  min-height: 44px; padding: 0 36px 0 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background-color: var(--surface); color: var(--text); font: inherit; font-size: 0.9375rem;
+}
+.export-custom { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.export-custom.hidden { display: none; }
+.export-custom label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8125rem; color: var(--text2); }
+.export-custom input { min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font: inherit; }
+.export-empty { margin: -4px 0 10px; font-size: 0.875rem; color: var(--danger); }
+#export-go:disabled { opacity: 0.5; cursor: default; }
+
+/* =====================
+   HISTORY · CHIP ROWS ON DESKTOP: a mouse can't swipe a row sideways, so the chips wrap; past two
+   lines the row folds behind "Show all" (dashboard.js fitChips). Phones keep the swipeable row.
+===================== */
+@media (hover: hover) and (pointer: fine) {
+  .hist-kinds { flex-wrap: wrap; overflow: visible; margin: 12px 0 0; padding: 0; }
+  .hist-kinds.is-folded { max-height: var(--two-lines); overflow: hidden; }
+}
+.chips-toggle {
+  display: inline-flex; align-items: center; min-height: 36px; margin-top: 6px; padding: 0 2px;
+  border: 0; background: none; color: var(--accent); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+}
+.chips-toggle:hover { text-decoration: underline; }
+.chips-toggle.hidden { display: none; }
+
+/* =====================
+   EMIs: the form's optional payment count, and the Expense page's card of running and paid-off EMIs
+===================== */
+.emi-fields { margin-top: 10px; padding: 12px 14px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); }
+.emi-fields.hidden { display: none; }
+.emi-title { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.emi-help { margin: 2px 0 10px; font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+.emi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.emi-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125rem; font-weight: 500; color: var(--text2); }
+.emi-grid input { min-height: 44px; }
+.emi-card-total { font-size: 0.875rem; font-weight: 600; color: var(--gold); }
+.emi-list { list-style: none; margin: 0; }
+.emi-item { padding: 12px 0; border-top: 1px solid var(--border-light); }
+.emi-item:first-child { border-top: 0; padding-top: 4px; }
+.emi-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.emi-name { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.emi-amount { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.emi-amount small { margin-left: 1px; font-size: 0.75rem; font-weight: 500; color: var(--text2); }
+.emi-bar { height: 6px; margin: 8px 0 6px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.emi-bar span { display: block; height: 100%; border-radius: inherit; background: var(--gold); }
+.emi-meta { font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+.emi-meta strong { font-weight: 600; color: var(--text); }
+.emi-item.done .emi-bar span { background: var(--success); }
+.emi-item.done .emi-name, .emi-item.done .emi-amount { color: var(--text2); }
+
+/* The Expense page's pointer to Settings › Import from a bank statement */
+.csv-import-link { margin: 4px 0 16px; font-size: 0.875rem; color: var(--text2); text-align: center; }
+.csv-import-link a { font-weight: 600; }

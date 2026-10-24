@@ -1435,120 +1435,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* =====================
    CSV IMPORT
 ===================== */
-.csv-import-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  background: var(--surface);
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-5);
-  margin-top: var(--space-4);
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.csv-import-card:hover {
-  border-color: var(--accent);
-  border-style: solid;
-  background: var(--accent-bg);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-.csv-import-card:active {
-  transform: translateY(0) scale(0.99);
-}
-.csv-import-card-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  flex: 1;
-  min-width: 0;
-}
-.csv-import-card-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all var(--transition);
-}
-.csv-import-card:hover .csv-import-card-icon {
-  background: var(--accent);
-}
-.csv-import-card-icon svg {
-  width: 22px;
-  height: 22px;
-  color: var(--accent);
-  transition: all var(--transition);
-}
-.csv-import-card:hover .csv-import-card-icon svg {
-  color: #fff;
-}
-.csv-import-card-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-.csv-import-card-text strong {
-  font-size: var(--text-md);
-  font-weight: var(--font-semibold);
-  color: var(--text);
-  overflow-wrap: anywhere; /* wrap at large text sizes instead of widening the page */
-}
-.csv-import-card-text span {
-  font-size: var(--text-sm);
-  color: var(--text3);
-  line-height: var(--leading-normal);
-}
-.csv-import-card-arrow {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--bg2);
-  transition: all var(--transition);
-}
-.csv-import-card-arrow svg {
-  width: 18px;
-  height: 18px;
-  color: var(--text3);
-  transition: all var(--transition);
-}
-.csv-import-card:hover .csv-import-card-arrow {
-  background: var(--accent);
-}
-.csv-import-card:hover .csv-import-card-arrow svg {
-  color: #fff;
-  transform: translateX(3px);
-}
-@media (max-width: 640px) {
-  .csv-import-card {
-    padding: var(--space-4);
-    gap: var(--space-3);
-  }
-  .csv-import-card-icon {
-    width: 40px;
-    height: 40px;
-  }
-  .csv-import-card-text span {
-    display: none;
-  }
-  .csv-import-card-arrow {
-    width: 32px;
-    height: 32px;
-  }
-}
 .csv-overlay {
   position: fixed; inset: 0; z-index: 2000; background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -1797,8 +1683,7 @@ button:focus-visible {
   .table-tabs,
   .filter-card,
   .insights-controls,
-  .insights-hero-glow,
-  .csv-import-card {
+  .insights-hero-glow {
     display: none !important;
   }
 
@@ -2746,7 +2631,6 @@ img {
 
 .summary-icon [data-lucide],
 .income-form-icon [data-lucide],
-.csv-import-card-icon [data-lucide],
 .period-picker-icon [data-lucide] {
   stroke-width: 1.8px;
 }
@@ -3458,7 +3342,7 @@ a.home-tile:hover { border-color: var(--accent); }
 
 /* Inside an entry page every block fills the column; older rules capped some at 680px */
 .entry-page > .form-card, .entry-page > .recent-expenses,
-.entry-page > .summary-cards, .entry-page > .csv-import-card { max-width: none; margin: 0 0 16px; }
+.entry-page > .summary-cards { max-width: none; margin: 0 0 16px; }
 
 @media (min-width: 1024px) {
   .entry-page {

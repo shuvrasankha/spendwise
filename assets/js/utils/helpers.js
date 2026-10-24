@@ -189,19 +189,30 @@ export function countTo(el, value, format) {
 // ── Repeating expenses ───────────────────────────────────────────────────────
 // An expense with repeat: 'monthly' starts a series (same category and description).
 // The newest entry carrying a repeat field is the series' template; repeat: 'stopped' ends it.
+// An EMI is a series with a fixed number of payments: emiTotal on the template, and emiPaidBefore
+// for payments made before SpendWise. It ends by itself once that many are paid.
 export const recurringKey = e => `${normalizeCategory(e.category)}|${String(e.description || '').trim().toLowerCase()}`;
 
-// Newest entry and newest repeat-carrying entry (the template) per series
+// Newest entry, newest repeat-carrying entry (the template) and number of entries per series
 function recurringSeries(expenses) {
-  const latest = new Map(), template = new Map();
+  const latest = new Map(), template = new Map(), count = new Map();
   for (const e of expenses) {
     if (!e || !e.date) continue;
     const key = recurringKey(e);
     if (!latest.has(key) || e.date > latest.get(key).date) latest.set(key, e);
     if (e.repeat && (!template.has(key) || e.date > template.get(key).date)) template.set(key, e);
+    count.set(key, (count.get(key) || 0) + 1);
   }
-  return { latest, template };
+  return { latest, template, count };
 }
+
+// An EMI's payments so far ({ paid, total }), or null for a series with no set number of payments
+function emiOf(t, entries) {
+  const total = Math.floor(Number(t.emiTotal)) || 0;
+  if (total < 1) return null;
+  return { paid: Math.min(entries + (Math.floor(Number(t.emiPaidBefore)) || 0), total), total };
+}
+const emiDone = emi => !!emi && emi.paid >= emi.total;
 
 // 'YYYY-MM' shifted by n months
 export function addMonths(month, n) {
@@ -218,15 +229,18 @@ function dueIn(t, month) {
 
 // Series due this month: active, nothing entered for it yet this month, and its day has come.
 // skipped(key, 'YYYY-MM') hides one for a month.
+// emi is { paid, total } for an EMI (this one would be payment paid + 1), else null.
 export function dueRecurring(expenses, today = todayStr(), skipped = () => false) {
   const month = today.slice(0, 7);
-  const { latest, template } = recurringSeries(expenses);
+  const { latest, template, count } = recurringSeries(expenses);
   const due = [];
   for (const [key, t] of template) {
     if (t.repeat !== 'monthly' || latest.get(key).date.slice(0, 7) >= month || skipped(key, month)) continue;
+    const emi = emiOf(t, count.get(key));
+    if (emiDone(emi)) continue;
     const day = dueIn(t, month);
     if (today < day) continue;
-    due.push({ key, template: t, due: day });
+    due.push({ key, template: t, due: day, emi });
   }
   return due.sort((a, b) => a.due.localeCompare(b.due) || b.template.amount - a.template.amount);
 }
@@ -236,16 +250,39 @@ export function dueRecurring(expenses, today = todayStr(), skipped = () => false
 export function upcomingBills(expenses, today = todayStr(), skipped = () => false) {
   const month = today.slice(0, 7);
   const next = addMonths(month, 1);
-  const { latest, template } = recurringSeries(expenses);
+  const { latest, template, count } = recurringSeries(expenses);
   const bills = [];
   for (const [key, t] of template) {
     const entered = latest.get(key).date.slice(0, 7);
-    if (t.repeat !== 'monthly' || entered >= next) continue;
+    if (t.repeat !== 'monthly' || entered >= next || emiDone(emiOf(t, count.get(key)))) continue;
     let due = dueIn(t, month);
     if (entered >= month || skipped(key, month) || due < today) due = dueIn(t, next);
     bills.push({ key, title: t.description && t.description !== '-' ? t.description : t.category, amount: t.amount, due });
   }
   return bills.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+// Every EMI: running ones first (soonest payment first), then paid off. next is the next payment's
+// date (this month's even if its day has passed, as Home lists it as due), ends the 'YYYY-MM' of the
+// last payment, left what is still to pay. An EMI stopped before it was paid off is left out.
+export function emiPlans(expenses, today = todayStr()) {
+  const month = today.slice(0, 7);
+  const { latest, template, count } = recurringSeries(expenses);
+  const plans = [];
+  for (const [key, t] of template) {
+    const emi = emiOf(t, count.get(key));
+    if (!emi || (t.repeat !== 'monthly' && !emiDone(emi))) continue;
+    const toGo = emi.total - emi.paid;
+    const entered = latest.get(key).date.slice(0, 7);
+    const from = entered >= month ? addMonths(month, 1) : month;
+    plans.push({
+      key, template: t, ...emi, monthly: t.amount, left: toGo * t.amount, done: !toGo,
+      title: t.description && t.description !== '-' ? t.description : t.category,
+      next: toGo ? dueIn(t, from) : null,
+      ends: toGo ? addMonths(from, toGo - 1) : entered,
+    });
+  }
+  return plans.sort((a, b) => a.done - b.done || (a.next || a.ends).localeCompare(b.next || b.ends));
 }
 
 // "21 Oct", or "21 Oct 2025" outside the current year: short enough for a list row
