@@ -360,9 +360,18 @@
               </div>
               <div class="form-group full-width">
                 <label class="repeat-row" for="exp-repeat">
-                  <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs: Home offers it again when it's due</small></span>
+                  <span><strong>Repeats every month</strong><small>Rent, subscriptions, SIPs, EMIs: Home offers it again when it's due</small></span>
                   <input type="checkbox" role="switch" id="exp-repeat" class="reminder-switch">
                 </label>
+                <!-- An EMI: a set number of monthly payments (helpers.js emiPlans). Shown while Repeats is on -->
+                <div class="emi-fields hidden" id="exp-emi" role="group" aria-labelledby="exp-emi-title">
+                  <p class="emi-title" id="exp-emi-title">EMI <span class="optional-tag">optional</span></p>
+                  <p class="emi-help">For a loan or a no-cost EMI, enter how many payments it has. It stops by itself after the last one. Leave empty for rent or a subscription.</p>
+                  <div class="emi-grid">
+                    <label for="exp-emi-total">Total payments<input type="number" id="exp-emi-total" inputmode="numeric" min="2" max="600" step="1" placeholder="e.g. 12"></label>
+                    <label for="exp-emi-before">Already paid<input type="number" id="exp-emi-before" inputmode="numeric" min="0" max="599" step="1" placeholder="0"></label>
+                  </div>
+                </div>
               </div>
               <div class="form-group full-width">
                 <label for="exp-tags">Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
@@ -405,6 +414,15 @@
           <span class="recent-expenses-total" id="recent-expenses-total"></span>
         </div>
         <ul class="recent-expenses-list" id="recent-expenses-list"></ul>
+      </section>
+
+      <!-- EMIs: each one's progress, what is left and when it ends (dashboard.js renderEmis, helpers.js emiPlans) -->
+      <section class="recent-expenses emi-card hidden" id="emi-card" aria-labelledby="emi-card-title">
+        <div class="recent-expenses-head">
+          <h3 id="emi-card-title">EMIs</h3>
+          <span class="emi-card-total" id="emi-card-total"></span>
+        </div>
+        <ul class="emi-list" id="emi-list"></ul>
       </section>
 
       <div class="summary-cards">

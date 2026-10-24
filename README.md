@@ -16,6 +16,7 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 - Quick expense entry with multiple payment methods (UPI, Cash, Cards, Net Banking)
 - Income source tracking with bank/wallet details
 - Edit and delete transactions with confirmation dialogs
+- Repeating monthly expenses, and EMIs with a set number of payments: progress, amount left and end month on the Expense page; they stop by themselves after the last payment
 - CSV export functionality for record-keeping and tax filing
 
 ### 💳 Debt Tracker

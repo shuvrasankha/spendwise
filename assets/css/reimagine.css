@@ -1297,3 +1297,28 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 }
 .chips-toggle:hover { text-decoration: underline; }
 .chips-toggle.hidden { display: none; }
+
+/* =====================
+   EMIs: the form's optional payment count, and the Expense page's card of running and paid-off EMIs
+===================== */
+.emi-fields { margin-top: 10px; padding: 12px 14px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); }
+.emi-fields.hidden { display: none; }
+.emi-title { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.emi-help { margin: 2px 0 10px; font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+.emi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.emi-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 0.8125rem; font-weight: 500; color: var(--text2); }
+.emi-grid input { min-height: 44px; }
+.emi-card-total { font-size: 0.875rem; font-weight: 600; color: var(--gold); }
+.emi-list { list-style: none; margin: 0; }
+.emi-item { padding: 12px 0; border-top: 1px solid var(--border-light); }
+.emi-item:first-child { border-top: 0; padding-top: 4px; }
+.emi-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.emi-name { font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.emi-amount { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.emi-amount small { margin-left: 1px; font-size: 0.75rem; font-weight: 500; color: var(--text2); }
+.emi-bar { height: 6px; margin: 8px 0 6px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.emi-bar span { display: block; height: 100%; border-radius: inherit; background: var(--gold); }
+.emi-meta { font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+.emi-meta strong { font-weight: 600; color: var(--text); }
+.emi-item.done .emi-bar span { background: var(--success); }
+.emi-item.done .emi-name, .emi-item.done .emi-amount { color: var(--text2); }

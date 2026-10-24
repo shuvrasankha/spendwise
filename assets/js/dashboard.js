@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart, emiPlans } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from './modules/history-data.js';
 import { buildCsv, exportFileName } from './modules/csv-export.js';
@@ -617,7 +617,7 @@ function renderDue() {
     return `<li class="home-row due-row">
       <div class="home-row-main">
         <span class="home-row-title">${escapeHtml(title)}</span>
-        <span class="home-row-meta">${escapeHtml(t.category)} · due ${escapeHtml(shortDay(d.due))}</span>
+        <span class="home-row-meta">${d.emi ? `EMI ${d.emi.paid + 1} of ${d.emi.total} · ` : ""}${escapeHtml(t.category)} · due ${escapeHtml(shortDay(d.due))}</span>
       </div>
       <span class="home-row-amount">${moneyWhole(t.amount)}</span>
       <div class="due-actions">
@@ -632,7 +632,9 @@ function renderDue() {
 async function addDue(item) {
   const t = item.template;
   const data = { uid: currentUser.uid, amount: t.amount, category: t.category, date: item.due, payment: t.payment || "UPI",
-    cardName: t.cardName || "", description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain" };
+    cardName: t.cardName || "", description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain",
+    // The newest entry is the series' template, so it carries the EMI on
+    ...(t.emiTotal && { emiTotal: t.emiTotal, ...(t.emiPaidBefore && { emiPaidBefore: t.emiPaidBefore }) }) };
   const local = { ...data, uid: undefined, encoding: undefined };
   if (window.isOffline?.() && window.addToOfflineQueue) {
     const queueId = window.addToOfflineQueue("expense", { ...data, createdAt: serverTimestamp() });
@@ -691,9 +693,37 @@ window.addEventListener("spendwise:goals", e => { celebrateGoal = e.detail?.comp
 function updateDebtCards() { renderHome(); }
 function updateIncomeCards() { renderHome(); }
 
+// ── EMIs (expense page): progress, what is left, the next payment and the last ──
+function renderEmis() {
+  const card = document.getElementById("emi-card");
+  if (!card) return;
+  const plans = emiPlans(allExpenses, todayStr());
+  card.classList.toggle("hidden", !plans.length);
+  if (!plans.length) return;
+  const running = plans.filter(p => !p.done);
+  document.getElementById("emi-card-total").textContent = running.length
+    ? `${moneyWhole(running.reduce((sum, p) => sum + p.monthly, 0))} a month` : "All paid off";
+  const monthName = m => new Date(m + "-01T00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  document.getElementById("emi-list").innerHTML = plans.map(p => {
+    const pct = Math.round((p.paid / p.total) * 100);
+    const facts = p.done
+      ? [`Paid off ${monthName(p.ends)}`]
+      : [`${moneyWhole(p.left)} left`, p.next < todayStr() ? `Due ${shortDay(p.next)}` : `Next ${shortDay(p.next)}`, `Ends ${monthName(p.ends)}`];
+    return `<li class="emi-item${p.done ? " done" : ""}">
+      <div class="emi-row">
+        <span class="emi-name">${escapeHtml(p.title)}</span>
+        <span class="emi-amount">${moneyWhole(p.monthly)}<small>/mo</small></span>
+      </div>
+      <div class="emi-bar" role="progressbar" aria-label="${escapeHtml(p.title)}: ${p.paid} of ${p.total} payments" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.paid}"><span style="width:${Math.max(pct, 2)}%"></span></div>
+      <div class="emi-meta"><strong>${p.paid} of ${p.total} paid</strong> · ${facts.map(escapeHtml).join(" · ")}</div>
+    </li>`;
+  }).join("");
+}
+
 // ── Update Expense Summary Cards (expense page) ─────────────────────────────
 function updateExpenseCards() {
   renderRecentExpenses();
+  renderEmis();
   orderCategoryTiles();
   const monthlyEl = document.getElementById("exp-monthly");
   const yearlyEl = document.getElementById("exp-yearly");
@@ -884,7 +914,18 @@ window.addExpense = async () => {
   const notes = sanitize(document.getElementById("exp-notes").value.trim(), 500);
   const tags = getExpenseTags("exp");
   const repeat = document.getElementById("exp-repeat")?.checked ? "monthly" : null; // "Repeats every month"
+  // An EMI: how many payments in all, and how many were made before SpendWise (this one not counted)
+  const emiTotalRaw = repeat ? document.getElementById("exp-emi-total")?.value.trim() : "";
+  const emiBeforeRaw = repeat ? document.getElementById("exp-emi-before")?.value.trim() : "";
+  const emiTotal = emiTotalRaw ? Number(emiTotalRaw) : 0;
+  const emiPaidBefore = emiBeforeRaw ? Number(emiBeforeRaw) : 0;
   if (!amount || amount <= 0) { showFormMsg("Enter a valid amount.", "error"); return; }
+  if (emiTotalRaw && !(Number.isInteger(emiTotal) && emiTotal >= 2 && emiTotal <= 600)) { showFormMsg("Total payments should be a whole number from 2 to 600.", "error"); return; }
+  if (emiBeforeRaw && !(Number.isInteger(emiPaidBefore) && emiPaidBefore >= 0 && (!emiTotal || emiPaidBefore < emiTotal))) {
+    showFormMsg(emiTotal ? `Already paid should be a whole number below ${emiTotal}, counting this payment out.` : "Already paid needs Total payments too.", "error"); return;
+  }
+  if (emiBeforeRaw && emiPaidBefore > 0 && !emiTotal) { showFormMsg("Add Total payments for this EMI.", "error"); return; }
+  const emi = emiTotal ? { emiTotal, ...(emiPaidBefore && { emiPaidBefore }) } : {};
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
   // Split: your share becomes the expense, and each person owes you theirs (modules/split.js)
@@ -907,14 +948,14 @@ window.addExpense = async () => {
   try {
     const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
     const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
-    if (repeat) expenseData.repeat = repeat;
+    if (repeat) Object.assign(expenseData, { repeat, ...emi });
     
     if (window.isOffline && window.isOffline()) {
       if (typeof window.addToOfflineQueue === 'function') {
         const queueId = window.addToOfflineQueue('expense', expenseData);
         const debtQueueIds = queueDebts();
         const tempId = 'offline-' + Date.now();
-        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
+        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
         dashboardPage = 1;
         updateCards();
@@ -943,7 +984,7 @@ window.addExpense = async () => {
     const debtRefs = debts.map(d => { const r = doc(collection(db, "debts")); batch.set(r, d); return r; });
     await batch.commit();
     announceDebts(debtRefs, debts);
-    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat }) });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat, ...emi }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1;
     updateCards();
@@ -968,11 +1009,11 @@ window.addExpense = async () => {
     if (window.addToOfflineQueue && navigator.onLine === false) {
       const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
       const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
-    if (repeat) expenseData.repeat = repeat;
+    if (repeat) Object.assign(expenseData, { repeat, ...emi });
       const queueId = window.addToOfflineQueue('expense', expenseData);
       const debtQueueIds = queueDebts();
       const tempId = 'offline-' + Date.now();
-      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat }) });
+      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
       dashboardPage = 1;
       updateCards();
@@ -1417,7 +1458,7 @@ function renderHistory() {
     if (!byDate) meta.unshift(formatDate(r.date));
     // An offline entry has no record yet: deleting it here would let the queue re-add it later
     if (r.pending) meta.push("Waiting to sync");
-    if (r.repeat === "monthly") meta.push("Repeats monthly");
+    if (r.repeat === "monthly") meta.push(r.emiTotal ? `EMI · ${r.emiTotal} payments` : "Repeats monthly");
     return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}"${r.pending ? " disabled" : ""}>
       <span class="hist-row-main">
         <span class="hist-row-title">${escapeHtml(t.title(r))}</span>
@@ -1996,6 +2037,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === "Enter") { e.preventDefault(); window.addExpense(); }
   }));
   document.getElementById("exp-payment")?.addEventListener("change", updatePaymentHint);
+  document.getElementById("exp-repeat")?.addEventListener("change", syncEmiFields);
   applyLastPayment();
   syncDateChips();
 
@@ -2021,6 +2063,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Patch resetForm to also clear category tiles
+// The EMI boxes show while "Repeats every month" is on
+function syncEmiFields() {
+  const box = document.getElementById("exp-emi");
+  if (box) box.classList.toggle("hidden", !document.getElementById("exp-repeat")?.checked);
+}
+
 const _baseReset = window.resetForm;
 window.resetForm = () => {
   _baseReset();
@@ -2028,6 +2076,8 @@ window.resetForm = () => {
   document.getElementById('exp-category').value = '';
   const repeatSwitch = document.getElementById('exp-repeat');
   if (repeatSwitch) repeatSwitch.checked = false;
+  ["exp-emi-total", "exp-emi-before"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  syncEmiFields();
   applyLastPayment();
   syncDateChips();
 };
