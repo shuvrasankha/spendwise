@@ -1313,3 +1313,138 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 /* The Expense page's pointer to Settings › Import from a bank statement */
 .csv-import-link { margin: 4px 0 16px; font-size: 0.875rem; color: var(--text2); text-align: center; }
 .csv-import-link a { font-weight: 600; }
+
+/* =====================
+   BACKUP & RESTORE dialog (Settings): one card, a header, then two inset rows (icon tile, title over
+   a line of help, the action). Restore picks a file in a compact dashed area; Restore is the only
+   filled button and stays off until a file is chosen (backup.js showChosenFile).
+===================== */
+.backup-box { max-width: 480px; }
+.backup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.backup-head h3 { margin: 0 0 2px; }
+.backup-sub { font-size: 0.875rem; color: var(--text2); }
+.backup-head .modal-close-btn { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--surface2); }
+.backup-rows { border-top: 1px solid var(--border-light); }
+.backup-row { display: flex; align-items: flex-start; gap: 14px; padding: 16px 0; }
+.backup-row + .backup-row { border-top: 1px solid var(--border-light); }
+.backup-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--gold-bg); color: var(--gold); }
+.backup-icon svg { width: 18px; height: 18px; }
+.backup-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.backup-text > strong { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.backup-text > span { font-size: 0.8125rem; line-height: 1.4; color: var(--text2); }
+.backup-action {
+  align-self: center; flex-shrink: 0; min-height: 40px; padding: 0 16px; border: 1px solid var(--border); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--text); font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.backup-action:hover { border-color: var(--text2); }
+.backup-action:disabled { opacity: 0.6; cursor: default; }
+.backup-action svg { width: 16px; height: 16px; }
+.backup-pick {
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 48px; margin-top: 10px; padding: 0 14px;
+  border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+.backup-pick:hover, .backup-pick.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+.backup-pick:focus-within { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.backup-pick svg { flex-shrink: 0; width: 18px; height: 18px; }
+.backup-pick .backup-file-name { margin: 0; padding: 0; border: 0; background: none; font-size: 0.875rem; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.backup-pick .backup-file-name.has-file { color: var(--text); font-weight: 600; background: none; }
+.backup-restore { align-self: flex-start; margin-top: 10px; min-height: 40px; padding: 0 20px; }
+.backup-restore:disabled { opacity: 0.45; cursor: default; }
+.backup-box .backup-status { margin-top: 4px; border: 0; }
+
+/* The wordmark links to the Dashboard: no link underline or fade on hover */
+.nav-logo-link:hover { text-decoration: none; opacity: 1; }
+
+/* =====================
+   INSIGHTS: analysis only (the Dashboard has the totals). A comparison with the previous period,
+   what changed, biggest expenses, weekdays, payment methods, fixed vs flexible.
+   Up = spent more (red), down = spent less (green); the words always say which.
+===================== */
+#insights-glance > .home-section { margin-bottom: 16px; }
+.ins-figure { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 2px 0 4px; }
+.ins-figure-amount { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text); }
+.ins-figure-unit { font-size: 0.9375rem; color: var(--text2); }
+.ins-compare-pct { font-size: 0.875rem; font-weight: 600; }
+.ins-compare-pct.up, .ins-row-value.up { color: var(--danger); }
+.ins-compare-pct.down, .ins-row-value.down { color: var(--success); }
+.ins-compare-none, .ins-lead, .ins-none { font-size: 0.9375rem; line-height: 1.45; color: var(--text2); }
+.ins-lead strong { color: var(--text); }
+.ins-compare-rows { list-style: none; margin: 14px 0 0; border-top: 1px solid var(--border-light); }
+.ins-compare-rows li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; font-size: 0.9375rem; }
+.ins-compare-rows li + li { border-top: 1px solid var(--border-light); }
+.ins-compare-rows span { color: var(--text2); }
+.ins-compare-rows strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.ins-list { list-style: none; margin: 0; }
+.ins-row { display: flex; align-items: center; gap: 12px; }
+.ins-row-body { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; min-height: 60px; padding: 10px 0; }
+.ins-row + .ins-row .ins-row-body { border-top: 1px solid var(--border-light); }
+.ins-row .home-row-title { font-size: 0.9375rem; font-weight: 600; }
+.ins-row .home-row-meta { font-size: 0.8125rem; }
+.ins-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 10px; background: var(--gold-bg); color: var(--gold); }
+.ins-icon.up { background: var(--danger-bg); color: var(--danger); }
+.ins-icon.down { background: var(--success-bg); color: var(--success); }
+.ins-icon svg { width: 18px; height: 18px; }
+.ins-row-value { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.ins-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; list-style: none; margin: 14px 0 0; }
+.ins-day { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ins-day-bar { display: flex; align-items: flex-end; width: 100%; max-width: 28px; height: 88px; border-radius: 8px; background: var(--bg2); overflow: hidden; }
+.ins-day-bar span { display: block; width: 100%; border-radius: 8px; background: color-mix(in srgb, var(--gold) 45%, var(--bg2)); }
+.ins-day.top .ins-day-bar span { background: var(--gold); }
+.ins-day-name { font-size: 0.75rem; font-weight: 600; color: var(--text2); }
+.ins-day.top .ins-day-name { color: var(--text); }
+
+.ins-pays { list-style: none; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.ins-pay-row { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: 0.9375rem; font-weight: 600; }
+.ins-pay-amount { font-weight: 500; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ins-bar { height: 6px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.ins-bar span { display: block; height: 100%; border-radius: inherit; background: var(--gold); }
+
+.ins-split { display: flex; height: 10px; margin: 6px 0 14px; border-radius: 999px; background: color-mix(in srgb, var(--gold) 30%, var(--bg2)); overflow: hidden; }
+.ins-split span { display: block; height: 100%; background: var(--gold); }
+.ins-legend { list-style: none; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.ins-legend li { display: flex; align-items: flex-start; gap: 10px; }
+.ins-legend div { display: flex; flex-direction: column; gap: 2px; }
+.ins-legend strong { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ins-legend div span { font-size: 0.8125rem; color: var(--text2); }
+.ins-dot { flex-shrink: 0; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; }
+.ins-dot.fixed { background: var(--gold); }
+.ins-dot.flex { background: color-mix(in srgb, var(--gold) 30%, var(--bg2)); }
+
+/* =====================
+   INSIGHTS · ASK: a search field with a round send button, example chips, then the answer
+   (big figure, one sentence, what was searched, the matching entries, a link into History).
+===================== */
+.ins-ask { margin-bottom: 16px; }
+.ins-ask-title { margin-bottom: 10px; font-size: 1.0625rem; font-weight: 700; }
+.ins-ask-form {
+  display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 6px 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface2);
+}
+.ins-ask-form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.ins-ask-form > svg { flex-shrink: 0; width: 18px; height: 18px; color: var(--text2); }
+.ins-ask-form input { flex: 1; min-width: 0; height: 44px; border: 0; background: none; color: var(--text); font: inherit; font-size: 1rem; outline: none; }
+.ins-ask-form input::placeholder { color: var(--text2); opacity: 0.8; }
+.ins-ask-go {
+  display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 0; border-radius: 50%;
+  background: var(--accent); color: #fff; cursor: pointer;
+}
+[data-theme="dark"] .ins-ask-go { color: var(--bg); }
+.ins-ask-go:disabled { opacity: 0.5; cursor: default; }
+.ins-ask-go svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.ins-ask-examples { margin-top: 10px; }
+.ins-ask-result { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-light); }
+.ins-ask-result.hidden { display: none; }
+.ins-ask-headline { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text); }
+.ins-ask-sentence { margin-top: 2px; font-size: 0.9375rem; line-height: 1.45; color: var(--text); }
+.ins-ask-searched { margin: 4px 0 8px; font-size: 0.8125rem; color: var(--text2); }
+.ins-ask-result .ins-list { margin-top: 4px; }
+/* phones: the examples swipe in one row, like History's chips */
+@media not ((hover: hover) and (pointer: fine)) {
+  .ins-ask-examples { flex-wrap: nowrap; overflow-x: auto; margin-left: -20px; margin-right: -20px; padding: 0 20px 2px; scrollbar-width: none; }
+  .ins-ask-examples::-webkit-scrollbar { display: none; }
+  .ins-ask-examples .chip { flex-shrink: 0; white-space: nowrap; }
+}

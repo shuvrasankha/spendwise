@@ -138,3 +138,39 @@ test('the new Savings & Investments name is also counted as saved', () => {
   assert.equal(s.spent, 19200);
   assert.equal(s.invested, 4000);
 });
+
+// ── Analysis the Dashboard doesn't show ──
+const oct = periodRange('month', today); // 1–21 Oct against 1–21 Sep
+const octData = {
+  expenses: [
+    { amount: 1200, category: 'Food & Dining', date: '2026-10-03', payment: 'UPI', description: 'Dinner out' },   // Sat
+    { amount: 300, category: 'Food & Dining', date: '2026-10-10', payment: 'UPI' },                               // Sat
+    { amount: 18000, category: 'Home & Rent', date: '2026-10-05', payment: 'Net Banking', description: 'Rent', repeat: 'monthly' }, // Mon
+    { amount: 5000, category: 'Shopping', date: '2026-10-07', payment: 'Credit Card', description: 'iPhone EMI', repeat: 'monthly', emiTotal: 6 }, // Wed
+    { amount: 500, category: 'Food & Dining', date: '2026-09-06', payment: 'Cash' },
+    { amount: 18000, category: 'Home & Rent', date: '2026-09-05', payment: 'Net Banking', repeat: 'monthly' },
+    { amount: 2500, category: 'Travel', date: '2026-09-12', payment: 'UPI' },
+  ],
+  income: [{ amount: 85000, date: '2026-10-01' }, { amount: 80000, date: '2026-09-01' }],
+};
+
+test('compared with the same days last period: spending and income', () => {
+  const s = summarize(octData, oct);
+  assert.equal(s.spent, 24500);
+  assert.equal(s.prevSpent, 21000);
+  assert.equal(s.prevEarned, 80000);
+  assert.equal(s.prevIncomeCount, 1);
+});
+
+test('what changed: biggest rises then biggest falls, a category gone to nothing counts', () => {
+  const m = summarize(octData, oct).movers.map(x => [x.category, x.diff]);
+  assert.deepEqual(m, [['Shopping', 5000], ['Food & Dining', 1000], ['Travel', -2500]]);
+});
+
+test('patterns: by weekday (Monday first), by payment method, fixed vs flexible', () => {
+  const s = summarize(octData, oct);
+  assert.deepEqual(s.weekdays.map(w => w.amount), [18000, 0, 5000, 0, 0, 1500, 0]);
+  assert.deepEqual(s.payments.map(p => [p.name, p.amount]), [['Net Banking', 18000], ['Credit Card', 5000], ['UPI', 1500]]);
+  assert.equal(s.fixed, 23000); // rent and the EMI
+  assert.deepEqual(s.biggest[0], { category: 'Home & Rent', amount: 18000, date: '2026-10-05', description: 'Rent' });
+});

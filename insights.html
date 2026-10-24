@@ -220,8 +220,21 @@
       <div class="ins-page">
         <header class="ins-head">
           <h1>Insights</h1>
-          <p>Where your money went, worked out on this device.</p>
+          <p>How a period compares with the one before, and the patterns in your spending.</p>
         </header>
+
+        <!-- Ask about your spending (insights-v2.js askQuestion, ask-data.js): worked out on the device -->
+        <section class="home-section ins-ask" aria-labelledby="ask-title">
+          <h2 class="ins-ask-title" id="ask-title">Ask about your spending</h2>
+          <form class="ins-ask-form" id="ask-form" role="search">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <label for="ask-input" class="sr-only">Your question</label>
+            <input type="text" id="ask-input" maxlength="200" autocomplete="off" enterkeyhint="search" placeholder="How much did I spend on Amazon last month?" />
+            <button type="submit" class="ins-ask-go" id="ask-go" aria-label="Ask"><i data-lucide="arrow-up" aria-hidden="true"></i></button>
+          </form>
+          <div class="chips ins-ask-examples" id="ask-examples" role="group" aria-label="Examples"></div>
+          <div class="ins-ask-result hidden" id="ask-result" aria-live="polite"></div>
+        </section>
 
         <div class="seg" id="period-tabs" role="group" aria-label="Period">
           <button type="button" class="seg-btn" data-period="month" aria-pressed="true">This month</button>

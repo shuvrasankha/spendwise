@@ -82,7 +82,8 @@ export function summarize({ expenses = [], income = [], debts = [] }, r) {
   const inc = income.filter(i => inRange(i.date, r.start, r.end));
   const prevExp = expenses.filter(e => isSpending(e) && inRange(e.date, r.prevStart, r.prevEnd));
 
-  const spent = sum(exp), earned = sum(inc), prevSpent = sum(prevExp);
+  const prevInc = income.filter(i => inRange(i.date, r.prevStart, r.prevEnd));
+  const spent = sum(exp), earned = sum(inc), prevSpent = sum(prevExp), prevEarned = sum(prevInc);
   const invested = sum(inPeriod) - spent;
   const byCat = {}, prevByCat = {};
   exp.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
@@ -110,14 +111,50 @@ export function summarize({ expenses = [], income = [], debts = [] }, r) {
     dailyAvg,
     projection: r.monthDays ? dailyAvg * r.monthDays : null,
     prevSpent, spendChange: pct(spent, prevSpent),
+    prevEarned, prevIncomeCount: prevInc.length,
     categories,
+    movers: movers(byCat, prevByCat),
     biggest: [...exp].sort((a, b) => b.amount - a.amount).slice(0, 3)
-      .map(e => ({ category: e.category, amount: e.amount, date: e.date })),
+      .map(e => ({ category: e.category, amount: e.amount, date: e.date, description: e.description && e.description !== '-' ? e.description : '' })),
+    weekdays: weekdays(exp),
+    payments: shares(exp, e => e.payment || 'Other', spent),
+    fixed: sum(exp.filter(e => e.repeat === 'monthly' || e.emiTotal > 0)),
     debts: {
       youOwe, owedToYou, activeCount: active.length,
       settledInPeriod: debts.filter(dbt => dbt.settled && inRange(dbt.settledDate, r.start, r.end)).length,
     },
   };
+}
+
+// Categories that moved most against the previous period, by amount: up to 2 that rose and 2 that
+// fell (a category gone to nothing counts as falling). change is the % move, null when new.
+function movers(byCat, prevByCat) {
+  const all = [...new Set([...Object.keys(byCat), ...Object.keys(prevByCat)])].map(category => {
+    const amount = byCat[category] || 0, prevAmount = prevByCat[category] || 0;
+    return { category, amount, prevAmount, diff: amount - prevAmount, change: pct(amount, prevAmount) };
+  }).filter(m => Math.abs(m.diff) >= 1);
+  const up = all.filter(m => m.diff > 0).sort((a, b) => b.diff - a.diff).slice(0, 2);
+  const down = all.filter(m => m.diff < 0).sort((a, b) => a.diff - b.diff).slice(0, 2);
+  return [...up, ...down];
+}
+
+// Spending per weekday, Monday first ({ day: 'Mon', amount })
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+function weekdays(exp) {
+  const totals = Array(7).fill(0);
+  exp.forEach(e => {
+    const [y, m, d] = e.date.split('-').map(Number);
+    totals[(new Date(y, m - 1, d).getDay() + 6) % 7] += e.amount;
+  });
+  return totals.map((amount, i) => ({ day: WEEKDAYS[i], amount }));
+}
+
+// [{ name, amount, share }] largest first
+function shares(list, keyOf, total) {
+  const by = {};
+  list.forEach(e => { const k = keyOf(e); by[k] = (by[k] || 0) + e.amount; });
+  return Object.entries(by).map(([name, amount]) => ({ name, amount, share: total > 0 ? (amount / total) * 100 : 0 }))
+    .sort((a, b) => b.amount - a.amount);
 }
 
 export const hasData = s => s.txCount > 0 || s.incomeCount > 0 || s.invested > 0 || s.debts.activeCount > 0;
@@ -139,6 +176,11 @@ export function factsText(s, r, money) {
       `${c.category} ${money(c.amount)} (${c.share.toFixed(0)}%` +
       (c.change !== null ? `, ${c.change >= 0 ? '+' : ''}${c.change.toFixed(0)}% vs before` : c.prevAmount === 0 ? ', new' : '') + ')'
     ).join('; '));
+  }
+  if (s.txCount) {
+    lines.push('BY WEEKDAY: ' + s.weekdays.map(w => `${w.day} ${money(w.amount)}`).join('; '));
+    lines.push('BY PAYMENT METHOD: ' + s.payments.map(p => `${p.name} ${money(p.amount)} (${p.share.toFixed(0)}%)`).join('; '));
+    lines.push(`FIXED (repeating bills and EMIs): ${money(s.fixed)}; FLEXIBLE: ${money(s.spent - s.fixed)}`);
   }
   if (s.biggest.length) lines.push('BIGGEST EXPENSES: ' + s.biggest.map(b => `${b.category} ${money(b.amount)} on ${shortDate(b.date)}`).join('; '));
   lines.push(s.debts.activeCount

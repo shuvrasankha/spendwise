@@ -1539,6 +1539,21 @@ function initHistory() {
   ["export-range", "export-from", "export-to"].forEach(id => $id(id)?.addEventListener("change", updateExportDialog));
   document.querySelector(".hist-page").addEventListener("click", e => { if (e.target.id === "hist-clear") clearHistoryFilters(); });
   if (location.hash === "#income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click(); // "All income" link
+  // Opened from Insights › Ask (?tab=income&q=amazon&from=…&to=…&cat=…): show exactly what was asked
+  const asked = new URLSearchParams(location.search);
+  if (["q", "from", "to", "cat", "tab"].some(k => asked.has(k))) {
+    if (asked.get("tab") === "income") $id("hist-tabs").querySelector('[data-hist-tab="income"]').click();
+    if (asked.has("q")) $id("hist-search").value = asked.get("q");
+    const isDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v || "");
+    if (isDate(asked.get("from")) || isDate(asked.get("to"))) {
+      $id("hist-range").value = "custom";
+      $id("hist-custom").classList.remove("hidden");
+      $id("hist-from").value = isDate(asked.get("from")) ? asked.get("from") : "";
+      $id("hist-to").value = isDate(asked.get("to")) ? asked.get("to") : "";
+    }
+    asked.getAll("cat").forEach(c => hist.kinds.add(c));
+    rerender();
+  }
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initHistory);

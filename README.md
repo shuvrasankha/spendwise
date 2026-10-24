@@ -42,6 +42,11 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 - Auto-sync when connection is restored
 - Pending transaction indicator
 
+### 🔎 Ask about your spending
+- Ask in plain words on Insights: "How much did I spend on Amazon last month?", "Food this week", "Biggest expense in August"
+- The AI only turns the question into a search; the answer is worked out on your device from your own entries, with a link to see them in History
+- Without the AI (declined or offline), common questions are understood on the device
+
 ### 🎙️ Voice Commands
 - Voice-powered transaction entry with AI parsing
 - Natural language input support

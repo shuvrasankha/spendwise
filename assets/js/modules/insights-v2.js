@@ -6,10 +6,11 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
-import { todayStr, normalizeCategory, countTo } from '../utils/helpers.js';
+import { todayStr, normalizeCategory } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
+import { askPrompt, readSpec, guessSpec, runQuery, answerFor, subjectText, dayText } from './ask-data.js';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -86,19 +87,19 @@ async function loadData() {
   const get = async (name, map) =>
     (await getDocs(query(collection(db, name), where('uid', '==', uid)))).docs.map(d => map(d.data()));
   const [expenses, income, debts] = await Promise.all([
-    get('expenses', r => ({ amount: num(r.amount), category: normalizeCategory(r.category), date: r.date || '' })),
-    get('income', r => ({ amount: num(r.amount), date: r.date || '' })),
+    get('expenses', r => ({ amount: num(r.amount), category: normalizeCategory(r.category), date: r.date || '',
+      description: r.description || '', payment: r.payment || '', repeat: r.repeat || '', emiTotal: Number(r.emiTotal) || 0,
+      notes: r.notes || '', cardName: r.cardName || '', tags: Array.isArray(r.tags) ? r.tags : [] })),
+    get('income', r => ({ amount: num(r.amount), date: r.date || '', source: r.source || '', notes: r.notes || '', bank: r.bank || '' })),
     get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '' })),
   ]);
   return { expenses, income, debts };
 }
 
-// ── At a glance ─────────────────────────────────────────────────────────────
-function changeText(change, against) {
-  if (change === null) return '';
-  const up = change > 0;
-  return `<p class="glance-change ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${Math.abs(change).toFixed(0)}% ${up ? 'more' : 'less'} than ${esc(against)}</p>`;
-}
+// ── Analysis ────────────────────────────────────────────────────────────────
+// The Dashboard already shows this month's totals, income, savings, debts and categories. Insights
+// shows only what it doesn't: how the period compares with the one before, what changed, the
+// biggest expenses, when and how you spend, and what is fixed versus flexible.
 
 function setGlanceLoading() {
   const el = $('insights-glance');
@@ -107,88 +108,111 @@ function setGlanceLoading() {
   el.innerHTML = '<section class="home-hero ins-skeleton" aria-label="Adding up your numbers"><span></span><span></span><span></span></section>';
 }
 
-// Same building blocks as the home page, for any period
+// "₹2,100 more" / "₹2,100 less" / "the same"
+const moreLess = d => (Math.abs(d) < 1 ? 'the same' : `${money(Math.abs(d))} ${d > 0 ? 'more' : 'less'}`);
+
+function compareCard(s, r) {
+  const head = `<div class="home-section-head"><h3 id="ins-compare-title">Compared with ${esc(r.prevLabel)}</h3></div>`;
+  if (!(s.prevSpent > 0)) {
+    return `<section class="home-section ins-compare" aria-labelledby="ins-compare-title">${head}
+      <p class="ins-compare-none">Nothing to compare yet: no expenses in ${esc(r.prevLabel)}.</p></section>`;
+  }
+  const diff = s.spent - s.prevSpent;
+  const rows = [];
+  if (s.incomeCount || s.prevIncomeCount) rows.push(['Income', moreLess(s.earned - s.prevEarned)]);
+  if (s.incomeCount && s.prevIncomeCount) rows.push(['Saved', moreLess((s.earned - s.spent) - (s.prevEarned - s.prevSpent))]);
+  return `<section class="home-section ins-compare" aria-labelledby="ins-compare-title">${head}
+    <p class="ins-figure"><span class="ins-figure-amount">${Math.abs(diff) < 1 ? 'Same' : money(Math.abs(diff))}</span>
+      <span class="ins-figure-unit">${Math.abs(diff) < 1 ? 'spending as before' : `${diff > 0 ? 'more' : 'less'} spent`}</span></p>
+    ${s.spendChange !== null && Math.abs(diff) >= 1 ? `<p class="ins-compare-pct ${diff > 0 ? 'up' : 'down'}">${Math.abs(s.spendChange).toFixed(0)}% ${diff > 0 ? 'higher' : 'lower'} than ${esc(r.prevLabel)}</p>` : ''}
+    ${rows.length ? `<ul class="ins-compare-rows">${rows.map(([k, v]) => `<li><span>${k}</span><strong>${esc(v)}</strong></li>`).join('')}</ul>` : ''}
+  </section>`;
+}
+
+function changedCard(s) {
+  if (!s.movers.length) return '';
+  const rows = s.movers.map(m => {
+    const up = m.diff > 0;
+    const sub = m.prevAmount === 0 ? `New · ${money(m.amount)}` : m.amount === 0 ? `None this time · was ${money(m.prevAmount)}` : `${money(m.prevAmount)} → ${money(m.amount)}`;
+    return `<li class="ins-row">
+      <span class="ins-icon ${up ? 'up' : 'down'}" aria-hidden="true"><i data-lucide="${up ? 'trending-up' : 'trending-down'}"></i></span>
+      <div class="ins-row-body">
+        <div class="home-row-main"><span class="home-row-title">${esc(m.category)}</span><span class="home-row-meta">${esc(sub)}</span></div>
+        <span class="ins-row-value ${up ? 'up' : 'down'}">${up ? '+' : '−'}${money(Math.abs(m.diff))}</span>
+      </div>
+    </li>`;
+  }).join('');
+  return `<section class="home-section" aria-labelledby="ins-changed-title">
+    <div class="home-section-head"><h3 id="ins-changed-title">What changed</h3><span class="home-section-total">by category</span></div>
+    <ul class="ins-list">${rows}</ul></section>`;
+}
+
+function biggestCard(s) {
+  if (!s.biggest.length) return '';
+  const rows = s.biggest.map(b => `<li class="ins-row">
+      <span class="ins-icon" aria-hidden="true"><i data-lucide="receipt"></i></span>
+      <div class="ins-row-body">
+        <div class="home-row-main"><span class="home-row-title">${esc(b.description || b.category)}</span><span class="home-row-meta">${esc([b.description ? b.category : '', shortDate(b.date)].filter(Boolean).join(' · '))}</span></div>
+        <span class="home-row-amount">${money(b.amount)}</span>
+      </div>
+    </li>`).join('');
+  return `<section class="home-section" aria-labelledby="ins-big-title">
+    <div class="home-section-head"><h3 id="ins-big-title">Biggest expenses</h3></div>
+    <ul class="ins-list">${rows}</ul></section>`;
+}
+
+const DAY_NAMES = { Mon: 'Mondays', Tue: 'Tuesdays', Wed: 'Wednesdays', Thu: 'Thursdays', Fri: 'Fridays', Sat: 'Saturdays', Sun: 'Sundays' };
+function weekdayCard(s) {
+  if (s.txCount < 3) return '';
+  const top = s.weekdays.reduce((a, b) => (b.amount > a.amount ? b : a));
+  const max = top.amount || 1;
+  const bars = s.weekdays.map(w => `<li class="ins-day${w === top ? ' top' : ''}">
+      <span class="ins-day-bar"><span style="height:${Math.max((w.amount / max) * 100, w.amount ? 6 : 0).toFixed(0)}%"></span></span>
+      <span class="ins-day-name">${w.day.slice(0, 1)}<span class="sr-only">${w.day.slice(1)}: ${money(w.amount)}</span></span>
+    </li>`).join('');
+  return `<section class="home-section" aria-labelledby="ins-days-title">
+    <div class="home-section-head"><h3 id="ins-days-title">When you spend</h3></div>
+    <p class="ins-lead">Most on <strong>${DAY_NAMES[top.day]}</strong>: ${money(top.amount)}, ${s.spent > 0 ? ((top.amount / s.spent) * 100).toFixed(0) : 0}% of this period's spending.</p>
+    <ul class="ins-days">${bars}</ul></section>`;
+}
+
+function paymentCard(s) {
+  if (s.payments.length < 1 || s.txCount < 2) return '';
+  const rows = s.payments.slice(0, 5).map(p => `<li class="ins-pay">
+      <div class="ins-pay-row"><span>${esc(p.name)}</span><span class="ins-pay-amount">${money(p.amount)} · ${p.share.toFixed(0)}%</span></div>
+      <div class="ins-bar" aria-hidden="true"><span style="width:${Math.max(p.share, 2).toFixed(1)}%"></span></div>
+    </li>`).join('');
+  return `<section class="home-section" aria-labelledby="ins-pay-title">
+    <div class="home-section-head"><h3 id="ins-pay-title">How you pay</h3></div>
+    <ul class="ins-pays">${rows}</ul></section>`;
+}
+
+function fixedCard(s) {
+  if (!(s.fixed > 0) || !(s.spent > 0)) return '';
+  const share = (s.fixed / s.spent) * 100;
+  return `<section class="home-section" aria-labelledby="ins-fixed-title">
+    <div class="home-section-head"><h3 id="ins-fixed-title">Fixed and flexible</h3></div>
+    <div class="ins-split" role="img" aria-label="${share.toFixed(0)}% fixed, ${(100 - share).toFixed(0)}% flexible"><span style="width:${share.toFixed(1)}%"></span></div>
+    <ul class="ins-legend">
+      <li><span class="ins-dot fixed"></span><div><strong>${money(s.fixed)} fixed</strong><span>Repeating bills and EMIs · ${share.toFixed(0)}%</span></div></li>
+      <li><span class="ins-dot flex"></span><div><strong>${money(s.spent - s.fixed)} flexible</strong><span>Everything else, where cutting back is up to you · ${(100 - share).toFixed(0)}%</span></div></li>
+    </ul></section>`;
+}
+
 function renderGlance(s, r) {
   const el = $('insights-glance');
   if (!el) return;
   el.setAttribute('aria-busy', 'false');
-
   if (!hasData(s)) {
     el.innerHTML = `
-      <section class="home-hero">
-        <h2 class="home-month">${esc(r.label)}</h2>
-        <p class="ins-none">Nothing recorded in this period. Try a longer period, or <a href="expense.html">add an expense</a>.</p>
+      <section class="home-section">
+        <p class="ins-none">Nothing recorded in ${esc(r.label)}. Try a longer period, or <a href="expense.html">add an expense</a>.</p>
       </section>`;
     return;
   }
-
-  const monthName = r.monthDays ? new Date(r.end + 'T00:00:00').toLocaleDateString('en-US', { month: 'long' }) : '';
-  const cats = s.categories.slice(0, 5).map(c => {
-    const note = c.change === null ? (c.prevAmount === 0 && s.prevSpent > 0 ? 'new vs before' : '')
-      : Math.abs(c.change) < 1 ? 'same as before'
-      : `${c.change > 0 ? '+' : '−'}${Math.abs(c.change).toFixed(0)}% vs before`;
-    return `
-      <li class="glance-cat">
-        <div class="glance-cat-row">
-          <span class="glance-cat-name">${esc(c.category)}</span>
-          <span class="glance-cat-amount">${money(c.amount)}</span>
-        </div>
-        <div class="glance-bar" aria-hidden="true"><span style="width:${Math.max(c.share, 2).toFixed(1)}%"></span></div>
-        <div class="glance-cat-meta">${c.share.toFixed(0)}% of spending${note ? ` · ${note}` : ''}</div>
-      </li>`;
-  }).join('');
-  const biggest = s.biggest.map(b => `
-    <li class="home-row">
-      <div class="home-row-main"><span class="home-row-title">${esc(b.category)}</span><span class="home-row-meta">${shortDate(b.date)}</span></div>
-      <span class="home-row-amount">${money(b.amount)}</span>
-    </li>`).join('');
-
-  el.innerHTML = `
-    <section class="home-hero" aria-labelledby="glance-title">
-      <h2 class="home-month" id="glance-title">${esc(r.label)}</h2>
-      <p class="home-spent"><span class="home-spent-amount" data-count="spent">${money(s.spent)}</span> <span class="home-spent-label">spent</span></p>
-      ${changeText(s.spendChange, r.prevLabel)}
-      <p class="home-pace">${money(s.dailyAvg)} a day${s.projection !== null ? ` · on track for ${money(s.projection)} by the end of ${esc(monthName)}` : ''}</p>
-    </section>
-    <div class="home-tiles">
-      <div class="home-tile">
-        <span class="home-tile-label">Income</span>
-        <span class="home-tile-value"${s.incomeCount ? ' data-count="earned"' : ''}>${s.incomeCount ? money(s.earned) : '—'}</span>
-        ${s.incomeCount ? '' : '<span class="home-tile-sub">None recorded</span>'}
-      </div>
-      <div class="home-tile">
-        <span class="home-tile-label">Saved</span>
-        <span class="home-tile-value"${s.savingsRate !== null ? ' data-count="saved"' : ''}>${s.savingsRate !== null ? money(s.saved) : '—'}</span>
-        <span class="home-tile-sub">${s.savingsRate !== null ? `${s.savingsRate.toFixed(0)}% of income` : 'Needs income entries'}${s.invested > 0 ? ` · ${money(s.invested)} invested` : ''}</span>
-      </div>
-      ${s.debts.activeCount ? `
-      <a class="home-tile home-tile-wide" href="debt.html">
-        <span class="home-tile-label">Debts now</span>
-        <span class="home-tile-debts">
-          <span>You owe <strong>${money(s.debts.youOwe)}</strong></span>
-          <span>Owed to you <strong>${money(s.debts.owedToYou)}</strong></span>
-        </span>
-      </a>` : ''}
-    </div>
-    ${cats ? `
-    <section class="home-section" aria-labelledby="glance-cats-title">
-      <div class="home-section-head"><h3 id="glance-cats-title">Where it went</h3></div>
-      <ul class="glance-cats">${cats}</ul>
-    </section>` : ''}
-    ${biggest ? `
-    <section class="home-section" aria-labelledby="glance-big-title">
-      <div class="home-section-head"><h3 id="glance-big-title">Biggest expenses</h3></div>
-      <ul class="home-list">${biggest}</ul>
-    </section>` : ''}`;
-  // Switching periods counts each figure from the last period's value to this one's
-  el.querySelectorAll('[data-count]').forEach(n => {
-    const key = n.dataset.count;
-    n.dataset.value = shownTotals[key] ?? 0;
-    countTo(n, s[key], money);
-    shownTotals[key] = s[key];
-  });
+  el.innerHTML = [compareCard(s, r), changedCard(s), biggestCard(s), weekdayCard(s), paymentCard(s), fixedCard(s)].join('');
+  if (window.lucide) lucide.createIcons();
 }
-const shownTotals = {}; // last value shown per figure (spent, earned, saved)
 
 async function showPeriod() {
   if (!currentUser) return;
@@ -436,12 +460,12 @@ function showConsentDialog() {
     overlay.className = 'modal-overlay open insights-consent';
     overlay.innerHTML = `
       <div class="insights-consent-box" role="dialog" aria-modal="true" aria-labelledby="consent-title">
-        <h3 id="consent-title">Ask the AI coach?</h3>
-        <p>Your numbers above are worked out on your device. To get advice, SpendWise sends the AI only totals by category and dates.</p>
-        <p class="insights-consent-note">Descriptions, notes and people's names are never sent.</p>
+        <h3 id="consent-title">Use the AI?</h3>
+        <p>Your numbers are worked out on your device. To understand a question, SpendWise sends the AI only the question; for the coach's advice, only totals by category and dates.</p>
+        <p class="insights-consent-note">Your entries, descriptions, notes and people's names are never sent. Without the AI, common questions are still answered on your device.</p>
         <div class="insights-consent-actions">
           <button type="button" id="consent-decline" class="btn-secondary">Not now</button>
-          <button type="button" id="consent-accept" class="btn-primary">Ask the coach</button>
+          <button type="button" id="consent-accept" class="btn-primary">Continue</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -453,6 +477,103 @@ function showConsentDialog() {
     overlay.querySelector('#consent-accept').focus();
   });
 }
+
+// ── Ask about your spending (ask-data.js) ───────────────────────────────────
+// The AI turns the question into a search: it is sent the question and today's date, never entries.
+// The search runs here over the user's own entries. Declined, offline or over the limit, guessSpec
+// reads common questions on the device instead.
+let asking = false;
+
+async function specFor(question, today) {
+  if (await ensureConsent()) {
+    try {
+      const res = await callAI({
+        model: AI_MODEL,
+        messages: [{ role: 'system', content: askPrompt(today) }, { role: 'user', content: question }],
+        max_tokens: 200,
+        temperature: 0,
+      });
+      if (res.ok) {
+        const spec = readSpec((await res.json()).choices?.[0]?.message?.content || '');
+        if (spec) return spec;
+      }
+    } catch { /* offline: read it here */ }
+  }
+  return guessSpec(question, today);
+}
+
+// "Amazon · 1 Sep – 30 Sep · expenses": what was searched, so a misread question is easy to spot
+function searchedText(spec) {
+  const day = s => dayText(s, todayStr());
+  const dates = spec.from || spec.to ? `${spec.from ? day(spec.from) : 'The start'} – ${spec.to ? day(spec.to) : 'today'}` : 'All time';
+  const kind = spec.type === 'income' ? 'income' : spec.type === 'both' ? 'expenses and income' : 'expenses';
+  return [subjectText(spec) || 'Everything', dates, kind].join(' · ');
+}
+
+// The same search, opened in History (one kind at a time)
+function historyLink(spec) {
+  if (spec.type === 'both') return '';
+  const p = new URLSearchParams();
+  if (spec.type === 'income') p.set('tab', 'income');
+  const q = spec.tag ? '#' + spec.tag : spec.text;
+  if (q) p.set('q', q);
+  if (spec.from) p.set('from', spec.from);
+  if (spec.to) p.set('to', spec.to);
+  spec.categories.forEach(c => p.append('cat', c));
+  return 'history.html?' + p.toString();
+}
+
+function renderAnswer(spec, result, today) {
+  const box = $('ask-result');
+  const { headline, sentence } = answerFor(spec, result, money, today);
+  // newest first, or largest first when the question asks for the biggest
+  const shown = spec.measure === 'biggest' ? [...result.rows].sort((a, b) => b.amount - a.amount) : result.rows;
+  const rows = shown.slice(0, 5).map(r => {
+    const name = r.kind === 'income' ? (r.source || 'Income') : (r.description && r.description !== '-' ? r.description : r.category);
+    const sub = [r.kind === 'income' ? 'Income' : r.category, shortDate(r.date)].filter(Boolean).join(' · ');
+    return `<li class="ins-row">
+      <span class="ins-icon" aria-hidden="true"><i data-lucide="${r.kind === 'income' ? 'arrow-down-left' : 'receipt'}"></i></span>
+      <div class="ins-row-body">
+        <div class="home-row-main"><span class="home-row-title">${esc(name)}</span><span class="home-row-meta">${esc(sub)}</span></div>
+        <span class="home-row-amount">${money(r.amount)}</span>
+      </div>
+    </li>`;
+  }).join('');
+  const link = historyLink(spec);
+  box.innerHTML = `
+    <p class="ins-ask-headline">${esc(headline)}</p>
+    <p class="ins-ask-sentence">${esc(sentence)}</p>
+    <p class="ins-ask-searched">Searched: ${esc(searchedText(spec))}</p>
+    ${rows ? `<ul class="ins-list">${rows}</ul>` : ''}
+    ${link && result.count ? `<a class="home-more" href="${esc(link)}">${result.count > 5 ? `See all ${result.count} in History` : 'Open in History'} <i data-lucide="chevron-right"></i></a>` : ''}`;
+  box.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+async function askQuestion(question) {
+  question = question.trim().slice(0, 200);
+  if (!question || asking || !currentUser) return;
+  asking = true;
+  const btn = $('ask-go');
+  btn.disabled = true;
+  const box = $('ask-result');
+  box.classList.remove('hidden');
+  box.innerHTML = '<p class="ins-ask-sentence">Looking through your entries…</p>';
+  try {
+    const today = todayStr();
+    const [spec, data] = await Promise.all([specFor(question, today), dataPromise ??= loadData()]);
+    renderAnswer(spec, runQuery(spec, data), today);
+  } catch (err) {
+    console.error('Ask error:', err);
+    dataPromise = null;
+    box.innerHTML = `<p class="ins-ask-sentence">Couldn't load your entries. Check your connection and try again.</p>`;
+  } finally {
+    asking = false;
+    btn.disabled = false;
+  }
+}
+
+const ASK_EXAMPLES = ['Amazon last month', 'Food this week', 'Biggest expense this year', 'Salary this month'];
 
 // ── Setup ───────────────────────────────────────────────────────────────────
 function selectPeriod(period) {
@@ -488,6 +609,17 @@ function initUI() {
     });
   }
   $('new-chat-btn')?.addEventListener('click', closeChat);
+  $('ask-form')?.addEventListener('submit', e => { e.preventDefault(); askQuestion($('ask-input').value); });
+  const examples = $('ask-examples');
+  if (examples) {
+    examples.innerHTML = ASK_EXAMPLES.map(q => `<button type="button" class="chip">${esc(q)}</button>`).join('');
+    examples.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      $('ask-input').value = chip.textContent;
+      askQuestion(chip.textContent);
+    });
+  }
   updateCoach();
 }
 

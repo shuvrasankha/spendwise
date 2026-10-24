@@ -345,43 +345,44 @@
     </div>
   </div>
 
-  <!-- Backup & Restore Modal -->
+  <!-- Backup & restore (modules/backup.js keeps these ids): one card, a row each for download and
+       restore, after the inset grouped lists elsewhere. Restore stays off until a file is chosen. -->
   <div id="backup-modal" class="modal-overlay hidden">
-    <div class="modal-box backup-modal-box">
-      <div class="modal-header">
-        <h3><i data-lucide="database"></i> Backup & Restore</h3>
-        <button class="modal-close-btn" data-action="closeBackupModal" title="Close">
-          <i data-lucide="x"></i>
-        </button>
-      </div>
-      <div class="modal-body">
-        <!-- Export Section -->
-        <div class="backup-section">
-          <h4><i data-lucide="download"></i> Export Backup</h4>
-          <p>Download all your expenses, income, and debts as a JSON file.</p>
-          <button class="btn-backup" id="btn-export" data-action="exportData">
-            <i data-lucide="download"></i> Export Backup
-          </button>
+    <div class="modal-box backup-box">
+      <div class="backup-head">
+        <div>
+          <h3 id="backup-title">Backup &amp; restore</h3>
+          <p class="backup-sub">One file with all your expenses, income and debts.</p>
         </div>
+        <button type="button" class="modal-close-btn" data-action="closeBackupModal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
 
-        <!-- Import Section -->
-        <div class="backup-section">
-          <h4><i data-lucide="upload"></i> Import Backup</h4>
-          <p>Restore your data from a previously exported backup file.</p>
-          <div class="backup-file-drop" id="backup-file-drop">
-            <i data-lucide="file-up"></i>
-            <p>Drag & drop your backup file here</p>
-            <p class="backup-file-sub">or click to browse</p>
-            <input type="file" id="backup-file-input" accept=".json" class="backup-file-input" data-change="handleFileSelect" />
-            <span id="backup-file-name" class="backup-file-name">No file selected</span>
+      <div class="backup-rows">
+        <div class="backup-row">
+          <span class="backup-icon" aria-hidden="true"><i data-lucide="download"></i></span>
+          <div class="backup-text">
+            <strong>Download a backup</strong>
+            <span>Saves everything as a .json file. Keep it somewhere safe.</span>
           </div>
-          <button class="btn-backup" id="btn-import" data-action="handleImportClick">
-            <i data-lucide="upload"></i> Import Backup
-          </button>
+          <button type="button" class="backup-action" id="btn-export" data-action="exportData">Download</button>
         </div>
 
-        <div id="backup-status" class="backup-status hidden"></div>
+        <div class="backup-row backup-row-restore">
+          <span class="backup-icon" aria-hidden="true"><i data-lucide="upload"></i></span>
+          <div class="backup-text">
+            <strong>Restore from a backup</strong>
+            <span>Brings back what's in a SpendWise backup. Entries you already have aren't doubled.</span>
+            <div class="backup-pick" id="backup-file-drop">
+              <i data-lucide="file-up" aria-hidden="true"></i>
+              <span class="backup-file-name" id="backup-file-name">Choose a file, or drop it here</span>
+              <input type="file" id="backup-file-input" accept=".json,application/json" class="backup-file-input" data-change="handleFileSelect" aria-label="Choose a backup file">
+            </div>
+            <button type="button" class="btn-primary backup-restore" id="btn-import" data-action="handleImportClick" disabled>Restore</button>
+          </div>
+        </div>
       </div>
+
+      <div id="backup-status" class="backup-status hidden" role="status"></div>
     </div>
   </div>
 
