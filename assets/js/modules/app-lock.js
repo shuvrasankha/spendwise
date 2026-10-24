@@ -110,12 +110,16 @@
     else store.del(sessionStorage, AWAY);
   });
 
-  // ── Switch in the profile menu ───────────────────────────────────────────
+  // ── Switch on the Settings page (#settings-lock) ─────────────────────────
   async function addSwitch() {
-    if (!supported) return;
-    try { if (!(await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())) return; } catch { return; }
-    const dropdown = document.getElementById('profile-dropdown');
-    if (!dropdown || document.getElementById('lock-toggle')) return;
+    const host = document.getElementById('settings-lock');
+    if (!host || document.getElementById('lock-toggle')) return;
+    let available = supported;
+    try { available = available && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch { available = false; }
+    if (!available) {
+      host.innerHTML = '<p class="profile-reminder-note">App lock needs a fingerprint, face or screen lock, which this device or browser doesn\'t offer.</p>';
+      return;
+    }
     const wrap = document.createElement('div');
     wrap.className = 'profile-reminder-wrap';
     wrap.innerHTML = `
@@ -124,8 +128,7 @@
         <input type="checkbox" role="switch" id="lock-toggle" class="reminder-switch">
       </div>
       <p class="profile-reminder-note">Asks for your fingerprint, face or screen lock when SpendWise opens. This device only.</p>`;
-    const anchor = dropdown.querySelector('.btn-logout') || null;
-    dropdown.insertBefore(wrap, anchor);
+    host.append(wrap);
     const toggle = wrap.querySelector('#lock-toggle');
     const note = wrap.querySelector('.profile-reminder-note');
     toggle.checked = !!credential();

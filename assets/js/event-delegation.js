@@ -33,6 +33,7 @@
     'navigateToHistory': function() { window.location.href = 'history.html'; },
     'navigateToDebt': function() { window.location.href = 'debt.html'; },
     'navigateToInsights': function() { window.location.href = 'insights.html'; },
+    'navigateToSettings': function() { window.location.href = 'settings.html'; },
 
     // Mobile menu
     'toggleMobileMenu': function() { if (window.toggleMobileMenu) window.toggleMobileMenu(); },

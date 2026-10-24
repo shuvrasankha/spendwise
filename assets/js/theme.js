@@ -27,8 +27,8 @@
       btn.title = label;
       btn.setAttribute('aria-label', label);
     }
-    const row = document.getElementById('theme-menu-label');
-    if (row) row.textContent = 'Appearance: ' + m[0].toUpperCase() + m.slice(1);
+    const row = document.getElementById('theme-menu-label'); // the Settings page's Appearance row
+    if (row) row.textContent = m[0].toUpperCase() + m.slice(1);
     let redraw = false;
     ['theme-icon', 'theme-menu-icon'].forEach(id => {
       const icon = document.getElementById(id);
@@ -52,19 +52,7 @@
   };
 
   media.addEventListener('change', apply); // follow the system live while in System mode
-  // Phones hide the top-bar button (CSS) and use this row in the profile menu instead
-  function addMenuRow() {
-    const dropdown = document.getElementById('profile-dropdown');
-    if (!dropdown || document.getElementById('theme-menu-row')) return;
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.id = 'theme-menu-row';
-    row.className = 'btn-profile-action theme-menu-row';
-    row.setAttribute('data-action', 'toggleTheme');
-    row.innerHTML = '<i id="theme-menu-icon" data-lucide="sun-moon"></i><span id="theme-menu-label">Appearance</span>';
-    const anchor = dropdown.querySelector('.profile-currency-wrap');
-    if (anchor) anchor.after(row); else dropdown.prepend(row);
-  }
-  document.addEventListener('DOMContentLoaded', () => { addMenuRow(); apply(); }); // label + icon once the header exists
+  // Phones hide the top-bar button (CSS) and use the Appearance row on the Settings page instead
+  document.addEventListener('DOMContentLoaded', apply); // label + icon once the page exists
   apply();
 })();

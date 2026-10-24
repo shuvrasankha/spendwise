@@ -121,25 +121,10 @@ function closeDialog() {
   if (opener && opener.focus) opener.focus({ preventScroll: true });
 }
 
-// Profile menu row, next to the currency (same place as the daily reminder)
-function addMenuRow() {
-  const dropdown = document.getElementById('profile-dropdown');
-  if (!dropdown || dropdown.querySelector('[data-open-budget]')) return;
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'btn-profile-action';
-  btn.dataset.openBudget = '';
-  btn.innerHTML = '<i data-lucide="target"></i><span>Monthly budget</span>';
-  const anchor = dropdown.querySelector('.profile-currency-wrap');
-  if (anchor) anchor.after(btn); else dropdown.prepend(btn);
-  if (window.lucide) lucide.createIcons();
-}
-
+// Opened from Home's budget button and the Settings page
 document.addEventListener('click', e => {
   if (e.target.closest('[data-open-budget]')) { e.preventDefault(); openBudget(); }
 });
 
 window.getBudget = getBudget;
 window.openBudget = openBudget;
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addMenuRow);
-else addMenuRow();

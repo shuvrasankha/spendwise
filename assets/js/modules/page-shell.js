@@ -23,6 +23,11 @@ export function dismissPageLoader() {
 
 // Photo when the account has one, else the first letter (text only, never HTML)
 export function updateUserAvatar(user) {
+  // Who is signed in, at the top of the avatar menu
+  const name = document.getElementById('profile-name');
+  const email = document.getElementById('profile-email');
+  if (name) name.textContent = user.displayName || 'Your account';
+  if (email) email.textContent = user.email || '';
   const avatarEl = document.getElementById('user-avatar');
   if (!avatarEl) return;
   avatarEl.innerHTML = '';
