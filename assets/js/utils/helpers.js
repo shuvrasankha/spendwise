@@ -285,6 +285,68 @@ export function emiPlans(expenses, today = todayStr()) {
   return plans.sort((a, b) => a.done - b.done || (a.next || a.ends).localeCompare(b.next || b.ends));
 }
 
+// "Skip month" on a due repeating expense, remembered on this device (Dashboard, Insights)
+export const SKIP_KEY = 'spendwise_skip:';
+export const isSkippedBill = (key, month) => { try { return localStorage.getItem(SKIP_KEY + key + ':' + month) === '1'; } catch { return false; } };
+
+// ── Forecast ─────────────────────────────────────────────────────────────────
+// Spending splits into fixed (repeating bills and EMIs) and flexible (everything else). The month-end
+// forecast is what's spent so far, the bills still due this month, and the usual flexible spending
+// per day for the days left. "Usual" is the last 90 days' flexible spending per day (fewer days for a
+// newer account, from its first entry), leaving out one-off big expenses: single entries over 5% of
+// that flexible total, once there are 30 or more (a hotel or a washing machine isn't a daily habit).
+// Next month: the bills that will still be running, plus a month of usual flexible spending.
+const isFixed = e => e.repeat === 'monthly' || Number(e.emiTotal) > 0;
+const daysIn = month => { const [y, m] = month.split('-').map(Number); return new Date(y, m, 0).getDate(); };
+const dayDiff = (a, b) => Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 864e5);
+
+export function forecast(expenses, today = todayStr(), skipped = () => false) {
+  const month = today.slice(0, 7), next = addMonths(month, 1);
+  const spending = expenses.filter(e => e && e.date && isSpending(e));
+  const spent = spending.filter(e => e.date.slice(0, 7) === month && e.date <= today).reduce((s, e) => s + e.amount, 0);
+
+  // Usual flexible spending per day
+  const start = (() => { const d = new Date(today + 'T00:00:00'); d.setDate(d.getDate() - 89); return todayStr(d); })();
+  const first = spending.reduce((m, e) => (e.date < m ? e.date : m), today);
+  const from = first > start ? first : start;
+  const days = dayDiff(from, today) + 1;
+  const flexEntries = spending.filter(e => !isFixed(e) && e.date >= from && e.date <= today);
+  const flexTotal = flexEntries.reduce((s, e) => s + e.amount, 0);
+  const cap = flexEntries.length >= 30 ? flexTotal * 0.05 : Infinity;
+  const oneOffs = flexEntries.filter(e => e.amount > cap);
+  const flexible = flexTotal - oneOffs.reduce((s, e) => s + e.amount, 0);
+  const perDay = days > 0 ? flexible / days : 0;
+
+  // Bills still to pay this month: due ones not yet entered, and ones whose day hasn't come
+  const due = dueRecurring(expenses, today, skipped).map(d => ({ key: d.key, title: d.template.description && d.template.description !== '-' ? d.template.description : d.template.category, amount: d.template.amount, due: d.due }));
+  const later = upcomingBills(expenses, today, skipped).filter(b => b.due.slice(0, 7) === month && !due.some(d => d.key === b.key))
+    .map(b => ({ key: b.key, title: b.title, amount: b.amount, due: b.due }));
+  const billsDue = [...due, ...later].sort((a, b) => a.due.localeCompare(b.due));
+  const billsTotal = billsDue.reduce((s, b) => s + b.amount, 0);
+  const daysLeft = daysIn(month) - Number(today.slice(8, 10));
+  const usualLeft = perDay * daysLeft;
+
+  // Next month's running bills: every active series, less EMIs that end this month
+  const { latest, template, count } = recurringSeries(expenses);
+  let nextFixed = 0, nextBills = 0;
+  for (const [key, t] of template) {
+    if (t.repeat !== 'monthly') continue;
+    const emi = emiOf(t, count.get(key));
+    if (emi) {
+      const payingThisMonth = latest.get(key).date.slice(0, 7) < month && billsDue.some(b => b.key === key) ? 1 : 0;
+      if (emi.total - emi.paid - payingThisMonth < 1) continue;
+    }
+    nextFixed += t.amount; nextBills++;
+  }
+  const lastMonth = addMonths(month, -1);
+  return {
+    month, spent, perDay, daysLeft, billsDue, billsTotal, usualLeft, oneOffs: oneOffs.length,
+    total: spent + billsTotal + usualLeft,
+    lastMonthSpent: spending.filter(e => e.date.slice(0, 7) === lastMonth).reduce((s, e) => s + e.amount, 0),
+    next: { month: next, fixed: nextFixed, bills: nextBills, usual: perDay * daysIn(next), total: nextFixed + perDay * daysIn(next) },
+  };
+}
+
 // "21 Oct", or "21 Oct 2025" outside the current year: short enough for a list row
 export function shortDay(ds) {
   const d = new Date(ds + 'T00:00:00');

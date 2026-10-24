@@ -6,7 +6,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
-import { todayStr, normalizeCategory, countTo } from '../utils/helpers.js';
+import { todayStr, normalizeCategory, countTo, forecast, isSkippedBill, addMonths } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
@@ -199,6 +199,44 @@ function fixedCard(s) {
     </ul></section>`;
 }
 
+// ── Forecast: this month's end figure, how it's made up, and next month ─────
+// The Dashboard's "on track for" uses the same forecast(); this card shows how it adds up.
+const monthLong = m => new Date(m + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long' });
+function renderForecast(data) {
+  const el = $('insights-forecast');
+  if (!el) return;
+  const today = todayStr();
+  const f = forecast(data.expenses, today, isSkippedBill);
+  if (!(f.spent > 0) && !f.billsTotal && !(f.perDay > 0)) { el.innerHTML = ''; return; }
+  const name = monthLong(f.month), lastName = monthLong(addMonths(f.month, -1));
+  const diff = f.total - f.lastMonthSpent;
+  const vs = f.lastMonthSpent > 0 && Math.abs(diff) >= 1
+    ? `<p class="ins-compare-pct ${diff > 0 ? 'up' : 'down'}">${money(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than ${esc(lastName)} (${money(f.lastMonthSpent)})</p>` : '';
+  const pct = v => (f.total > 0 ? (v / f.total) * 100 : 0).toFixed(1);
+  const bills = f.billsDue.length
+    ? `${f.billsDue.slice(0, 3).map(b => esc(b.title)).join(', ')}${f.billsDue.length > 3 ? ` and ${f.billsDue.length - 3} more` : ''}`
+    : 'None left this month';
+  el.innerHTML = `
+    <section class="home-section ins-forecast" aria-labelledby="ins-forecast-title">
+      <div class="home-section-head"><h3 id="ins-forecast-title">Forecast</h3></div>
+      <p class="ins-figure"><span class="ins-figure-amount">${money(f.total)}</span><span class="ins-figure-unit">by the end of ${esc(name)}</span></p>
+      ${vs}
+      <div class="ins-stack" role="img" aria-label="Spent so far ${money(f.spent)}, bills still due ${money(f.billsTotal)}, at your usual pace ${money(f.usualLeft)}">
+        <span class="s1" style="width:${pct(f.spent)}%"></span><span class="s2" style="width:${pct(f.billsTotal)}%"></span><span class="s3" style="width:${pct(f.usualLeft)}%"></span>
+      </div>
+      <ul class="ins-legend">
+        <li><span class="ins-dot s1"></span><div><strong>${money(f.spent)} spent so far</strong><span>Up to today</span></div></li>
+        <li><span class="ins-dot s2"></span><div><strong>${money(f.billsTotal)} in bills still due</strong><span>${bills}</span></div></li>
+        <li><span class="ins-dot s3"></span><div><strong>${money(f.usualLeft)} at your usual pace</strong><span>${money(f.perDay)} a day for the ${f.daysLeft} ${f.daysLeft === 1 ? 'day' : 'days'} left, leaving out bills${f.oneOffs ? ` and ${f.oneOffs} one-off big ${f.oneOffs === 1 ? 'expense' : 'expenses'}` : ''}</span></div></li>
+      </ul>
+      <div class="ins-forecast-next">
+        <span>${esc(monthLong(f.next.month))}</span>
+        <strong>About ${money(f.next.total)}</strong>
+        <small>${money(f.next.fixed)} in ${f.next.bills} ${f.next.bills === 1 ? 'bill' : 'bills'} and EMIs, ${money(f.next.usual)} at your usual pace</small>
+      </div>
+    </section>`;
+}
+
 function renderGlance(s, r) {
   const el = $('insights-glance');
   if (!el) return;
@@ -232,6 +270,7 @@ async function showPeriod() {
   }
   if (seq !== loadSeq) return;
   glance = { range: r, summary: summarize(data, r) };
+  renderForecast(data);
   renderGlance(glance.summary, r);
   updateCoach();
 }

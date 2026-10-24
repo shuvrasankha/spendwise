@@ -66,6 +66,8 @@ nothing that shouts.
   debts, score, categories, goals). Insights shows only analysis: comparison with the previous
   period, what changed, biggest expenses, weekdays, payment methods, fixed vs flexible. Before
   adding a figure to either page, check the other doesn't already show it.
+  The month-end forecast is the one shared figure: both pages use `forecast()` (helpers.js) so they
+  agree; the Dashboard shows only "on track for", Insights shows how it adds up and next month.
 
 ### Touch and input
 - Touch targets ≥ 44px tall.

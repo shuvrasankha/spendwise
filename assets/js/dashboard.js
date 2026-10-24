@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart, emiPlans } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart, emiPlans, forecast, SKIP_KEY, isSkippedBill } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from './modules/history-data.js';
 import { buildCsv, exportFileName } from './modules/csv-export.js';
@@ -401,7 +401,8 @@ function renderHome() {
     meterText.textContent = "Add this month's income to see how much is left.";
   }
   document.getElementById("home-pace").textContent = spent > 0
-    ? `${moneyWhole(spent / day)} a day · on track for ${moneyWhole((spent / day) * monthDays)} by the end of ${monthName}`
+    // forecast(): spent + bills still due + usual flexible pace (Insights shows the breakdown)
+    ? `${moneyWhole(spent / day)} a day · on track for ${moneyWhole(forecast(allExpenses, today, isSkipped).total)} by the end of ${monthName}`
     : "";
 
   // Today: the day's spending as the card's figure, against the average of the month's earlier days
@@ -600,8 +601,7 @@ function renderGoals(savedThisMonth) {
 }
 
 // ── Due this month: repeating expenses waiting for one tap ───────────────────
-const SKIP_KEY = "spendwise_skip:";
-const isSkipped = (key, month) => { try { return localStorage.getItem(SKIP_KEY + key + ":" + month) === "1"; } catch { return false; } };
+const isSkipped = isSkippedBill; // "Skip month", shared with Insights (helpers.js)
 let dueItems = [];
 
 function renderDue() {
