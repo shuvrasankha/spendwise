@@ -350,7 +350,10 @@ document.getElementById('debt-body')?.addEventListener('click', async e => {
   } catch (err) {
     console.error(err);
     btn.disabled = false;
-    showToast("Couldn't update the debt. Check your connection and try again.", 'error');
+    // permission-denied: the published Firestore rules don't allow it (firestore.rules › debts), not the network
+    showToast(err?.code === 'permission-denied'
+      ? "SpendWise can't update this debt yet. Try again later."
+      : "Couldn't update the debt. Check your connection and try again.", 'error');
   }
 });
 
