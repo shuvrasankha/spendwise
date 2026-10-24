@@ -77,8 +77,8 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
 
 /* =====================
    TAB BAR (phones), after iOS: a floating glass capsule of five equal tabs, icon over a short label.
-   The selected tab is tinted gold on a soft highlight. Add is a tab like the others with a gold
-   wallet icon (tap adds an expense, hold opens voice: nav.js).
+   The selected tab is tinted gold on a soft highlight. Add is a tab like the others, a wallet
+   (tap adds an expense, hold opens voice: nav.js).
 ===================== */
 @media (max-width: 767px) {
   .bottom-nav {
@@ -103,9 +103,6 @@ h1, h2, h3, .page-header h2, .ins-head h1 { letter-spacing: -0.02em; }
   .bottom-nav-btn.active svg, [data-theme="dark"] .bottom-nav-btn.active svg { color: var(--gold); stroke-width: 2.2; }
   .bottom-nav-btn:hover:not(.active) { color: var(--text); }
 
-  /* Add: an outline wallet like the other icons. Only the icon is gold, so the label doesn't read as
-     the selected tab; on the Expense page the whole tab is selected like any other. */
-  .bottom-nav-add svg { color: var(--gold); }
   /* content scrolling under the dock fades and blurs out instead of showing sliced through it.
      On .app, not the dock: a backdrop-filter inside the dock's own backdrop-filter would see nothing. */
   .app::after {
