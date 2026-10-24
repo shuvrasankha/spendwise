@@ -1277,8 +1277,8 @@ function renderDashboardPagination(totalItems, totalPages) {
       if (page && page !== dashboardPage) {
         dashboardPage = page;
         renderDashboardTable();
-        // Scroll to top of table
-        const card = document.querySelector(".table-card");
+        // Scroll to the top of the list (under the chart, in the same card)
+        const card = document.querySelector(".table-card .table-wrapper");
         if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });

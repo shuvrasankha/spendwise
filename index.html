@@ -326,20 +326,53 @@
 
 
 
-        <!-- Line Chart Card -->
-        <div class="chart-card">
-          <div class="chart-header">
+        <!-- Spending over time: the tabs pick the range for both the chart and the list under it
+             (dashboard.js switchTableTab) -->
+        <section class="table-card spend-card" aria-labelledby="spend-title">
+          <div class="spend-head">
             <div class="chart-header-text">
-              <h3>Spending over time</h3>
-              <p>Follows the Daily / Weekly / Monthly / Yearly choice below</p>
+              <h3 id="spend-title">Spending over time</h3>
+              <p>Today, this week, this month or this year</p>
+            </div>
+            <button class="btn-download" data-action="downloadCSV">
+              <i data-lucide="download"></i> Download CSV
+            </button>
+          </div>
+          <div class="table-header">
+            <div class="table-tabs" role="group" aria-label="Range">
+              <button class="table-tab" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
+              <button class="table-tab active" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
+              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
+              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
             </div>
           </div>
-          <div class="line-chart-scroll-wrap" id="trend-scroll-wrap">
-            <div class="line-chart-container" id="trend-chart-inner" data-tab="weekly">
-              <canvas id="trendLineChart" role="img" aria-label="Spending over time"></canvas>
+          <div class="spend-chart">
+            <div class="line-chart-scroll-wrap" id="trend-scroll-wrap">
+              <div class="line-chart-container" id="trend-chart-inner" data-tab="weekly">
+                <canvas id="trendLineChart" role="img" aria-label="Spending over time"></canvas>
+              </div>
             </div>
           </div>
-        </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-col="date">Date</th>
+                  <th data-col="category">Category</th>
+                  <th data-col="description">Description</th>
+                  <th data-col="payment">Payment</th>
+                  <th class="text-right" data-col="amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="table-body">
+                <tr>
+                  <td colspan="5" class="empty-row">No expenses yet. Add your first one!</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
+        </section>
 
         <!-- Look back at any month -->
         <div class="period-picker-card">
@@ -401,38 +434,6 @@
           </div>
         </div>
 
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-tabs">
-              <button class="table-tab" data-action="switchTableTabDaily" id="ttab-daily">Daily</button>
-              <button class="table-tab active" data-action="switchTableTabWeekly" id="ttab-weekly">Weekly</button>
-              <button class="table-tab" data-action="switchTableTabMonthly" id="ttab-monthly">Monthly</button>
-              <button class="table-tab" data-action="switchTableTabYearly" id="ttab-yearly">Yearly</button>
-            </div>
-            <button class="btn-download" data-action="downloadCSV">
-              <i data-lucide="download"></i> Download CSV
-            </button>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th data-col="date">Date</th>
-                  <th data-col="category">Category</th>
-                  <th data-col="description">Description</th>
-                  <th data-col="payment">Payment</th>
-                  <th class="text-right" data-col="amount">Amount</th>
-                </tr>
-              </thead>
-              <tbody id="table-body">
-                <tr>
-                  <td colspan="5" class="empty-row">No expenses yet. Add your first one!</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div id="dashboard-pagination" class="pagination-row" style="display: flex;"></div>
-        </div>
       </div>
     </main>
   </div>

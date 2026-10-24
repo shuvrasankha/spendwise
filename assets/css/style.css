@@ -568,10 +568,8 @@ button { cursor: pointer; border: none; outline: none; background: none; }
     align-items: start;
   }
   #page-dashboard > * { grid-column: 1 / -1; }
-  #page-dashboard > .home-hero,
-  #page-dashboard > [aria-labelledby="home-cats-title"] { grid-column: 1; }
-  #page-dashboard > [aria-labelledby="home-today-title"],
-  #page-dashboard > .chart-card { grid-column: 2; }
+  #page-dashboard > .home-hero { grid-column: 1; }
+  #page-dashboard > [aria-labelledby="home-today-title"] { grid-column: 2; }
   #page-dashboard > .home-hero,
   #page-dashboard > [aria-labelledby="home-today-title"] { align-self: stretch; }
 }
