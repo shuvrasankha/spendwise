@@ -249,13 +249,19 @@
           </div>
         </section>
 
-        <section class="home-section" aria-labelledby="home-today-title">
+        <!-- Today: what was spent, against the month's daily average, then the entries (dashboard.js renderHome) -->
+        <section class="home-section home-today" aria-labelledby="home-today-title">
           <div class="home-section-head">
             <h3 id="home-today-title">Today</h3>
-            <span class="home-section-total" id="home-today-total"></span>
+            <span class="home-section-total" id="home-today-count"></span>
           </div>
-          <ul class="home-list" id="home-today-list"></ul>
-          <a class="home-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
+          <div class="today-summary hidden" id="home-today-summary">
+            <p class="today-figure"><span class="today-amount" id="home-today-total"></span> <span class="today-unit">spent</span></p>
+            <div class="today-meter hidden" id="home-today-meter" aria-hidden="true"><span class="today-meter-fill" id="home-today-fill"></span><span class="today-meter-avg" id="home-today-avg"></span></div>
+            <p class="today-compare" id="home-today-compare"></p>
+          </div>
+          <ul class="today-list" id="home-today-list"></ul>
+          <a class="home-more today-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
         </section>
 
         <!-- Repeating expenses whose day has come: one tap adds them (dashboard.js renderDue) -->

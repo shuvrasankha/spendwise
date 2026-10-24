@@ -403,10 +403,28 @@ function renderHome() {
     ? `${moneyWhole(spent / day)} a day · on track for ${moneyWhole((spent / day) * monthDays)} by the end of ${monthName}`
     : "";
 
-  // Today
+  // Today: the day's spending as the card's figure, against the average of the month's earlier days
   const todays = allExpenses.filter(e => e.date === today);
-  const todayTotal = todays.reduce((sum, e) => sum + e.amount, 0);
-  document.getElementById("home-today-total").textContent = todays.length ? `${moneyWhole(todayTotal)} · ${plural(todays.length, "entry", "entries")}` : "";
+  const todaySpent = todays.filter(isSpending).reduce((sum, e) => sum + e.amount, 0);
+  document.getElementById("home-today-count").textContent = todays.length ? plural(todays.length, "entry", "entries") : "";
+  document.getElementById("home-today-summary").classList.toggle("hidden", !todays.length);
+  if (todays.length) countTo(document.getElementById("home-today-total"), todaySpent, moneyWhole);
+  const average = day > 1 ? (spent - todaySpent) / (day - 1) : 0;
+  const todayMeter = document.getElementById("home-today-meter");
+  const compare = document.getElementById("home-today-compare");
+  todayMeter.classList.toggle("hidden", !(todays.length && average > 0));
+  if (todays.length && average > 0) {
+    const scale = Math.max(todaySpent, average) * 1.1; // room past the larger, so the average tick never sits on the end
+    const over = todaySpent > average;
+    todayMeter.classList.toggle("over", over);
+    document.getElementById("home-today-fill").style.width = `${(todaySpent / scale) * 100}%`;
+    document.getElementById("home-today-avg").style.left = `${(average / scale) * 100}%`;
+    const gap = Math.abs(todaySpent - average);
+    compare.textContent = gap < 1 ? `Right on your daily average of ${moneyWhole(average)}`
+      : `${moneyWhole(gap)} ${over ? "more" : "less"} than your daily average of ${moneyWhole(average)}`;
+  } else {
+    compare.textContent = todays.length ? "Your daily average shows here from tomorrow" : "";
+  }
   const list = document.getElementById("home-today-list");
   // A new account (no expenses even after loading them) is pointed at its first entry
   const firstTime = expensesFresh && !allExpenses.length;
@@ -421,24 +439,35 @@ function renderHome() {
     else li.append("Nothing added today yet. ", add);
     list.replaceChildren(li);
   } else {
+    // A row per entry: category icon, what it was, how it was paid, the amount. The category is left
+    // out of the subtitle when it is already the title.
     list.replaceChildren(...todays.slice(0, 5).map(e => {
       const li = document.createElement("li");
-      li.className = "home-row";
+      li.className = "today-row";
+      const icon = document.createElement("span");
+      icon.className = "today-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = `<i data-lucide="${CATEGORY_ICONS[normalizeCategory(e.category)] || "receipt"}"></i>`;
+      const body = document.createElement("div");
+      body.className = "today-row-body";
       const main = document.createElement("div");
       main.className = "home-row-main";
       const title = document.createElement("span");
       title.className = "home-row-title";
-      title.textContent = e.description && e.description !== "-" ? e.description : e.category;
+      const named = e.description && e.description !== "-" ? e.description : "";
+      title.textContent = named || e.category;
       const meta = document.createElement("span");
       meta.className = "home-row-meta";
-      meta.textContent = [e.category, e.payment].filter(Boolean).join(" · ") + (e.pending ? " · waiting to sync" : "");
+      meta.textContent = [named && named.toLowerCase() !== String(e.category).toLowerCase() ? e.category : "", e.payment, e.pending ? "waiting to sync" : ""].filter(Boolean).join(" · ");
       main.append(title, meta);
       const amount = document.createElement("span");
       amount.className = "home-row-amount";
       amount.textContent = fmt(e.amount);
-      li.append(main, amount);
+      body.append(main, amount);
+      li.append(icon, body);
       return li;
     }));
+    window.lucide?.createIcons();
   }
 
   // Tiles: income, saved, debts (owe and owed are separate directions)
@@ -517,6 +546,13 @@ function renderHome() {
   if (monthAll.length || getGoals().length) growBars = false; // keep it for the first paint that has something to show
   renderDue();
 }
+
+// Each expense category's icon, as on the Add expense form
+const CATEGORY_ICONS = {
+  "Food & Dining": "utensils", "Groceries": "shopping-cart", "Transport": "car", "Travel": "plane",
+  "Shopping": "shopping-bag", "Bills & Utilities": "zap", "Home & Rent": "home", "Health": "heart-pulse",
+  "Entertainment": "clapperboard", "Education": "graduation-cap", "Savings & Investments": "piggy-bank", "Other": "more-horizontal",
+};
 
 // ── Savings goals: progress and the monthly pace, against what this month left over ──
 function renderGoals(savedThisMonth) {
