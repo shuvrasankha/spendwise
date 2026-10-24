@@ -153,6 +153,7 @@ export function periodText(from, to, today) {
   const thisYear = today.slice(0, 4);
   const day = s => dayText(s, today);
   if (from && to && from === to) return `on ${day(from)}`;
+  if (from === `${thisYear}-01-01` && to === today) return 'this year';
   if (from && to && from.endsWith('-01-01') && to.endsWith('-12-31') && from.slice(0, 4) === to.slice(0, 4)) return `in ${from.slice(0, 4)}`;
   if (from && to && from.endsWith('-01') && from.slice(0, 7) === to.slice(0, 7)) {
     const [y, m] = from.split('-').map(Number);

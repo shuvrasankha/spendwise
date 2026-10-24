@@ -73,6 +73,7 @@ test('period wording', () => {
   assert.equal(periodText('2026-10-01', today, today), 'in October so far');
   assert.equal(periodText('2025-11-01', '2025-11-30', today), 'in November 2025');
   assert.equal(periodText('2025-01-01', '2025-12-31', today), 'in 2025');
+  assert.equal(periodText('2026-01-01', today, today), 'this year');
   assert.equal(periodText(today, today, today), 'on 24 Oct');
   assert.equal(periodText(null, null, today), 'in all your entries');
 });

@@ -6,7 +6,7 @@
 
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
-import { todayStr, normalizeCategory } from '../utils/helpers.js';
+import { todayStr, normalizeCategory, countTo } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
@@ -540,13 +540,34 @@ function renderAnswer(spec, result, today) {
     </li>`;
   }).join('');
   const link = historyLink(spec);
+  // The figure counts up from zero (countTo); a count is a plain number, everything else money
+  const value = !result.count ? 0 : spec.measure === 'count' ? result.count : spec.measure === 'biggest' ? result.biggest.amount : Math.abs(result.total);
   box.innerHTML = `
-    <p class="ins-ask-headline">${esc(headline)}</p>
+    <p class="ins-ask-headline" id="ask-figure">${esc(headline)}</p>
     <p class="ins-ask-sentence">${esc(sentence)}</p>
     <p class="ins-ask-searched">Searched: ${esc(searchedText(spec))}</p>
     ${rows ? `<ul class="ins-list">${rows}</ul>` : ''}
     ${link && result.count ? `<a class="home-more" href="${esc(link)}">${result.count > 5 ? `See all ${result.count} in History` : 'Open in History'} <i data-lucide="chevron-right"></i></a>` : ''}`;
   box.classList.remove('hidden');
+  box.classList.add('is-answer');
+  if (window.lucide) lucide.createIcons();
+  const figure = $('ask-figure');
+  figure.dataset.value = 0;
+  countTo(figure, value, spec.measure === 'count' ? n => String(Math.round(n)) : money);
+}
+
+// While asking: the send arrow spins, and the answer's place shimmers
+function setAsking(on) {
+  const btn = $('ask-go');
+  btn.disabled = on;
+  btn.classList.toggle('is-busy', on);
+  btn.innerHTML = `<i data-lucide="${on ? 'loader-2' : 'arrow-up'}" aria-hidden="true"></i>`;
+  btn.setAttribute('aria-label', on ? 'Working it out' : 'Ask');
+  if (on) {
+    const box = $('ask-result');
+    box.classList.remove('hidden', 'is-answer');
+    box.innerHTML = `<div class="ins-ask-loading" aria-label="Looking through your entries"><span></span><span></span><span></span></div>`;
+  }
   if (window.lucide) lucide.createIcons();
 }
 
@@ -554,11 +575,8 @@ async function askQuestion(question) {
   question = question.trim().slice(0, 200);
   if (!question || asking || !currentUser) return;
   asking = true;
-  const btn = $('ask-go');
-  btn.disabled = true;
+  setAsking(true);
   const box = $('ask-result');
-  box.classList.remove('hidden');
-  box.innerHTML = '<p class="ins-ask-sentence">Looking through your entries…</p>';
   try {
     const today = todayStr();
     const [spec, data] = await Promise.all([specFor(question, today), dataPromise ??= loadData()]);
@@ -569,7 +587,7 @@ async function askQuestion(question) {
     box.innerHTML = `<p class="ins-ask-sentence">Couldn't load your entries. Check your connection and try again.</p>`;
   } finally {
     asking = false;
-    btn.disabled = false;
+    setAsking(false);
   }
 }
 
