@@ -67,7 +67,7 @@ nothing that shouts.
 - Pin a card's footer link to the bottom (`margin-top: auto`) so short content still fills it.
 - **No page repeats another.** The Dashboard shows the month's status (spent, income, saved,
   debts, score, categories, goals). Insights shows only analysis: comparison with the previous
-  period, what changed, biggest expenses, weekdays, payment methods, fixed vs flexible. Before
+  period, where it went (category pie for the chosen period), what changed, biggest expenses, weekdays, payment methods, fixed vs flexible. Before
   adding a figure to either page, check the other doesn't already show it.
   The month-end forecast is the one shared figure: both pages use `forecast()` (helpers.js) so they
   agree; the Dashboard shows only "on track for", Insights shows how it adds up and next month.

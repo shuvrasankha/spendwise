@@ -9,7 +9,7 @@ import { callAI } from '../config/ai.js';
 import { todayStr, normalizeCategory, countTo, forecast, isSkippedBill, addMonths } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate } from './insights-data.js';
+import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate, pieSlices } from './insights-data.js';
 import { askPrompt, readSpec, guessSpec, runQuery, answerFor, subjectText, dayText, searchWords } from './ask-data.js';
 
 const auth = getAuth(app);
@@ -127,6 +127,49 @@ function compareCard(s, r) {
     ${s.spendChange !== null && Math.abs(diff) >= 1 ? `<p class="ins-compare-pct ${diff > 0 ? 'up' : 'down'}">${Math.abs(s.spendChange).toFixed(0)}% ${diff > 0 ? 'higher' : 'lower'} than ${esc(r.prevLabel)}</p>` : ''}
     ${rows.length ? `<ul class="ins-compare-rows">${rows.map(([k, v]) => `<li><span>${k}</span><strong>${esc(v)}</strong></li>`).join('')}</ul>` : ''}
   </section>`;
+}
+
+// ── Where it went: the period's spending by category as a pie (a ring, the total in the middle) ──
+// Slices take the --pie-N colours in order, "Other" its neutral; each is named in the legend beside it.
+const PIE_GAP = 0.6; // of 100: about 2px of surface between slices
+function pieCard(s) {
+  const slices = pieSlices(s.categories);
+  if (!slices.length) return '';
+  const colour = (x, i) => (x.other ? 'var(--pie-other)' : `var(--pie-${i + 1})`);
+  const one = slices.length === 1;
+  const arcs = slices.map((x, i) => {
+    const len = one ? 100 : Math.max(x.share - PIE_GAP, 0.3);
+    return `<circle class="ins-pie-slice" data-slice="${i}" cx="60" cy="60" r="48" pathLength="100" stroke="${colour(x, i)}"
+      stroke-dasharray="${len.toFixed(2)} ${(100 - len).toFixed(2)}" stroke-dashoffset="${(-x.start - (one ? 0 : PIE_GAP / 2)).toFixed(2)}"><title>${esc(x.label)}: ${money(x.amount)} · ${x.share.toFixed(0)}%</title></circle>`;
+  }).join('');
+  const rows = slices.map((x, i) => `<li class="ins-pie-row" data-slice="${i}">
+      <span class="ins-dot" style="background:${colour(x, i)}" aria-hidden="true"></span>
+      <span class="ins-pie-name">${esc(x.label)}</span>
+      <span class="ins-pie-value">${money(x.amount)}<small>${x.share < 1 ? '<1' : x.share.toFixed(0)}%</small></span>
+    </li>`).join('');
+  const summary = slices.map(x => `${x.label} ${x.share.toFixed(0)}%`).join(', ');
+  return `<section class="home-section ins-pie" aria-labelledby="ins-pie-title">
+    <div class="home-section-head"><h3 id="ins-pie-title">Where it went</h3><span class="home-section-total">by category</span></div>
+    <div class="ins-pie-body">
+      <figure class="ins-pie-chart" role="img" aria-label="Spending by category: ${esc(summary)}">
+        <svg viewBox="0 0 120 120" aria-hidden="true"><g transform="rotate(-90 60 60)">${arcs}</g></svg>
+        <figcaption class="ins-pie-centre" aria-hidden="true"><strong>${money(s.spent)}</strong><span>spent</span></figcaption>
+      </figure>
+      <ul class="ins-pie-legend">${rows}</ul>
+    </div>
+  </section>`;
+}
+
+// Pointing at a slice or its legend row picks out both and quiets the rest
+function bindPie(root) {
+  const card = root.querySelector('.ins-pie');
+  if (!card) return;
+  const pick = i => {
+    card.classList.toggle('picking', i != null);
+    card.querySelectorAll('[data-slice]').forEach(el => el.classList.toggle('picked', el.dataset.slice === i));
+  };
+  card.addEventListener('pointerover', e => pick(e.target.closest('[data-slice]')?.dataset.slice ?? null)); // a tap elsewhere in the card clears it
+  card.addEventListener('pointerleave', () => pick(null));
 }
 
 function changedCard(s) {
@@ -248,7 +291,8 @@ function renderGlance(s, r) {
       </section>`;
     return;
   }
-  el.innerHTML = [compareCard(s, r), changedCard(s), biggestCard(s), weekdayCard(s), paymentCard(s), fixedCard(s)].join('');
+  el.innerHTML = [compareCard(s, r), pieCard(s), changedCard(s), biggestCard(s), weekdayCard(s), paymentCard(s), fixedCard(s)].join('');
+  bindPie(el);
   if (window.lucide) lucide.createIcons();
 }
 

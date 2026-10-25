@@ -174,3 +174,18 @@ test('patterns: by weekday (Monday first), by payment method, fixed vs flexible'
   assert.equal(s.fixed, 23000); // rent and the EMI
   assert.deepEqual(s.biggest[0], { category: 'Home & Rent', amount: 18000, date: '2026-10-05', description: 'Rent' });
 });
+
+test('the pie shows the biggest categories and folds the rest into Other', async () => {
+  const { pieSlices } = await import('../assets/js/modules/insights-data.js');
+  const cats = [['Food', 400], ['Travel', 300], ['Bills', 150], ['Health', 80], ['Fun', 40], ['Books', 30]].map(([category, amount]) => ({ category, amount }));
+  const s = pieSlices(cats);
+  assert.deepEqual(s.map(x => x.label), ['Food', 'Travel', 'Bills', 'Health', 'Other']);
+  assert.equal(s[4].amount, 70);
+  assert.equal(s[4].other, true);
+  assert.equal(s[1].start, 40); // 400 of 1000 before it
+  assert.equal(Math.round(s.reduce((t, x) => t + x.share, 0)), 100);
+  // five or fewer: all shown; a single leftover keeps its own name
+  assert.equal(pieSlices(cats.slice(0, 5)).length, 5);
+  assert.equal(pieSlices(cats.slice(0, 6), 5).at(-1).label, 'Other');
+  assert.deepEqual(pieSlices([{ category: 'Food', amount: 0 }]), []);
+});

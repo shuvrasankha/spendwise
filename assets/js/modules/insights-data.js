@@ -217,3 +217,22 @@ export function renderMarkdown(text) {
   flushPara(); flushList();
   return out.join('') || '<p>No response.</p>';
 }
+
+// Slices for the "Where it went" pie: the biggest categories, the rest folded into "Other" so the
+// pie keeps to a few colours. categories is summarize()'s list (largest first).
+export function pieSlices(categories, max = 5) {
+  const list = categories.filter(c => c.amount > 0);
+  const total = list.reduce((s, c) => s + c.amount, 0);
+  if (!(total > 0)) return [];
+  const shown = list.length > max ? list.slice(0, max - 1) : list;
+  const rest = list.slice(shown.length);
+  const slices = shown.map(c => ({ label: c.category, amount: c.amount }));
+  if (rest.length) slices.push({ label: rest.length === 1 ? rest[0].category : 'Other', amount: rest.reduce((s, c) => s + c.amount, 0), other: rest.length > 1 });
+  let start = 0;
+  return slices.map(s => {
+    const share = (s.amount / total) * 100;
+    const slice = { ...s, share, start };
+    start += share;
+    return slice;
+  });
+}
