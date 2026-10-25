@@ -428,3 +428,15 @@ export function friendlyErr(code) {
   };
   return m[code] || "That didn't work. Check your connection and try again.";
 }
+
+// What a device does when it reads the account's daily-reminder switch (settings.remindOn):
+// 'off' unsubscribe; 'on' subscribe without asking (notifications already allowed here); 'ask' leave
+// it off and say the switch is on for the account; 'upload' save this device's state as the
+// account's (it was turned on before the switch synced); null nothing to do
+export function reminderSync(remindOn, deviceOn, permission) {
+  if (typeof remindOn !== 'boolean') return deviceOn ? 'upload' : null;
+  if (remindOn === deviceOn) return null;
+  if (!remindOn) return 'off';
+  if (permission === 'granted') return 'on';
+  return permission === 'default' ? 'ask' : null;
+}

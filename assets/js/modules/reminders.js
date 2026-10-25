@@ -1,11 +1,12 @@
 // reminders.js — Daily "log today's spending" push reminder.
 // The switch + time picker live on the Settings page (#settings-reminder); every page keeps this
 // device's subscription current. The Worker stores the subscription and its cron sends the
-// reminder (worker/src/push.js).
+// reminder (worker/src/push.js). The switch and the time are saved to the account (settings.js), so
+// turning reminders on or off on one device does the same on the others.
 
 import { auth } from '../config/firebase.js';
 import { callWorker, VAPID_PUBLIC_KEY } from '../config/ai.js';
-import { todayStr } from '../utils/helpers.js';
+import { todayStr, reminderSync } from '../utils/helpers.js';
 import { onSettings, saveSettings } from './settings.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
@@ -25,6 +26,7 @@ function storedTime() {
 }
 
 function showNote(text) {
+  if (!note) return; // not the Settings page
   note.textContent = text || '';
   note.classList.toggle('hidden', !text);
 }
@@ -51,6 +53,33 @@ async function save(sub) {
   if (!res.ok) throw new Error('SUBSCRIBE_FAILED');
 }
 
+const onNote = () => `You'll get a reminder at ${timeInput?.value || storedTime()} if you haven't added anything that day.`;
+
+// Subscribe this device (notifications must already be allowed). A subscription the Worker
+// refused is dropped, so the device doesn't look on when it isn't.
+async function turnOn() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+  try {
+    await save(sub);
+  } catch (e) {
+    await sub.unsubscribe().catch(() => {});
+    throw e;
+  }
+  if (auth.currentUser) resendSync(auth.currentUser.uid);
+}
+
+async function turnOff() {
+  const sub = await currentSubscription();
+  if (sub) {
+    await callWorker('/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
+    await sub.unsubscribe();
+  }
+}
+
 async function enable() {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
@@ -58,22 +87,14 @@ async function enable() {
     showNote('Notifications are blocked for SpendWise. Allow them in your browser or phone settings, then turn this on again.');
     return;
   }
-  const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  });
-  await save(sub);
-  if (auth.currentUser) resendSync(auth.currentUser.uid);
-  showNote(`You'll get a reminder at ${timeInput.value} if you haven't added anything that day.`);
+  await turnOn();
+  saveSettings({ remindOn: true }).catch(e => console.error('Reminder switch save failed:', e));
+  showNote(onNote());
 }
 
 async function disable() {
-  const sub = await currentSubscription();
-  if (sub) {
-    await callWorker('/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
-    await sub.unsubscribe();
-  }
+  await turnOff();
+  saveSettings({ remindOn: false }).catch(e => console.error('Reminder switch save failed:', e));
   showNote('');
 }
 
@@ -100,7 +121,7 @@ async function onTimeChange() {
   try {
     const sub = await currentSubscription();
     if (sub) await save(sub);
-    showNote(`You'll get a reminder at ${timeInput.value} if you haven't added anything that day.`);
+    showNote(onNote());
   } catch {
     showNote("Couldn't change the time. Check your connection and try again.");
   }
@@ -146,9 +167,38 @@ async function syncTime(s) {
   if (sub) save(sub).catch(() => {});
 }
 
+// The account's switch wins too: turned off elsewhere, this device stops; turned on elsewhere, it
+// starts if notifications are already allowed here (asking needs a tap, so Settings says so instead)
+let switching = false;
+async function syncSwitch(s) {
+  if (!supported || (isIOS && !standalone) || switching) return;
+  switching = true;
+  try {
+    const deviceOn = await pushOn();
+    const action = reminderSync(s.remindOn, deviceOn, Notification.permission);
+    if (action === 'upload') saveSettings({ remindOn: true }).catch(() => {});
+    if (action === 'off') await turnOff();
+    if (action === 'on') await turnOn();
+    if (toggle && (action === 'on' || action === 'off')) {
+      toggle.checked = action === 'on';
+      showNote(action === 'on' ? onNote() : '');
+    }
+    if (action === 'ask') showNote('Daily reminder is on for your account. Turn it on here to get it on this device too.');
+  } catch (e) {
+    console.error('Reminder sync failed:', e);
+  } finally {
+    switching = false;
+  }
+}
+
+async function syncSettings(s) {
+  await syncTime(s);
+  await syncSwitch(s);
+}
+
 async function init() {
   const ui = buildUI();
-  onSettings(syncTime);
+  onSettings(syncSettings);
   if (!ui) {
     // Not the Settings page: just re-save on sign-in, so the device's reminders follow whoever is
     // signed in and the time zone stays current
