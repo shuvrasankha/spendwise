@@ -1549,3 +1549,31 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .vp-field input.reminder-switch:checked { background: var(--success); }
 .vp-field input.reminder-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: none; }
 .vp-field .optional-tag { font-weight: 500; }
+
+/* ===== SECTION: Insights "Where it went" — spending by category as a pie (ring), legend beside it ===== */
+.ins-pie-body { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.ins-pie-chart { position: relative; width: 176px; height: 176px; margin: 4px 0 0; flex-shrink: 0; }
+.ins-pie-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.ins-pie-slice { fill: none; stroke-width: 18; transition: opacity 0.2s var(--ease-smooth), stroke-width 0.2s var(--ease-smooth); }
+.ins-pie-centre {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; pointer-events: none;
+}
+.ins-pie-centre strong { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); letter-spacing: -0.01em; }
+.ins-pie-centre span { font-size: 0.8125rem; color: var(--text2); }
+.ins-pie-legend { list-style: none; margin: 0; padding: 0; width: 100%; }
+.ins-pie-row {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 4px;
+  border-top: 1px solid var(--border-light); transition: opacity 0.2s var(--ease-smooth);
+}
+.ins-pie-row:first-child { border-top: none; }
+.ins-pie-row .ins-dot { margin-top: 0; }
+.ins-pie-name { flex: 1; min-width: 0; font-size: 0.9375rem; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ins-pie-value { display: flex; align-items: baseline; gap: 8px; font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+.ins-pie-value small { min-width: 3ch; text-align: right; font-size: 0.8125rem; font-weight: 500; color: var(--text2); }
+.ins-pie.picking .ins-pie-slice:not(.picked), .ins-pie.picking .ins-pie-row:not(.picked) { opacity: 0.35; }
+.ins-pie-slice.picked { stroke-width: 21; }
+@media (min-width: 768px) {
+  .ins-pie-body { flex-direction: row; align-items: center; gap: 28px; }
+  .ins-pie-legend { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ins-pie-slice, .ins-pie-row { transition: none; } }

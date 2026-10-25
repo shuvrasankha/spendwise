@@ -71,6 +71,14 @@
   --chart-bar: #4338ca;
   --chart-grid: rgba(29, 27, 22, 0.07);
   --chart-tick: #5f594d;
+  /* Pie slices (Insights "Where it went"), in this fixed order, "Other" last. Checked for colour-blind separation;
+     3, 4, 5 are under 3:1 on --surface, so every slice is also named with its amount in the legend */
+  --pie-1: #2a78d6;  /* 4.4:1 */
+  --pie-2: #eb6834;  /* 3.2:1 */
+  --pie-3: #1baf7a;  /* 2.8:1 */
+  --pie-4: #eda100;  /* 2.1:1 */
+  --pie-5: #e87ba4;  /* 2.7:1 */
+  --pie-other: #8a8478; /* neutral for "Other", 3.6:1 */
 
   /* Shadow System: warm, soft */
   --shadow-xs: 0 1px 2px rgba(45, 35, 15, 0.05);
@@ -145,6 +153,12 @@
   --chart-bar: #a5a6ff;
   --chart-grid: rgba(244, 239, 229, 0.07);
   --chart-tick: #aaa292;
+  --pie-1: #3987e5;  /* all ≥ 3:1 on --surface */
+  --pie-2: #d95926;
+  --pie-3: #199e70;
+  --pie-4: #c98500;
+  --pie-5: #d55181;
+  --pie-other: #77716a;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.35);
