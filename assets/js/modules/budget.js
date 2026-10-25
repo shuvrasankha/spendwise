@@ -171,6 +171,7 @@ async function suggest() {
     const tip = ai?.tip ? ` ${esc(ai.tip)}` : '';
     const how = ai ? '' : ' Worked out on your device.';
     say(`<strong>${esc(keeps)}</strong>${tip}${how} Change anything, then save.`);
+    out.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); // the explanation, then the limits under it
   } finally {
     btn.disabled = false;
     btn.querySelector('span').textContent = 'Suggest from my income';

@@ -1608,3 +1608,14 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 /* The per-category amounts sit outside .form-group, so they missed its text colour: dark text on dark */
 .budget-money input { color: var(--text); }
 .budget-money input::placeholder { color: var(--text2); }
+
+/* ===== SECTION: Monthly budget fits the visible screen — vh counts the space under a phone browser's
+   toolbar, which hid the sheet's end (and Save); dvh is what's actually visible. Two columns of category
+   limits on every phone but the narrowest, so the suggestion and its limits aren't a long scroll ===== */
+.budget-box { max-height: 90vh; max-height: 90dvh; overscroll-behavior: contain; }
+.budget-box .modal-actions { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 767px) {
+  .budget-box { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); }
+}
+@media (max-width: 380px) { .budget-cat-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 330px) { .budget-cat-list { grid-template-columns: 1fr; } }
