@@ -14,7 +14,7 @@ const updateCurrencyDisplay = window.updateCurrencyDisplay;
 const setCurrency = window.setCurrency;
 
 // Sanitize helper from utils
-import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart, emiPlans, forecast, SKIP_KEY, isSkippedBill } from './utils/helpers.js';
+import { sanitize, friendlyErr, isSpending, normalizeCategory, budgetState, goalPace, financeScore, splitAmount, countTo, dueRecurring, upcomingBills, addMonths, shortDay, pad, todayStr, formatDate, getWeekStart, emiPlans, forecast, SKIP_KEY, isSkippedBill, debtLeft } from './utils/helpers.js';
 import { showToast, dismissPageLoader, updateUserAvatar, initCurrencySelector, installMenus } from './modules/page-shell.js';
 import { historyRange, filterHistory, historyDay, searchTag, totalsBy, tagsInUse } from './modules/history-data.js';
 import { buildCsv, exportFileName } from './modules/csv-export.js';
@@ -511,7 +511,7 @@ function renderHome() {
   if (invested > 0) savedSub.textContent += ` · ${moneyWhole(invested)} invested`;
   renderGoals(income > 0 ? income - spent : null);
   const active = allDebts.filter(d => !d.settled);
-  const owe = active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + d.amount, 0);
+  const owe = active.filter(d => d.type === "i-owe").reduce((sum, d) => sum + debtLeft(d), 0); // less part-payments
   countTo(document.getElementById("home-owe"), owe, moneyWhole);
 
   // Money score: savings, investing, budget pace, debt and goals rolled into one number
@@ -541,7 +541,7 @@ function renderHome() {
     document.getElementById("home-score-label").textContent = "No score yet";
     document.getElementById("home-score-sub").textContent = "Add this month's income to see your score";
   }
-  countTo(document.getElementById("home-owed"), active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + d.amount, 0), moneyWhole);
+  countTo(document.getElementById("home-owed"), active.filter(d => d.type === "they-owe").reduce((sum, d) => sum + debtLeft(d), 0), moneyWhole);
 
   // Where it went: this month's top categories, as labelled bars (readable without a chart)
   const byCat = {};

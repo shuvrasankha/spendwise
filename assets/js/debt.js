@@ -2,7 +2,7 @@
 
 import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo } from './utils/helpers.js';
+import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo, debtLeft, debtPaid, payDebt } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
 import { fetchSharedDebts, emailError, shareFields, announceDebts, claimSettled, withdrawClaim, confirmClaim, rejectClaim } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
@@ -71,8 +71,8 @@ function updateDebtSummary() {
   const active = allDebts.filter(d => !d.settled);
   const owed = active.filter(d => d.type === 'they-owe');
   const owe = active.filter(d => d.type === 'i-owe');
-  const owedToYou = owed.reduce((s, d) => s + d.amount, 0);
-  const youOwe = owe.reduce((s, d) => s + d.amount, 0);
+  const owedToYou = owed.reduce((s, d) => s + debtLeft(d), 0); // what's left after part-payments
+  const youOwe = owe.reduce((s, d) => s + debtLeft(d), 0);
   const net = owedToYou - youOwe;
 
   const netEl = document.getElementById('debt-net-balance');
@@ -93,15 +93,23 @@ function updateDebtSummary() {
   setKnownPeople(allDebts);
 }
 
-// One row: who, which way, when, the amount, then the row's actions
+const keep = t => String(t).replace(/ /g, '\u00a0'); // an amount never splits across lines
+
+// One row: who, which way, when, the amount, then the row's actions. An open debt with part-payments
+// shows what's left, with how much of it has been paid back under it.
 function debtRow(d, meta, actions) {
+  const paid = debtPaid(d);
+  const part = !d.settled && paid > 0;
+  const share = part ? Math.min(paid / d.amount, 1) * 100 : 0;
   return `<li class="debt-row">
     <div class="hist-row-main">
       <span class="hist-row-title">${escapeHtml(d.person)}</span>
       <span class="hist-row-meta">${escapeHtml(meta)}</span>
+      ${part ? `<span class="debt-row-paid">${keep(fmt(paid))} paid back</span>
+      <span class="debt-row-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(share)}" aria-label="Paid back"><span style="width:${share.toFixed(1)}%"></span></span>` : ''}
       ${d.notes ? `<span class="hist-row-note">${escapeHtml(d.notes)}</span>` : ''}
     </div>
-    <span class="hist-row-amount ${d.type === 'they-owe' ? 'income' : 'owe'}">${fmt(d.amount)}</span>
+    <span class="hist-row-amount ${d.type === 'they-owe' ? 'income' : 'owe'}">${fmt(d.settled ? d.amount : debtLeft(d))}${part ? '<small>left</small>' : ''}</span>
     ${actions}
   </li>`;
 }
@@ -121,7 +129,7 @@ function renderDebts() {
     const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : d.withEmail ? 'Shared' : '', claim, d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
     const who = escapeHtml(d.person);
     const id = escapeHtml(d.id);
-    const amount = fmt(d.amount);
+    const amount = fmt(debtLeft(d));
     let actions = '';
     if (d.pending) {
       // offline entries have no record to update until they sync
@@ -136,7 +144,7 @@ function renderDebts() {
       </div>`;
     } else {
       actions = `
-      <button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${id}" aria-label="Settle ${amount} with ${who}">Settle</button>
+      <button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${id}" aria-label="Record a payment on ${amount} with ${who}">${d.type === 'they-owe' ? 'Got paid' : 'I paid'}</button>
       <button type="button" class="icon-btn" data-action="openDebtDeleteModal" data-debt-id="${id}" aria-label="Delete debt with ${who}" title="Delete"><i data-lucide="trash-2"></i></button>`;
     }
     return debtRow(d, meta, actions);
@@ -285,44 +293,120 @@ window.confirmDebtDelete = async () => {
   closeDebtDeleteModal();
 };
 
-// ── Settle Debt ──────────────────────────────────────────────────────────────
+// ── Payment on a debt ────────────────────────────────────────────────────────
+// Part of it is kept as a payment and the debt stays open with what's left; paying what's left
+// settles it on the payment's date.
+const $ = id => document.getElementById(id);
+const syncPayChips = bindDateChips($('debt-pay-date'), $('debt-pay-date-group'));
+const parseAmount = v => { const n = parseFloat(String(v).replace(/[^\d.]/g, '')); return isNaN(n) ? null : n; };
+
+function payHint() {
+  const d = allDebts.find(x => x.id === settleDebtTarget);
+  if (!d) return;
+  const n = parseAmount($('debt-pay-amount').value);
+  const left = debtLeft(d);
+  $('debt-pay-hint').textContent = !(n > 0) ? ''
+    : n > left + 0.001 ? `That's more than the ${fmt(left)} left.`
+    : n >= left - 0.001 ? 'Pays it off: it moves to Settled.'
+    : `${fmt(left - n)} will be left.`;
+  $('debt-pay-save').textContent = n > 0 && n >= left - 0.001 && n <= left + 0.001 ? 'Save and settle' : 'Save';
+}
+
+function fillPayDialog(d) {
+  const paid = debtPaid(d);
+  const left = debtLeft(d);
+  $('debt-pay-title').textContent = d.type === 'they-owe' ? `${d.person} paid you` : `You paid ${d.person}`;
+  $('debt-pay-left').textContent = `${fmt(left)} left`;
+  $('debt-pay-of').textContent = `of ${fmt(d.amount)}`;
+  const share = d.amount > 0 ? Math.min(paid / d.amount, 1) * 100 : 0;
+  $('debt-pay-bar').querySelector('span').style.width = `${share.toFixed(1)}%`;
+  $('debt-pay-bar').setAttribute('aria-valuenow', String(Math.round(share)));
+  $('debt-pay-bar').classList.toggle('hidden', !paid);
+  const list = Array.isArray(d.paid) ? d.paid : [];
+  $('debt-pay-history-wrap').classList.toggle('hidden', !list.length);
+  $('debt-pay-history').innerHTML = list.map((p, i) => `<li>
+      <span>${escapeHtml(shortDay(p.date))}</span><strong>${fmt(p.amount)}</strong>
+      <button type="button" class="debt-pay-remove" data-pay-remove="${i}" aria-label="Remove the ${fmt(p.amount)} payment on ${escapeHtml(shortDay(p.date))}">Remove</button>
+    </li>`).join('');
+}
+
 window.openDebtSettleModal = (id) => {
+  const d = allDebts.find(x => x.id === id);
+  if (!d) return;
   settleDebtTarget = id;
-  const debt = allDebts.find(d => d.id === id);
-  if (debt) {
-    document.getElementById('debt-settle-msg').textContent = `${fmt(debt.amount)} with ${debt.person} moves to Settled. You can reopen it later.`;
-  }
-  document.getElementById('debt-settle-modal').classList.remove('hidden');
+  fillPayDialog(d);
+  $('debt-pay-amount').value = debtLeft(d) || '';
+  $('debt-pay-date').value = todayStr();
+  syncPayChips();
+  $('debt-pay-msg').className = 'form-msg budget-msg hidden';
+  payHint();
+  $('debt-settle-modal').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+  setTimeout(() => { $('debt-pay-amount').focus(); $('debt-pay-amount').select(); }, 50);
 };
 
 window.closeDebtSettleModal = () => {
-  document.getElementById('debt-settle-modal').classList.add('hidden');
+  $('debt-settle-modal').classList.add('hidden');
   settleDebtTarget = null;
 };
 
+function payError(text) {
+  $('debt-pay-msg').textContent = text;
+  $('debt-pay-msg').className = 'form-msg budget-msg error';
+}
+
+const redrawDebts = () => { updateDebtSummary(); renderDebts(); renderDebtHistory(); };
+
 window.confirmDebtSettle = async () => {
-  if (!settleDebtTarget) return;
+  const d = allDebts.find(x => x.id === settleDebtTarget);
+  if (!d) return;
+  const date = $('debt-pay-date').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return payError('Pick the date it was paid.');
+  const res = payDebt(d, parseAmount($('debt-pay-amount').value), date);
+  if (res.error) return payError(res.left !== undefined ? `That's more than the ${fmt(res.left)} left.` : res.error);
+  const fields = res.settles
+    ? { paid: res.paid, settled: true, settledDate: date }
+    : { paid: res.paid };
+  const btn = $('debt-pay-save');
+  btn.disabled = true;
   try {
-    const debtRef = doc(db, 'debts', settleDebtTarget);
-    const settledDate = todayStr();
-    await updateDoc(debtRef, { settled: true, settledDate, claimDate: deleteField() });
-
-    const idx = allDebts.findIndex(d => d.id === settleDebtTarget);
-    if (idx >= 0) {
-      allDebts[idx].settled = true;
-      allDebts[idx].settledDate = settledDate;
-      allDebts[idx].claimDate = '';
-    }
-
-    updateDebtSummary();
-    renderDebts();
-    renderDebtHistory();
-    showToast('Debt settled!', 'success');
+    await updateDoc(doc(db, 'debts', d.id), { ...fields, ...(res.settles ? { claimDate: deleteField() } : {}) });
+    Object.assign(d, fields, res.settles ? { claimDate: '' } : {});
+    redrawDebts();
+    showToast(res.settles ? 'Paid off. Debt settled!' : `Payment saved. ${fmt(debtLeft(d))} left.`, 'success');
+    closeDebtSettleModal();
   } catch (e) {
-    showToast('Settlement failed.', 'error');
+    console.error(e);
+    payError("Couldn't save the payment. Check your connection and try again.");
+  } finally {
+    btn.disabled = false;
   }
-  closeDebtSettleModal();
 };
+
+// A payment entered by mistake: take it off, and what's left goes back up
+$('debt-pay-history')?.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-pay-remove]');
+  const d = allDebts.find(x => x.id === settleDebtTarget);
+  if (!btn || !d) return;
+  const paid = (d.paid || []).filter((_, i) => i !== Number(btn.dataset.payRemove));
+  btn.disabled = true;
+  try {
+    await updateDoc(doc(db, 'debts', d.id), { paid });
+    d.paid = paid;
+    fillPayDialog(d);
+    payHint();
+    redrawDebts();
+    showToast('Payment removed.', 'success');
+  } catch (err) {
+    console.error(err);
+    btn.disabled = false;
+    payError("Couldn't remove it. Check your connection and try again.");
+  }
+});
+$('debt-pay-amount')?.addEventListener('input', payHint);
+$('debt-settle-modal')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); window.confirmDebtSettle(); }
+});
 
 // ── Settle claims on shared debts (split.js) ─────────────────────────────────
 const CLAIM_DONE = {
@@ -362,7 +446,10 @@ window.openDebtReactivateModal = (id) => {
   reactivateDebtTarget = id;
   const debt = allDebts.find(d => d.id === id);
   if (debt) {
-    document.getElementById('debt-reactivate-msg').textContent = `${fmt(debt.amount)} with ${debt.person} moves back to Open.`;
+    const last = debtLeft(debt) === 0 && debt.paid?.length ? debt.paid[debt.paid.length - 1] : null;
+    document.getElementById('debt-reactivate-msg').textContent = last
+      ? `${fmt(last.amount)} with ${debt.person} moves back to Open, and the payment of ${fmt(last.amount)} on ${shortDay(last.date)} is taken off.`
+      : `${fmt(debtLeft(debt))} with ${debt.person} moves back to Open.`;
   }
   document.getElementById('debt-reactivate-modal').classList.remove('hidden');
 };
@@ -376,13 +463,11 @@ window.confirmDebtReactivate = async () => {
   if (!reactivateDebtTarget) return;
   try {
     const debtRef = doc(db, 'debts', reactivateDebtTarget);
-    await updateDoc(debtRef, { settled: false, settledDate: '' });
-
-    const idx = allDebts.findIndex(d => d.id === reactivateDebtTarget);
-    if (idx >= 0) {
-      allDebts[idx].settled = false;
-      allDebts[idx].settledDate = '';
-    }
+    const debt = allDebts.find(d => d.id === reactivateDebtTarget);
+    // Paid off by payments: the last one comes off, so it's open with that much owed again
+    const paid = debt && debtLeft(debt) === 0 && debt.paid?.length ? debt.paid.slice(0, -1) : null;
+    await updateDoc(debtRef, { settled: false, settledDate: '', ...(paid ? { paid } : {}) });
+    if (debt) Object.assign(debt, { settled: false, settledDate: '' }, paid ? { paid } : {});
 
     updateDebtSummary();
     renderDebts();

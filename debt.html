@@ -256,15 +256,36 @@
     </div>
   </div>
 
-  <!-- Settle Debt Modal -->
-  <div id="debt-settle-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <div class="modal-icon" style="background: var(--success-bg); color: var(--success);"><i data-lucide="check-circle"></i></div>
-      <h3>Mark as settled?</h3>
-      <p id="debt-settle-msg">It moves to Settled. You can reopen it later.</p>
+  <!-- Payment on a debt: part of it, or what's left (which settles it). debt.js openDebtSettleModal -->
+  <div id="debt-settle-modal" class="modal-overlay budget-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="debt-pay-title">
+    <div class="modal-box budget-box debt-pay-box">
+      <div class="modal-header">
+        <h3 id="debt-pay-title">Payment</h3>
+        <button type="button" class="modal-close-btn" data-action="closeDebtSettleModal" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <p class="debt-pay-left"><strong id="debt-pay-left"></strong> <span id="debt-pay-of"></span></p>
+      <div class="debt-pay-bar" id="debt-pay-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="Paid back so far"><span></span></div>
+      <div class="form-group">
+        <label for="debt-pay-amount">Amount paid</label>
+        <div class="budget-money"><span class="budget-sym currency-symbol">₹</span><input type="text" inputmode="decimal" id="debt-pay-amount" autocomplete="off"></div>
+      </div>
+      <div class="form-group" id="debt-pay-date-group">
+        <label for="debt-pay-date">Date</label>
+        <input type="date" id="debt-pay-date">
+        <div class="date-chips" role="group" aria-label="Quick dates">
+          <button type="button" class="date-chip" data-date-offset="0">Today</button>
+          <button type="button" class="date-chip" data-date-offset="1">Yesterday</button>
+        </div>
+      </div>
+      <p class="debt-pay-hint" id="debt-pay-hint" aria-live="polite"></p>
+      <div class="debt-pay-history hidden" id="debt-pay-history-wrap">
+        <p class="debt-pay-label">Paid so far</p>
+        <ul id="debt-pay-history"></ul>
+      </div>
+      <p class="form-msg budget-msg hidden" id="debt-pay-msg" aria-live="polite"></p>
       <div class="modal-actions">
-        <button class="btn-secondary" data-action="closeDebtSettleModal">Cancel</button>
-        <button class="btn-primary" data-action="confirmDebtSettle">Settle</button>
+        <button type="button" class="btn btn-secondary" data-action="closeDebtSettleModal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-add" id="debt-pay-save" data-action="confirmDebtSettle">Save</button>
       </div>
     </div>
   </div>

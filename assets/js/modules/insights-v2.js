@@ -9,7 +9,8 @@ import { callAI } from '../config/ai.js';
 import { todayStr, normalizeCategory, countTo, forecast, isSkippedBill, addMonths } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate, pieSlices } from './insights-data.js';
+import { periodRange, summarize, hasData, factsText, renderMarkdown, shortDate, pieSlices, budgetReport } from './insights-data.js';
+import { getBudget } from './budget.js';
 import { askPrompt, readSpec, guessSpec, runQuery, answerFor, subjectText, dayText, searchWords } from './ask-data.js';
 
 const auth = getAuth(app);
@@ -66,6 +67,7 @@ let selectedPeriod = 'month';
 let dataPromise = null; // the user's records, loaded once per page view
 let glance = null;      // { range, summary } on screen now
 let loadSeq = 0;        // ignores a slow load when the period changed meanwhile
+let records = null;     // the loaded records, for the budget card
 let chat = null;        // { type, range, summary, facts, history: [{ role, content }] }
 
 const $ = id => document.getElementById(id);
@@ -77,7 +79,7 @@ function currency() {
 // Whole amounts in the user's currency, e.g. "₹ 19,200"
 function money(n) {
   const c = currency();
-  return `${c.symbol} ${Math.round(n).toLocaleString(c.locale)}`;
+  return `${c.symbol}\u00a0${Math.round(n).toLocaleString(c.locale)}`; // never split from its number
 }
 
 // ── Data ────────────────────────────────────────────────────────────────────
@@ -91,7 +93,7 @@ async function loadData() {
       description: r.description || '', payment: r.payment || '', repeat: r.repeat || '', emiTotal: Number(r.emiTotal) || 0,
       notes: r.notes || '', cardName: r.cardName || '', tags: Array.isArray(r.tags) ? r.tags : [] })),
     get('income', r => ({ amount: num(r.amount), date: r.date || '', source: r.source || '', notes: r.notes || '', bank: r.bank || '' })),
-    get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '' })),
+    get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '', paid: Array.isArray(r.paid) ? r.paid : [] })),
   ]);
   return { expenses, income, debts };
 }
@@ -170,6 +172,66 @@ function bindPie(root) {
   };
   card.addEventListener('pointerover', e => pick(e.target.closest('[data-slice]')?.dataset.slice ?? null)); // a tap elsewhere in the card clears it
   card.addEventListener('pointerleave', () => pick(null));
+}
+
+// ── Against your budget: each month in the period, where this month is heading, and the categories
+// that keep going over. The Dashboard shows this month's budget used; this is how it's been going.
+function budgetCard(r) {
+  if (!records) return '';
+  const today = todayStr();
+  const monthEnd = forecast(records.expenses, today, isSkippedBill).total;
+  const rep = budgetReport(records.expenses, getBudget(), r, today, monthEnd);
+  const head = `<div class="home-section-head"><h3 id="ins-budget-title">Against your budget</h3></div>`;
+  if (!rep) {
+    return `<section class="home-section ins-budget" aria-labelledby="ins-budget-title">${head}
+      <p class="ins-none">See how each month goes against a plan. <a href="#" data-open-budget>Set a monthly budget</a></p></section>`;
+  }
+  const one = rep.months.length === 1 ? rep.months[0] : null;
+  let figure = '';
+  if (rep.total && one) {
+    const d = one.limit - one.projected;
+    figure = `<p class="ins-figure"><span class="ins-figure-amount">${money(Math.abs(d))}</span><span class="ins-figure-unit">${d >= 0 ? 'under' : 'over'} budget${one.current ? ' at this pace' : ''}</span></p>`;
+  } else if (rep.total) {
+    figure = `<p class="ins-figure"><span class="ins-figure-amount">${rep.within} of ${rep.judged}</span><span class="ins-figure-unit">${rep.judged === 1 ? 'month' : 'months'} within budget</span></p>`;
+  }
+  const monthRows = rep.total ? rep.months.map(m => {
+    const max = Math.max(m.limit, m.projected) || 1;
+    const w = v => Math.min((v / max) * 100, 100).toFixed(1);
+    const status = m.over ? `${money(m.projected - m.limit)} over` : `${money(m.limit - m.projected)} under`;
+    const sub = m.current
+      ? `${money(m.spent)} so far · heading for ${money(m.projected)} of ${money(m.limit)}`
+      : `${money(m.spent)} of ${money(m.limit)}${m.partial ? ' (part of the month)' : ''}`;
+    return `<li class="ins-bud-row">
+      <div class="ins-bud-line"><span class="ins-bud-name">${esc(m.label)}${m.current ? ' <small>so far</small>' : ''}</span>${one ? '' : `<span class="ins-bud-status${m.over ? ' over' : ''}">${esc(status)}</span>`}</div>
+      <div class="ins-bud-bar${m.over ? ' over' : ''}" aria-hidden="true">
+        ${m.current ? `<span class="ahead" style="width:${w(m.projected)}%"></span>` : ''}<span class="done" style="width:${w(m.spent)}%"></span>
+        <i class="limit" style="left:${w(m.limit)}%"></i>
+      </div>
+      <p class="ins-bud-sub">${esc(sub)}</p>
+    </li>`;
+  }).join('') : '';
+  const catRows = rep.cats.map(c => {
+    const over = c.overIn > 0;
+    const sub = rep.months.length === 1
+      ? `${rep.months[0].current ? 'Heading for' : 'Spent'} ${money(c.avg)} of ${money(c.limit)}`
+      : `About ${money(c.avg)} a month of ${money(c.limit)}`;
+    const value = rep.months.length === 1
+      ? (over ? `${money(c.avg - c.limit)} over` : 'Within')
+      : (over ? `Over ${c.overIn} of ${c.months}` : 'Within');
+    return `<li class="ins-row">
+      <span class="ins-icon ${over ? 'up' : 'down'}" aria-hidden="true"><i data-lucide="${over ? 'alert-circle' : 'check'}"></i></span>
+      <div class="ins-row-body">
+        <div class="home-row-main"><span class="home-row-title">${esc(c.category)}</span><span class="home-row-meta">${esc(sub)}</span></div>
+        <span class="ins-row-value ${over ? 'up' : 'down'}">${esc(value)}</span>
+      </div>
+    </li>`;
+  }).join('');
+  return `<section class="home-section ins-budget" aria-labelledby="ins-budget-title">${head}
+    ${figure}
+    ${monthRows ? `<ul class="ins-bud-months">${monthRows}</ul>` : ''}
+    ${catRows ? `<p class="ins-bud-label">Category limits</p><ul class="ins-list">${catRows}</ul>` : ''}
+    <p class="ins-bud-note">Measured against the budget you have now. <a href="#" data-open-budget>Change budget</a></p>
+  </section>`;
 }
 
 function changedCard(s) {
@@ -291,7 +353,7 @@ function renderGlance(s, r) {
       </section>`;
     return;
   }
-  el.innerHTML = [compareCard(s, r), pieCard(s), changedCard(s), biggestCard(s), weekdayCard(s), paymentCard(s), fixedCard(s)].join('');
+  el.innerHTML = [compareCard(s, r), budgetCard(r), pieCard(s), changedCard(s), biggestCard(s), weekdayCard(s), paymentCard(s), fixedCard(s)].join('');
   bindPie(el);
   if (window.lucide) lucide.createIcons();
 }
@@ -313,6 +375,7 @@ async function showPeriod() {
     return;
   }
   if (seq !== loadSeq) return;
+  records = data;
   glance = { range: r, summary: summarize(data, r) };
   renderForecast(data);
   renderGlance(glance.summary, r);
@@ -731,3 +794,6 @@ onAuthStateChanged(auth, user => {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
 else initUI();
+
+// A budget loaded after sign-in, or changed from the card's link, redraws the cards
+window.addEventListener('spendwise:budget', () => { if (glance && records) renderGlance(glance.summary, glance.range); });

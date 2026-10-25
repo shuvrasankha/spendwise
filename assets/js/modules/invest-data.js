@@ -4,7 +4,7 @@
 // description = the holding's name and holdingId. A SIP is that entry repeating monthly, so the
 // Dashboard's "Due this month" offers it like any other repeating payment.
 // Pure functions only, so they can be tested (tests/invest.test.mjs).
-import { isSpending, recurringKey, upcomingBills, todayStr } from '../utils/helpers.js';
+import { isSpending, recurringKey, upcomingBills, todayStr, debtLeft } from '../utils/helpers.js';
 
 export const HOLDING_KINDS = [
   { id: 'mf', label: 'Mutual fund', icon: 'line-chart' },
@@ -100,7 +100,7 @@ export const withLinked = (goal, linked) => ({ ...goal, saved: (goal.saved || 0)
 // not a full net worth and the page says so.
 export function afterDebts(worth, debts) {
   const active = debts.filter(d => !d.settled);
-  const total = type => active.filter(d => d.type === type).reduce((s, d) => s + d.amount, 0);
+  const total = type => active.filter(d => d.type === type).reduce((s, d) => s + debtLeft(d), 0);
   const owedToYou = total('they-owe'), youOwe = total('i-owe');
   return { worth, owedToYou, youOwe, total: worth + owedToYou - youOwe };
 }

@@ -1608,3 +1608,66 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 /* The per-category amounts sit outside .form-group, so they missed its text colour: dark text on dark */
 .budget-money input { color: var(--text); }
 .budget-money input::placeholder { color: var(--text2); }
+
+/* ===== SECTION: Monthly budget fits the visible screen — vh counts the space under a phone browser's
+   toolbar, which hid the sheet's end (and Save); dvh is what's actually visible. Two columns of category
+   limits on every phone but the narrowest, so the suggestion and its limits aren't a long scroll ===== */
+.budget-box { max-height: 90vh; max-height: 90dvh; overscroll-behavior: contain; }
+.budget-box .modal-actions { padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 767px) {
+  .budget-box { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); }
+}
+@media (max-width: 380px) { .budget-cat-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 330px) { .budget-cat-list { grid-template-columns: 1fr; } }
+
+/* ===== SECTION: Insights "Against your budget" — each month as a bar against its limit (a tick marks
+   the limit; this month shows spent so far and, fainter, where it's heading), then category limits ===== */
+.ins-bud-months { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.ins-bud-row { padding: 12px 0; border-top: 1px solid var(--border-light); }
+.ins-bud-row:first-child { border-top: none; padding-top: 6px; }
+.ins-bud-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ins-bud-name { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.ins-bud-name small { font-size: 0.8125rem; font-weight: 500; color: var(--text2); }
+.ins-bud-status { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--success); }
+.ins-bud-status.over { color: var(--danger); }
+.ins-bud-bar { position: relative; height: 8px; margin: 8px 0 6px; border-radius: 999px; background: var(--bg2); }
+.ins-bud-bar span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: var(--gold); }
+.ins-bud-bar span.ahead { background: color-mix(in srgb, var(--gold) 35%, var(--bg2)); }
+.ins-bud-bar.over span.done { background: var(--danger); }
+.ins-bud-bar.over span.ahead { background: color-mix(in srgb, var(--danger) 35%, var(--bg2)); }
+.ins-bud-bar .limit { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); }
+.ins-bud-sub { margin: 0; font-size: 0.8125rem; color: var(--text2); font-variant-numeric: tabular-nums; }
+.ins-bud-label { margin: 14px 0 2px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
+.ins-bud-note { margin: 12px 0 0; font-size: 0.8125rem; color: var(--text2); }
+.ins-bud-note a, .ins-budget .ins-none a { color: var(--accent); font-weight: 600; }
+.ins-budget .ins-row-value { white-space: nowrap; }
+
+/* ===== SECTION: Debts — part-payments. A row with payments shows what's left, how much has been paid
+   back and a thin gold bar; the payment dialog shows the same, then the amount and date ===== */
+.debt-row-paid { font-size: 0.8125rem; color: var(--text2); font-variant-numeric: tabular-nums; }
+.debt-row-bar { display: block; width: min(180px, 100%); height: 4px; margin: 4px 0 2px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.debt-row-bar span, .debt-pay-bar span { display: block; height: 100%; border-radius: inherit; background: var(--gold); }
+.debt-row .hist-row-amount small { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text2); text-align: right; }
+.debt-pay-left { margin: -6px 0 8px; color: var(--text2); font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+.debt-pay-left strong { font-size: 1.375rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.debt-pay-bar { height: 6px; margin: 0 0 18px; border-radius: 999px; background: var(--bg2); overflow: hidden; }
+.debt-pay-bar.hidden { display: none; }
+.debt-pay-box .date-chips { margin-top: 8px; }
+.debt-pay-hint { min-height: 1.3em; margin: -4px 0 10px; font-size: 0.875rem; color: var(--text2); }
+.debt-pay-history { margin: 4px 0 8px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.debt-pay-history.hidden { display: none; }
+.debt-pay-label { margin: 0 0 4px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
+.debt-pay-history ul { list-style: none; margin: 0; padding: 0; }
+.debt-pay-history li { display: flex; align-items: center; gap: 12px; min-height: 44px; border-top: 1px solid var(--border-light); font-variant-numeric: tabular-nums; }
+.debt-pay-history li:first-child { border-top: none; }
+.debt-pay-history li span { flex: 1; color: var(--text2); font-size: 0.875rem; }
+.debt-pay-history li strong { font-weight: 600; color: var(--text); }
+.debt-pay-remove { min-height: 44px; padding: 0 4px 0 8px; border: none; background: none; color: var(--danger); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.debt-pay-remove:disabled { opacity: 0.5; cursor: progress; }
+.debt-pay-box .debt-pay-hint { margin: 10px 0 12px; }
+
+/* ===== SECTION: Settings › Refresh the app — busy while it fetches the latest files ===== */
+#settings-refresh:disabled { cursor: progress; opacity: 0.7; }
+#settings-refresh:disabled .settings-row-go svg { animation: swSpin 1s linear infinite; }
+@keyframes swSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #settings-refresh:disabled .settings-row-go svg { animation: none; } }

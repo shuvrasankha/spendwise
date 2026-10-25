@@ -189,3 +189,30 @@ test('the pie shows the biggest categories and folds the rest into Other', async
   assert.equal(pieSlices(cats.slice(0, 6), 5).at(-1).label, 'Other');
   assert.deepEqual(pieSlices([{ category: 'Food', amount: 0 }]), []);
 });
+
+test('budget report: each month against the limit, this month on its forecast, categories that go over', async () => {
+  const { budgetReport, periodRange } = await import('../assets/js/modules/insights-data.js');
+  const e = (date, category, amount, extra = {}) => ({ date, category, amount, ...extra });
+  const expenses = [
+    e('2026-08-05', 'Shopping', 12000), e('2026-08-06', 'Food & Dining', 20000),
+    e('2026-09-05', 'Shopping', 6000), e('2026-09-06', 'Food & Dining', 30000),
+    e('2026-10-02', 'Home & Rent', 15000, { repeat: 'monthly' }), e('2026-10-10', 'Shopping', 7000),
+    e('2026-10-12', 'Savings & Investments', 9000), // not spending
+  ];
+  const budget = { total: 40000, cats: { Shopping: 10000, 'Home & Rent': 15000 } };
+  const r = periodRange('quarter', today); // Aug 1 – Oct 21
+  const rep = budgetReport(expenses, budget, r, '2026-10-21', 33000);
+  assert.deepEqual(rep.months.map(m => [m.label, m.spent, m.over]), [['Aug', 32000, false], ['Sep', 36000, false], ['Oct', 22000, false]]);
+  assert.equal(rep.months[2].projected, 33000); // the forecast, not what's spent so far
+  assert.equal(rep.within, 3);
+  const shop = rep.cats.find(c => c.category === 'Shopping');
+  // Aug over; Oct 7000 in 21 days heads for ~10,333 of 10,000
+  assert.equal(shop.overIn, 2);
+  const rent = rep.cats.find(c => c.category === 'Home & Rent');
+  assert.equal(rent.overIn, 0); // a bill paid once isn't multiplied by the pace
+  assert.equal(budgetReport(expenses, { total: null, cats: {} }, r, '2026-10-21', 0), null);
+  // a month only partly in a custom period gets that share of the limit
+  const part = budgetReport(expenses, budget, periodRange('custom', today, { start: '2026-09-16', end: '2026-09-30' }), '2026-10-21', 0);
+  assert.equal(part.months[0].limit, 20000);
+  assert.equal(part.months[0].partial, true);
+});
