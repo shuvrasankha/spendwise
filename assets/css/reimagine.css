@@ -1619,3 +1619,25 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 }
 @media (max-width: 380px) { .budget-cat-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 330px) { .budget-cat-list { grid-template-columns: 1fr; } }
+
+/* ===== SECTION: Insights "Against your budget" — each month as a bar against its limit (a tick marks
+   the limit; this month shows spent so far and, fainter, where it's heading), then category limits ===== */
+.ins-bud-months { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.ins-bud-row { padding: 12px 0; border-top: 1px solid var(--border-light); }
+.ins-bud-row:first-child { border-top: none; padding-top: 6px; }
+.ins-bud-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ins-bud-name { font-size: 0.9375rem; font-weight: 600; color: var(--text); }
+.ins-bud-name small { font-size: 0.8125rem; font-weight: 500; color: var(--text2); }
+.ins-bud-status { font-size: 0.9375rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--success); }
+.ins-bud-status.over { color: var(--danger); }
+.ins-bud-bar { position: relative; height: 8px; margin: 8px 0 6px; border-radius: 999px; background: var(--bg2); }
+.ins-bud-bar span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; background: var(--gold); }
+.ins-bud-bar span.ahead { background: color-mix(in srgb, var(--gold) 35%, var(--bg2)); }
+.ins-bud-bar.over span.done { background: var(--danger); }
+.ins-bud-bar.over span.ahead { background: color-mix(in srgb, var(--danger) 35%, var(--bg2)); }
+.ins-bud-bar .limit { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); }
+.ins-bud-sub { margin: 0; font-size: 0.8125rem; color: var(--text2); font-variant-numeric: tabular-nums; }
+.ins-bud-label { margin: 14px 0 2px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
+.ins-bud-note { margin: 12px 0 0; font-size: 0.8125rem; color: var(--text2); }
+.ins-bud-note a, .ins-budget .ins-none a { color: var(--accent); font-weight: 600; }
+.ins-budget .ins-row-value { white-space: nowrap; }

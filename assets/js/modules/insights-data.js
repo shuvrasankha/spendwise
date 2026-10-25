@@ -236,3 +236,66 @@ export function pieSlices(categories, max = 5) {
     return slice;
   });
 }
+
+// ── Against your budget ─────────────────────────────────────────────────────
+// Each month the period touches, set against the monthly budget (the one saved now). A month only
+// partly in a custom period gets that share of the limit; the current month is judged on where it's
+// heading (monthEnd: the forecast() total, so it agrees with the Dashboard's "on track for").
+// Categories with a limit: how many of those months they went (or are heading) over, and by how much
+// on average. null without a budget.
+export function budgetReport(expenses, budget, r, today, monthEnd) {
+  const total = budget?.total > 0 ? budget.total : null;
+  const caps = Object.entries(budget?.cats || {}).filter(([, v]) => v > 0);
+  if (!total && !caps.length) return null;
+  const spending = expenses.filter(e => isSpending(e) && inRange(e.date, r.start, r.end));
+  const thisMonth = today.slice(0, 7);
+  const months = [];
+  for (let m = r.start.slice(0, 7); m <= r.end.slice(0, 7); m = nextMonth(m)) months.push(m);
+
+  const rows = months.map(m => {
+    const [y, mo] = m.split('-').map(Number);
+    const days = monthEnd_(y, mo - 1);
+    const from = r.start > `${m}-01` ? r.start : `${m}-01`;
+    const to = r.end < `${m}-${pad(days)}` ? r.end : `${m}-${pad(days)}`;
+    const current = m === thisMonth;
+    const share = current ? 1 : daysBetween(from, to) / days; // the current month is judged whole, on its forecast
+    const list = spending.filter(e => e.date.slice(0, 7) === m);
+    const spent = sum(list);
+    const elapsed = current ? Number(today.slice(8, 10)) : days;
+    const byCat = {};
+    list.forEach(e => {
+      const c = byCat[e.category] ||= { spent: 0, fixed: 0 };
+      c.spent += e.amount;
+      if (e.repeat === 'monthly' || Number(e.emiTotal) > 0) c.fixed += e.amount;
+    });
+    // A category heads for its bills plus its flexible spending at this month's pace
+    const heading = c => (current ? c.fixed + ((c.spent - c.fixed) / elapsed) * days : c.spent);
+    const limit = total ? total * share : null;
+    const projected = current ? Math.max(monthEnd ?? spent, spent) : spent;
+    return {
+      month: m, label: SHORT[mo - 1], current, partial: share < 1, spent, projected, limit,
+      over: limit !== null && projected > limit,
+      cats: Object.fromEntries(caps.map(([c, cap]) => {
+        const v = byCat[c] ? heading(byCat[c]) : 0;
+        return [c, { spent: byCat[c]?.spent || 0, projected: v, limit: cap * share }];
+      })),
+    };
+  });
+
+  const cats = caps.map(([category, cap]) => {
+    const per = rows.map(x => x.cats[category]);
+    const overIn = per.filter(x => x.projected > x.limit).length;
+    const avg = per.reduce((s, x) => s + x.projected, 0) / per.length;
+    return { category, limit: cap, avg, overIn, months: rows.length, worst: Math.max(...per.map(x => x.projected - x.limit)) };
+  }).sort((a, b) => b.overIn - a.overIn || b.worst - a.worst);
+
+  const judged = rows.filter(x => x.limit !== null);
+  return {
+    total, months: rows,
+    within: judged.filter(x => !x.over).length, judged: judged.length,
+    spent: sum(spending), limit: total ? judged.reduce((s, x) => s + x.limit, 0) : null,
+    cats,
+  };
+}
+const nextMonth = m => { const [y, mo] = m.split('-').map(Number); return mo === 12 ? `${y + 1}-01` : `${y}-${pad(mo + 1)}`; };
+const monthEnd_ = monthEnd;
