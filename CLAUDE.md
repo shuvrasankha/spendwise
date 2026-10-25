@@ -16,6 +16,9 @@ Cloudflare Worker (`worker/`) for AI and push. Deployed to GitHub Pages.
   told to publish them. Test rule changes in the Firestore emulator.
 - Worker changes need `cd worker && npm run deploy` by the user.
 - New page or module: add it to `STATIC_ASSETS` in `sw.js`.
+- Investments (`invest.html`): holdings live in `holdings/{id}`; money put in is a
+  'Savings & Investments' expense with `holdingId` (a SIP is that entry repeating monthly). Logic in
+  `invest-data.js`. Goals count what their linked holdings are worth.
 - **Privacy rule for AI features:** entries (descriptions, notes, names) never go to the AI. The
   coach gets number-only facts (`factsText`); Ask sends only the question and today's date, and the
   answer is computed on the device (`ask-data.js`). Keep new AI features to the same rule.

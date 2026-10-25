@@ -317,9 +317,10 @@ export function forecast(expenses, today = todayStr(), skipped = () => false) {
   const flexible = flexTotal - oneOffs.reduce((s, e) => s + e.amount, 0);
   const perDay = days > 0 ? flexible / days : 0;
 
-  // Bills still to pay this month: due ones not yet entered, and ones whose day hasn't come
-  const due = dueRecurring(expenses, today, skipped).map(d => ({ key: d.key, title: d.template.description && d.template.description !== '-' ? d.template.description : d.template.category, amount: d.template.amount, due: d.due }));
-  const later = upcomingBills(expenses, today, skipped).filter(b => b.due.slice(0, 7) === month && !due.some(d => d.key === b.key))
+  // Bills still to pay this month: due ones not yet entered, and ones whose day hasn't come.
+  // A repeating SIP is money put aside, not spending, so it's no bill here.
+  const due = dueRecurring(spending, today, skipped).map(d => ({ key: d.key, title: d.template.description && d.template.description !== '-' ? d.template.description : d.template.category, amount: d.template.amount, due: d.due }));
+  const later = upcomingBills(spending, today, skipped).filter(b => b.due.slice(0, 7) === month && !due.some(d => d.key === b.key))
     .map(b => ({ key: b.key, title: b.title, amount: b.amount, due: b.due }));
   const billsDue = [...due, ...later].sort((a, b) => a.due.localeCompare(b.due));
   const billsTotal = billsDue.reduce((s, b) => s + b.amount, 0);
@@ -327,7 +328,7 @@ export function forecast(expenses, today = todayStr(), skipped = () => false) {
   const usualLeft = perDay * daysLeft;
 
   // Next month's running bills: every active series, less EMIs that end this month
-  const { latest, template, count } = recurringSeries(expenses);
+  const { latest, template, count } = recurringSeries(spending);
   let nextFixed = 0, nextBills = 0;
   for (const [key, t] of template) {
     if (t.repeat !== 'monthly') continue;
