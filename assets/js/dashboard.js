@@ -2000,9 +2000,17 @@ function renderTrendChart() {
           ticks: {
             color: tickColor,
             font: { size: isMobile ? 10 : 11 },
-            maxRotation: isMobile ? 30 : 0,
+            maxRotation: 0,
             minRotation: 0,
-            autoSkip: false
+            autoSkip: false,
+            // Phones fit the whole range on screen: day over date, month initials (the tooltip has it in full)
+            callback: function (value) {
+              const label = this.getLabelForValue(value);
+              if (!isMobile) return label;
+              if (activeTab === 'daily') return label.split(' ');
+              if (activeTab === 'monthly') return label.charAt(0);
+              return label;
+            }
           },
           grid: {
             display: false,

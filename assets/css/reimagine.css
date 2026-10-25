@@ -1577,3 +1577,9 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
   .ins-pie-legend { flex: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .ins-pie-slice, .ins-pie-row { transition: none; } }
+
+/* ===== SECTION: Spending over time fits the phone screen — no sideways swipe to see the whole range ===== */
+@media (max-width: 767px) {
+  .line-chart-scroll-wrap { overflow: visible; }
+  .line-chart-container, .line-chart-container[data-tab] { min-width: 0; width: 100%; }
+}
