@@ -112,6 +112,25 @@ export function splitAmount(total, others) {
 
 // A debt someone else recorded against your email, seen from your side: what they're owed, you owe.
 // Flagged shared: you can only say it's settled (claimDate), and they confirm (firestore.rules › debts).
+// Part-payments on a debt are kept as paid: [{ amount, date }]; what's still owed is the amount less
+// those. Every total of open debts uses debtLeft, so a half-paid debt counts as its other half.
+export function debtPaid(d) {
+  return (Array.isArray(d?.paid) ? d.paid : []).reduce((s, p) => s + (Number(p?.amount) || 0), 0);
+}
+export function debtLeft(d) {
+  return Math.max(Math.round(((Number(d?.amount) || 0) - debtPaid(d)) * 100) / 100, 0);
+}
+// A payment of `amount` on `date`: the new paid list (oldest first), and whether it pays the debt off.
+// error when the amount isn't a positive number or is more than what's left.
+export function payDebt(d, amount, date) {
+  const left = debtLeft(d);
+  const n = Math.round(Number(amount) * 100) / 100;
+  if (!(n > 0)) return { error: 'Enter the amount paid.' };
+  if (n > left + 0.001) return { error: `That's more than the ${left} left.`, left };
+  const paid = [...(Array.isArray(d.paid) ? d.paid : []), { amount: n, date }].sort((a, b) => a.date.localeCompare(b.date));
+  return { paid, settles: n >= left - 0.001 };
+}
+
 export function sharedDebtView(id, raw) {
   return {
     id,
@@ -124,6 +143,7 @@ export function sharedDebtView(id, raw) {
     settled: raw.settled === true,
     settledDate: raw.settledDate || '',
     claimDate: raw.claimDate || '',
+    paid: Array.isArray(raw.paid) ? raw.paid : [], // the payments they recorded, so what's left matches
     createdAt: raw.createdAt?.toMillis?.() || 0,
     shared: true,
   };

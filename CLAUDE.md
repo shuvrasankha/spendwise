@@ -19,6 +19,8 @@ Cloudflare Worker (`worker/`) for AI and push. Deployed to GitHub Pages.
 - Investments (`invest.html`): holdings live in `holdings/{id}`; money put in is a
   'Savings & Investments' expense with `holdingId` (a SIP is that entry repeating monthly). Logic in
   `invest-data.js`. Goals count what their linked holdings are worth.
+- Debts: part-payments are `paid: [{ amount, date }]` on the debt; every total of open debts uses
+  `debtLeft()` (helpers.js), never `amount`. Paying what's left settles it.
 - **Privacy rule for AI features:** entries (descriptions, notes, names) never go to the AI. The
   coach gets number-only facts (`factsText`), and so does the budget suggestion (`budget-data.js`
   `factsLines`); Ask sends only the question and today's date, and the

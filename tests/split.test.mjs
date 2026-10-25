@@ -16,7 +16,7 @@ test('your share absorbs the rounding, so the parts add back to the total', () =
 
 test('a debt they recorded as owed to them is one you owe, from them', () => {
   const d = sharedDebtView('d1', { uid: 'them', type: 'they-owe', amount: 250, fromName: 'Ravi', date: '2026-10-20', notes: 'Split: Dinner', settled: false, withEmail: 'me@x.com' });
-  assert.deepEqual(d, { id: 'd1', amount: 250, type: 'i-owe', person: 'Ravi', email: '', date: '2026-10-20', notes: 'Split: Dinner', settled: false, settledDate: '', claimDate: '', createdAt: 0, shared: true });
+  assert.deepEqual(d, { id: 'd1', amount: 250, type: 'i-owe', person: 'Ravi', email: '', date: '2026-10-20', notes: 'Split: Dinner', settled: false, settledDate: '', claimDate: '', paid: [], createdAt: 0, shared: true });
 });
 
 test('settled on their side shows settled on yours', () => {
@@ -53,4 +53,23 @@ test('people: from your debts and from splits with you, newest first, one each',
     { name: 'Ravi', email: 'ravi@x.com' },
     { name: 'Ravi', email: 'ravi.k@z.com' },
   ]);
+});
+
+test('part-payments: what is left, paying it off, and too much', async () => {
+  const { debtLeft, debtPaid, payDebt, sharedDebtView } = await import('../assets/js/utils/helpers.js');
+  const d = { amount: 1768, paid: [{ amount: 500, date: '2026-10-20' }] };
+  assert.equal(debtPaid(d), 500);
+  assert.equal(debtLeft(d), 1268);
+  assert.equal(debtLeft({ amount: 1768 }), 1768); // older debts have no payments
+  const part = payDebt(d, '268', '2026-10-25');
+  assert.equal(part.settles, false);
+  assert.deepEqual(part.paid.map(p => p.amount), [500, 268]);
+  const rest = payDebt({ ...d, paid: part.paid }, 1000, '2026-10-26');
+  assert.equal(rest.settles, true);
+  assert.equal(payDebt(d, 1300, '2026-10-25').error !== undefined, true);
+  assert.equal(payDebt(d, 0, '2026-10-25').error, 'Enter the amount paid.');
+  // payments made out of order are kept by date
+  assert.deepEqual(payDebt(d, 10, '2026-10-01').paid.map(p => p.date), ['2026-10-01', '2026-10-20']);
+  // the other person sees the same left-over amount
+  assert.equal(debtLeft(sharedDebtView('x', { amount: 1768, type: 'they-owe', paid: d.paid })), 1268);
 });

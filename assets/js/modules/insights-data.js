@@ -1,7 +1,7 @@
 // insights-data.js — Pure calculations for the Insights page (no DOM, no Firebase), so they can be tested.
 // All dates are local 'YYYY-MM-DD' strings, compared as text.
 
-import { isSpending } from '../utils/helpers.js';
+import { isSpending, debtLeft } from '../utils/helpers.js';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -100,8 +100,9 @@ export function summarize({ expenses = [], income = [], debts = [] }, r) {
 
   // Debts are a current position, not a period total: every unsettled debt counts
   const active = debts.filter(dbt => !dbt.settled);
-  const youOwe = sum(active.filter(dbt => dbt.type === 'i-owe'));
-  const owedToYou = sum(active.filter(dbt => dbt.type === 'they-owe'));
+  const left = list => list.reduce((s, dbt) => s + debtLeft(dbt), 0); // less any part-payments
+  const youOwe = left(active.filter(dbt => dbt.type === 'i-owe'));
+  const owedToYou = left(active.filter(dbt => dbt.type === 'they-owe'));
 
   const dailyAvg = spent / r.elapsedDays;
   return {

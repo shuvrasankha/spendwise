@@ -93,7 +93,7 @@ async function loadData() {
       description: r.description || '', payment: r.payment || '', repeat: r.repeat || '', emiTotal: Number(r.emiTotal) || 0,
       notes: r.notes || '', cardName: r.cardName || '', tags: Array.isArray(r.tags) ? r.tags : [] })),
     get('income', r => ({ amount: num(r.amount), date: r.date || '', source: r.source || '', notes: r.notes || '', bank: r.bank || '' })),
-    get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '' })),
+    get('debts', r => ({ amount: num(r.amount), type: r.type || 'they-owe', settled: !!r.settled, settledDate: r.settledDate || '', date: r.date || '', paid: Array.isArray(r.paid) ? r.paid : [] })),
   ]);
   return { expenses, income, debts };
 }
