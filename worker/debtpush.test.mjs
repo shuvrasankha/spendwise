@@ -113,6 +113,7 @@ test('a settle claim is pushed to the debt\'s sender, once per claim', async () 
   assert.equal(first.requests[1].url, device.endpoint);
   assert.deepEqual((await claim({ db })).result, [200, { sent: 0 }]);
   assert.equal((await claim({ db, doc: claimDoc({ claimDate: { stringValue: '2026-10-24' } }) })).result[1].sent, 1); // claimed again later
+  assert.equal((await claim({ db, doc: claimDoc({ claimDate: { stringValue: '2026-10-24' }, claimAmount: { integerValue: '200' } }) })).result[1].sent, 1); // another part, the same day
 });
 
 test('settle claim refused: not shared with the caller, no claim, already settled, no sender email', async () => {
@@ -127,4 +128,8 @@ test('the settle message reads from the sender\'s side', () => {
   const owedToMe = JSON.parse(claimMessage({ type: 'they-owe', amount: 500, notes: 'Rent' }, 'c1', '₹', 'ravi@x.com'));
   assert.deepEqual(owedToMe, { title: 'ravi@x.com says a debt is settled', body: 'They paid you ₹500 · Confirm it in Debts · Rent', url: 'debt.html', tag: 'claim-c1' });
   assert.equal(JSON.parse(claimMessage({ type: 'i-owe', amount: 500, notes: '' }, 'c1', '', 'ravi@x.com')).body, 'You paid them 500 · Confirm it in Debts');
+  // part of it: the amount they say was paid
+  const part = JSON.parse(claimMessage({ type: 'they-owe', amount: 1768, claimAmount: 500, notes: '' }, 'c1', '₹', 'ravi@x.com'));
+  assert.equal(part.title, 'ravi@x.com says part of a debt is paid');
+  assert.equal(part.body, 'They paid you ₹500 · Confirm it in Debts');
 });

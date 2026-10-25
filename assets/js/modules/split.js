@@ -6,7 +6,7 @@
 import { auth, db } from '../config/firebase.js';
 import { callWorker } from '../config/ai.js';
 import { collection, doc, getDocs, query, where, serverTimestamp, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, splitAmount, sharedDebtView, todayStr } from '../utils/helpers.js';
+import { sanitize, splitAmount, sharedDebtView, todayStr, debtClaim, payDebt } from '../utils/helpers.js';
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MAX_PEOPLE = 10;
@@ -51,10 +51,11 @@ export function announceDebts(refs, debts) {
 }
 
 // ── Settling a shared debt ───────────────────────────────────────────────────
-// The person it was shared with says it's settled (claimDate); the one who added it confirms, which
-// settles it, or says not yet. Only the confirm settles: they could otherwise mark their own debt paid.
+// The person it was shared with says they paid part or all of it (claimDate, claimAmount); the one who
+// added it confirms, which records the payment (and settles it when nothing is left), or says not yet.
+// Only the confirm counts: they could otherwise mark their own debt paid.
 
-// Your own debts the other person says are settled, for the notification centre
+// Your own debts the other person says they paid, for the notification centre
 export async function fetchClaimedDebts(user) {
   if (!user) return [];
   try {
@@ -66,19 +67,26 @@ export async function fetchClaimedDebts(user) {
   }
 }
 
-// On a debt shared with you: say it's settled today (the one who added it is pushed), or take it back
-export async function claimSettled(id) {
-  const claimDate = todayStr();
-  await updateDoc(doc(db, 'debts', id), { claimDate });
+// On a debt shared with you: say how much was paid and when, or take it back
+// amount is what they paid (all that's left, or part of it), on date; the one who added it is pushed
+export async function claimSettled(id, amount, date = todayStr()) {
+  await updateDoc(doc(db, 'debts', id), { claimDate: date, claimAmount: amount });
   const symbol = window.getCurrencyInfo?.(window.getCurrency())?.symbol;
   callWorker('/push/claim', { debtId: id, symbol }).catch(() => {});
-  return claimDate;
+  return { claimDate: date, claimAmount: amount };
 }
-export const withdrawClaim = id => updateDoc(doc(db, 'debts', id), { claimDate: deleteField() });
+export const withdrawClaim = id => updateDoc(doc(db, 'debts', id), { claimDate: deleteField(), claimAmount: deleteField() });
 
-// On your own debt: agree it's settled (on the day they said), or not yet
-export const confirmClaim = (id, claimDate) =>
-  updateDoc(doc(db, 'debts', id), { settled: true, settledDate: claimDate, claimDate: deleteField() });
+// On your own debt: agree they paid what they said (a part-payment, or what's left, which settles it
+// on that day), or not yet. Returns the fields that changed.
+export async function confirmClaim(d) {
+  const c = debtClaim(d);
+  const res = payDebt(d, c.amount, c.date);
+  if (res.error) throw new Error(res.error);
+  const fields = { paid: res.paid, ...(res.settles ? { settled: true, settledDate: c.date } : {}) };
+  await updateDoc(doc(db, 'debts', d.id), { ...fields, claimDate: deleteField(), claimAmount: deleteField() });
+  return { ...fields, claimDate: '', claimAmount: 0 };
+}
 export const rejectClaim = withdrawClaim;
 
 // ── Splitting an expense ─────────────────────────────────────────────────────

@@ -40,8 +40,9 @@ service cloud.firestore {
       allow update: if owns() && keepsOwner();
     }
 
-    // A debt can name someone by email (withEmail): they can read it, and only say it's settled
-    // (claimDate) or take that back; the sender confirms, which settles it.
+    // A debt can name someone by email (withEmail): they can read it, and only say what was paid
+    // (claimDate, and claimAmount: part or all of it) or take that back; the sender confirms, which
+    // records the payment.
     // fromEmail must be the sender's own verified email, so it can't impersonate anyone.
     function validShare(d) {
       return (!('withEmail' in d) && !('fromEmail' in d) && !('fromName' in d))
@@ -61,10 +62,13 @@ service cloud.firestore {
       allow update: if (owns() && keepsOwner()
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['withEmail', 'fromEmail', 'fromName']))
         || (sharedWithMe() && resource.data.get('settled', false) != true
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimDate'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimDate', 'claimAmount'])
           && (!('claimDate' in request.resource.data)
             || (request.resource.data.claimDate is string
-              && request.resource.data.claimDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))));
+              && request.resource.data.claimDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+          && (!('claimAmount' in request.resource.data)
+            || (request.resource.data.claimAmount is number && request.resource.data.claimAmount > 0
+              && request.resource.data.claimAmount <= resource.data.amount)));
     }
 
     function sharedWithMe() {

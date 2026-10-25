@@ -35,7 +35,7 @@ test('notifications: each split, then its settling, newest first', () => {
 test('notifications: the other person saying your shared debt is settled, until you settle it', () => {
   const claimed = { id: 'c', type: 'they-owe', amount: 500, person: 'Ravi', date: '2026-10-10', notes: 'Rent', withEmail: 'ravi@x.com', claimDate: '2026-10-23' };
   const items = notificationsFrom([], [claimed, { ...claimed, id: 'd', claimDate: '' }, { ...claimed, id: 'e', settled: true }]);
-  assert.deepEqual(items, [{ id: 'c:claim:2026-10-23', kind: 'claim', type: 'they-owe', at: Date.parse('2026-10-23T23:59:59'), day: '2026-10-23', person: 'Ravi', amount: 500, note: 'Rent' }]);
+  assert.deepEqual(items, [{ id: 'c:claim:2026-10-23:500', kind: 'claim', type: 'they-owe', at: Date.parse('2026-10-23T23:59:59'), day: '2026-10-23', person: 'Ravi', amount: 500, settles: true, note: 'Rent' }]);
 });
 
 test('people: from your debts and from splits with you, newest first, one each', () => {
@@ -72,4 +72,18 @@ test('part-payments: what is left, paying it off, and too much', async () => {
   assert.deepEqual(payDebt(d, 10, '2026-10-01').paid.map(p => p.date), ['2026-10-01', '2026-10-20']);
   // the other person sees the same left-over amount
   assert.equal(debtLeft(sharedDebtView('x', { amount: 1768, type: 'they-owe', paid: d.paid })), 1268);
+});
+
+test('the other person says part was paid: it counts once confirmed', async () => {
+  const { debtClaim, notificationsFrom } = await import('../assets/js/utils/helpers.js');
+  const d = { id: 'd', amount: 1768, paid: [{ amount: 500, date: '2026-10-20' }], claimDate: '2026-10-25', claimAmount: 300, person: 'Bibhu', type: 'they-owe' };
+  assert.deepEqual(debtClaim(d), { amount: 300, date: '2026-10-25', settles: false });
+  // a claim from before part-payments (no amount) is all that's left
+  assert.deepEqual(debtClaim({ ...d, claimAmount: undefined }), { amount: 1268, date: '2026-10-25', settles: true });
+  // never more than what's left
+  assert.equal(debtClaim({ ...d, claimAmount: 5000 }).amount, 1268);
+  assert.equal(debtClaim({ ...d, settled: true }), null);
+  const [item] = notificationsFrom([], [d]);
+  assert.equal(item.amount, 300);
+  assert.equal(item.settles, false);
 });
