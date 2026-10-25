@@ -1548,3 +1548,13 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .table-show-more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .table-show-count { flex: 1 1 100%; text-align: center; font-size: 0.8125rem; color: var(--text2); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .table-show-more:active { transform: none; } }
+
+/* ===== SECTION: voice review — the switch row (Repeats every month) beside the other fields ===== */
+.vp-field.vp-switch { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; }
+.vp-field.vp-switch > span:first-child { font-size: 0.9375rem; font-weight: 500; color: var(--text); }
+.vp-field input.reminder-switch {
+  width: 44px; height: 26px; min-height: 0; flex: 0 0 44px; padding: 0; border: none; border-radius: 13px; background: var(--text3);
+}
+.vp-field input.reminder-switch:checked { background: var(--success); }
+.vp-field input.reminder-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: none; }
+.vp-field .optional-tag { font-weight: 500; }
