@@ -477,15 +477,6 @@ a.home-tile:hover { border-color: var(--text2); transform: translateY(-2px); box
 [data-theme="dark"] .voice-lang-option[aria-selected="true"] .voice-lang-native { color: var(--gold); }
 [data-theme="dark"] .voice-lang-option[aria-selected="true"]::after { border-color: var(--gold); }
 
-/* Voice: example phrases (voice-command.js) */
-.voice-examples { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: -2px 0 12px; }
-.voice-examples.hidden { display: none; }
-.voice-examples-label { flex-basis: 100%; text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); }
-.voice-example {
-  min-height: 36px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-full);
-  background: var(--surface); color: var(--text); font-size: 0.8125rem; font-weight: 500; text-align: left;
-}
-.voice-example:hover { border-color: var(--gold); background: var(--gold-bg); }
 .voice-mic-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* Voice: review cards, every field editable before saving */

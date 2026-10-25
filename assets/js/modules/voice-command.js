@@ -21,13 +21,6 @@ const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 const RECEIPT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'; // reads images
 
 
-// Tapping one fills the box, so people see the phrasing that works (nothing is sent)
-const EXAMPLE_COMMANDS = [
-  'Spent 250 on groceries and 80 on an auto',
-  'Got my salary of 50000 today',
-  'Lent 500 to Ravi yesterday'
-];
-
 // ── Supported Languages ──────────────────────────────────────────────────────
 const VOICE_LANGUAGES = [
   { code: 'en-IN', label: 'English', flag: '🇬🇧', name: 'English' },
@@ -667,7 +660,6 @@ function showPreview(entries) {
 
   preview.classList.remove('hidden');
   document.getElementById('voice-actions').classList.remove('hidden');
-  document.querySelector('.voice-examples')?.classList.add('hidden');
   updateSaveButton();
   if (window.lucide) lucide.createIcons();
 }
@@ -736,7 +728,6 @@ function hidePreview() {
   const actions = document.getElementById('voice-actions');
   if (preview) { preview.classList.add('hidden'); preview.innerHTML = ''; }
   if (actions) actions.classList.add('hidden');
-  document.querySelector('.voice-examples')?.classList.remove('hidden');
   // Reset confirm button
   const btn = document.getElementById('voice-confirm-btn');
   if (btn) {
@@ -1010,22 +1001,6 @@ function initVoiceUI() {
     preview.addEventListener('input', onPreviewInput);
     preview.addEventListener('change', onPreviewInput);
     preview.addEventListener('click', onPreviewClick);
-  }
-
-  // Example phrases under the transcript
-  const transcript = document.getElementById('voice-transcript');
-  if (transcript && textInput) {
-    const ex = document.createElement('div');
-    ex.className = 'voice-examples';
-    ex.innerHTML = '<span class="voice-examples-label">Try saying</span>' +
-      EXAMPLE_COMMANDS.map(c => `<button type="button" class="voice-example">${escapeHtml(c)}</button>`).join('');
-    ex.addEventListener('click', (e) => {
-      const b = e.target.closest('.voice-example');
-      if (!b) return;
-      textInput.value = b.textContent;
-      textInput.focus();
-    });
-    transcript.after(ex);
   }
 
   // No speech engine (e.g. Firefox): say so up front instead of failing on tap
