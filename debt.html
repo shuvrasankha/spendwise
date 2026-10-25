@@ -230,8 +230,14 @@
           <div id="debt-form-msg" class="form-msg hidden" role="status"></div>
         </div>
 
+        <!-- Open debts per person (by email when known), netting both ways: debt.js renderPeople -->
+        <section class="hist-day debt-people hidden" id="debt-people-card" aria-labelledby="debt-people-title">
+          <h2 class="hist-day-head entry-list-head"><span id="debt-people-title">By person</span><span id="debt-people-count"></span></h2>
+          <ul class="hist-rows debt-people-list" id="debt-people"></ul>
+        </section>
+
         <section class="hist-day" aria-labelledby="debt-open-title">
-          <h2 class="hist-day-head entry-list-head"><span id="debt-open-title">Open</span><span id="debt-open-total"></span></h2>
+          <h2 class="hist-day-head entry-list-head"><span id="debt-open-title">Open</span><span class="debt-open-side"><button type="button" class="debt-filter-clear hidden" id="debt-filter-clear">Show all</button><span id="debt-open-total"></span></span></h2>
           <ul class="hist-rows" id="debt-body"><li class="hist-empty">Loading…</li></ul>
         </section>
 

@@ -1671,3 +1671,36 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 #settings-refresh:disabled .settings-row-go svg { animation: swSpin 1s linear infinite; }
 @keyframes swSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #settings-refresh:disabled .settings-row-go svg { animation: none; } }
+
+/* ===== SECTION: Debts › By person — each person's open debts added up (by email), as an inset
+   grouped list; tapping one shows only theirs under Open ===== */
+.debt-people { margin-bottom: 16px; }
+.debt-people-list li { padding: 0; }
+.debt-person {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px 10px 14px;
+  border: none; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background 0.2s var(--ease-smooth);
+}
+.debt-person:active { transform: scale(0.98); }
+.debt-person.on { background: var(--gold-bg); }
+.debt-person:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+@media (hover: hover) and (pointer: fine) { .debt-person:not(.on):hover { background: var(--surface2); } }
+.debt-person-tile {
+  flex: 0 0 36px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); border: 1px solid var(--border-light); color: var(--text2); font-weight: 700; font-size: 0.9375rem;
+}
+.debt-person.on .debt-person-tile { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 40%, var(--border-light)); }
+.debt-person .hist-row-main { flex: 1; min-width: 0; }
+.debt-person .hist-row-meta { overflow-wrap: anywhere; }
+.debt-person .hist-row-amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.debt-person .hist-row-amount small, .debt-row .hist-row-amount small { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text2); }
+.debt-people-list li + li { border-top: none; }
+.debt-people-list li + li .debt-person { position: relative; }
+.debt-people-list li + li .debt-person::before { content: ''; position: absolute; top: 0; left: 62px; right: 0; border-top: 1px solid var(--border-light); } /* starts after the tile */
+.debt-open-side { display: inline-flex; align-items: center; gap: 10px; }
+.debt-filter-clear {
+  min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface);
+  color: var(--accent); font: inherit; font-size: 0.75rem; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer;
+}
+.debt-filter-clear.hidden { display: none; }
+@media (prefers-reduced-motion: reduce) { .debt-person { transition: none; } .debt-person:active { transform: none; } }
