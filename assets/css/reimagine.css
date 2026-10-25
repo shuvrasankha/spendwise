@@ -1583,3 +1583,28 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
   .line-chart-scroll-wrap { overflow: visible; }
   .line-chart-container, .line-chart-container[data-tab] { min-width: 0; width: 100%; }
 }
+
+/* ===== SECTION: Monthly budget — "Suggest from my income" (budget.js): one quiet row above the limit,
+   the result as a line of text under it; the figures land in the fields for review ===== */
+.budget-ai { display: flex; flex-direction: column; gap: 6px; margin: -4px 0 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border-light); }
+.budget-ai-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px;
+  border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface2);
+  color: var(--accent); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer;
+  transition: transform 0.2s var(--ease-smooth), border-color 0.2s var(--ease-smooth);
+}
+.budget-ai-btn svg { width: 18px; height: 18px; }
+.budget-ai-btn:active { transform: scale(0.96); }
+.budget-ai-btn:disabled { opacity: 0.6; cursor: progress; }
+.budget-ai-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .budget-ai-btn:hover { border-color: var(--accent); } }
+.budget-ai-note { margin: 0; font-size: 0.8125rem; color: var(--text2); line-height: 1.4; }
+.budget-ai-result { margin: 4px 0 0; font-size: 0.875rem; color: var(--text); line-height: 1.45; }
+.budget-ai-result strong { font-weight: 600; }
+.budget-ai-result.error { color: var(--danger); }
+.budget-ai-result a { color: var(--accent); font-weight: 600; }
+.budget-ai-result.hidden { display: none; }
+@media (prefers-reduced-motion: reduce) { .budget-ai-btn { transition: none; } }
+/* The per-category amounts sit outside .form-group, so they missed its text colour: dark text on dark */
+.budget-money input { color: var(--text); }
+.budget-money input::placeholder { color: var(--text2); }
