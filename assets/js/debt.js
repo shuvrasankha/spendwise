@@ -6,6 +6,7 @@ import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo, debtL
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
 import { fetchSharedDebts, emailError, shareFields, announceDebts, claimSettled, withdrawClaim, confirmClaim, rejectClaim } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
+import { debtsByPerson, isPersons } from './modules/debt-data.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -18,6 +19,7 @@ let settleDebtTarget = null;
 let reactivateDebtTarget = null;
 let currentDebtType = 'they-owe';
 let editingDebtId = null;
+let personFilter = null; // a debtsByPerson row: the Open list shows only theirs
 
 function showDebtFormMsg(msg, type) {
   const el = document.getElementById('debt-form-msg');
@@ -114,10 +116,47 @@ function debtRow(d, meta, actions) {
   </li>`;
 }
 
+// ── By person: what each person owes overall, or is owed ────────────────────
+function renderPeople() {
+  const people = debtsByPerson(allDebts);
+  const card = document.getElementById('debt-people-card');
+  // Worth a list once there's more than one debt to add up
+  const show = allDebts.filter(d => !d.settled).length > 1;
+  card.classList.toggle('hidden', !show);
+  if (personFilter && !people.some(p => p.key === personFilter.key)) personFilter = null;
+  if (!show) { personFilter = null; return; }
+  document.getElementById('debt-people-count').textContent = String(people.length);
+  document.getElementById('debt-people').innerHTML = people.map(p => {
+    const balance = p.net > 0 ? `Owes you ${fmt(p.net)}` : p.net < 0 ? `You owe ${fmt(-p.net)}` : 'All square';
+    const both = p.owedToYou > 0 && p.youOwe > 0 ? ` · ${fmt(p.owedToYou)} to you, ${fmt(p.youOwe)} from you` : '';
+    const sub = [`${p.count} open`, p.email].filter(Boolean).join(' · ') + both;
+    const on = personFilter?.key === p.key;
+    return `<li><button type="button" class="debt-person${on ? ' on' : ''}" data-person-key="${escapeHtml(p.key)}" aria-pressed="${on}" aria-label="${escapeHtml(p.name)}: ${escapeHtml(balance)}. ${on ? 'Showing only theirs' : 'Show only theirs'}">
+      <span class="debt-person-tile" aria-hidden="true">${escapeHtml(p.name.charAt(0).toUpperCase())}</span>
+      <span class="hist-row-main"><span class="hist-row-title">${escapeHtml(p.name)}</span><span class="hist-row-meta">${escapeHtml(sub)}</span></span>
+      <span class="hist-row-amount ${p.net > 0 ? 'income' : p.net < 0 ? 'owe' : ''}">${p.net ? fmt(Math.abs(p.net)) : fmt(0)}<small>${p.net > 0 ? 'owes you' : p.net < 0 ? 'you owe' : 'square'}</small></span>
+    </button></li>`;
+  }).join('');
+}
+
+document.getElementById('debt-people')?.addEventListener('click', e => {
+  const btn = e.target.closest('[data-person-key]');
+  if (!btn) return;
+  const p = debtsByPerson(allDebts).find(x => x.key === btn.dataset.personKey);
+  personFilter = personFilter?.key === p?.key ? null : p;
+  renderPeople();
+  renderDebts();
+  if (personFilter) document.getElementById('debt-open-title').scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+});
+document.getElementById('debt-filter-clear')?.addEventListener('click', () => { personFilter = null; renderPeople(); renderDebts(); });
+
 // ── Open debts ───────────────────────────────────────────────────────────────
 function renderDebts() {
+  renderPeople();
   const list = document.getElementById('debt-body');
-  const active = allDebts.filter(d => !d.settled);
+  const active = allDebts.filter(d => !d.settled && (!personFilter || isPersons(d, personFilter)));
+  document.getElementById('debt-open-title').textContent = personFilter ? `Open with ${personFilter.name}` : 'Open';
+  document.getElementById('debt-filter-clear').classList.toggle('hidden', !personFilter);
   document.getElementById('debt-open-total').textContent = active.length ? String(active.length) : '';
   if (!active.length) {
     list.innerHTML = '<li class="hist-empty">No open debts. Add one above when someone borrows or lends.</li>';

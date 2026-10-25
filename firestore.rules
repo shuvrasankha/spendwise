@@ -94,9 +94,13 @@ service cloud.firestore {
     }
 
     // One doc per user, id = uid:
-    // { budget: {total, cats}, goals: [...], remindAt: "HH:MM", remindOn: bool }
+    // { budget: {total, cats}, goals: [...], remindAt: "HH:MM", remindOn: bool,
+    //   notif: { seen: [ids], cleared: [ids] } }
     function validSettings(d) {
-      return d.keys().hasOnly(['budget', 'goals', 'remindAt', 'remindOn'])
+      return d.keys().hasOnly(['budget', 'goals', 'remindAt', 'remindOn', 'notif'])
+        && (!('notif' in d) || (d.notif is map && d.notif.keys().hasOnly(['seen', 'cleared'])
+          && (!('seen' in d.notif) || (d.notif.seen is list && d.notif.seen.size() <= 200))
+          && (!('cleared' in d.notif) || (d.notif.cleared is list && d.notif.cleared.size() <= 200))))
         && (!('remindOn' in d) || d.remindOn is bool)
         && (!('budget' in d) || d.budget is map)
         && (!('goals' in d) || (d.goals is list && d.goals.size() <= 20))

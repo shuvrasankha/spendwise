@@ -87,3 +87,11 @@ test('the other person says part was paid: it counts once confirmed', async () =
   assert.equal(item.amount, 300);
   assert.equal(item.settles, false);
 });
+
+test('bell items map to the pushes in the phone tray, and seen/cleared lists merge across devices', async () => {
+  const { pushTagsFor, mergeIds } = await import('../assets/js/utils/helpers.js');
+  assert.deepEqual([...pushTagsFor(['d1:split', 'd1:settled', 'd2:claim:2026-10-25:500'])], ['debt-d1', 'claim-d2']);
+  assert.deepEqual(mergeIds(['a', 'b'], ['b', 'c']), ['a', 'b', 'c']);
+  assert.equal(mergeIds(Array.from({ length: 250 }, (_, i) => 'x' + i), []).length, 200);
+  assert.equal(mergeIds(Array.from({ length: 250 }, (_, i) => 'x' + i), []).at(-1), 'x249'); // keeps the newest
+});
