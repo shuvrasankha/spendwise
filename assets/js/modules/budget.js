@@ -58,7 +58,7 @@ function buildDialog() {
       <p class="budget-note">Saved to your account. Home shows how much of it you've used.</p>
       <div class="form-group">
         <label for="budget-total">Monthly limit</label>
-        <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="budget-total" placeholder="e.g. 30000" autocomplete="off"></div>
+        <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="budget-total" autocomplete="off"></div>
       </div>
       <details class="budget-cats">
         <summary>Limits by category <span>optional</span></summary>

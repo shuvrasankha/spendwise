@@ -182,7 +182,7 @@
               <label for="debt-person">Person</label>
               <div class="input-icon-wrap">
                 <i data-lucide="user"></i>
-                <input type="text" id="debt-person" placeholder="e.g. Ravi, Mom" list="debt-person-list" autocomplete="off" data-person-name />
+                <input type="text" id="debt-person" list="debt-person-list" autocomplete="off" data-person-name />
               </div>
               <datalist id="debt-person-list" data-people="name"></datalist>
             </div>
@@ -191,7 +191,7 @@
               <label for="debt-email">Their email <span class="optional-tag">optional</span></label>
               <div class="input-icon-wrap">
                 <i data-lucide="mail"></i>
-                <input type="email" id="debt-email" placeholder="ravi@gmail.com" list="debt-email-list" autocomplete="off" inputmode="email" maxlength="254" aria-describedby="debt-email-help" data-person-email />
+                <input type="email" id="debt-email" list="debt-email-list" autocomplete="off" inputmode="email" maxlength="254" aria-describedby="debt-email-help" data-person-email />
               </div>
               <datalist id="debt-email-list" data-people="email"></datalist>
               <small class="debt-email-help" id="debt-email-help">If they use SpendWise with this email, it shows in their Debts too.</small>
@@ -216,7 +216,7 @@
             </div>
             <div class="form-group full-width">
               <label for="debt-notes">Notes <span class="optional-tag">optional</span></label>
-              <textarea id="debt-notes" rows="2" placeholder="e.g. Dinner split, loan for rent"></textarea>
+              <textarea id="debt-notes" rows="2"></textarea>
             </div>
           </div>
           <div class="form-actions">

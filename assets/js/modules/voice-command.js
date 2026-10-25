@@ -650,7 +650,7 @@ function entryFields(e) {
     return `
       <label class="vp-field"><span>Category</span><select data-field="category">${options(EXPENSE_CATEGORIES, e.category)}</select></label>
       <label class="vp-field"><span>Paid by</span><select data-field="payment">${options(PAYMENT_METHODS, e.payment)}</select></label>
-      <label class="vp-field vp-wide"><span>Description</span><input type="text" data-field="description" maxlength="100" value="${escapeHtml(e.description === '-' ? '' : e.description)}" placeholder="What was it for?"></label>`;
+      <label class="vp-field vp-wide"><span>Description</span><input type="text" data-field="description" maxlength="100" value="${escapeHtml(e.description === '-' ? '' : e.description)}"></label>`;
   }
   if (e.type === 'income') {
     return `
@@ -658,12 +658,12 @@ function entryFields(e) {
       <label class="vp-field"><span>Received as</span><select data-field="paymentType">${options(INCOME_PAYMENT_TYPES, e.paymentType)}</select></label>`;
   }
   return `
-    <label class="vp-field"><span>Person</span><input type="text" data-field="person" maxlength="100" value="${escapeHtml(e.person)}" placeholder="Who?"></label>
+    <label class="vp-field"><span>Person</span><input type="text" data-field="person" maxlength="100" value="${escapeHtml(e.person)}"></label>
     <label class="vp-field"><span>Direction</span><select data-field="debtType">
       <option value="they-owe"${e.debtType === 'they-owe' ? ' selected' : ''}>They owe me</option>
       <option value="i-owe"${e.debtType === 'i-owe' ? ' selected' : ''}>I owe them</option>
     </select></label>
-    <label class="vp-field vp-wide"><span>Notes</span><input type="text" data-field="notes" maxlength="500" value="${escapeHtml(e.notes)}" placeholder="Optional"></label>`;
+    <label class="vp-field vp-wide"><span>Notes <span class="optional-tag">optional</span></span><input type="text" data-field="notes" maxlength="500" value="${escapeHtml(e.notes)}"></label>`;
 }
 
 const CHECK_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
