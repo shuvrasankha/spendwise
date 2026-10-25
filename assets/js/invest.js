@@ -245,10 +245,13 @@ function modalMsg(id, text) {
   el.className = 'form-msg budget-msg error';
 }
 
-function openHolding(h) {
+// An entry waiting for the holding being made from its "Into" list; it reopens with that holding picked
+let entryAwaiting = null;
+
+function openHolding(h, name = '') {
   editingHolding = h || null;
   $('holding-title').textContent = h ? 'Edit holding' : 'New holding';
-  $('holding-name').value = h?.name || '';
+  $('holding-name').value = h?.name || name;
   $('holding-kind').innerHTML = HOLDING_KINDS.map(k => `<option value="${k.id}">${escapeHtml(k.label)}</option>`).join('');
   $('holding-kind').value = h ? kindOf(h.kind).id : 'mf';
   $('holding-value').value = typeof h?.value === 'number' ? h.value : '';
@@ -301,6 +304,11 @@ async function saveHolding() {
     }
     closeModal('holding-modal');
     render();
+    if (!h && entryAwaiting) {
+      showToast(`${name} added. Save to move the money into it.`, 'success');
+      backToEntry(holdings.at(-1).id);
+      return;
+    }
     showToast(h ? 'Holding saved.' : `${name} added. Now put money in.`, 'success');
     if (!h) $('inv-amount').focus({ preventScroll: true });
   } catch (err) {
@@ -337,16 +345,39 @@ async function deleteHolding() {
 }
 
 // ── Entry dialog ─────────────────────────────────────────────────────────────
-function openEntry(e) {
+const NEW_HOLDING = '__new';
+
+function openEntry(e, holdingId) {
   editingEntry = e;
   const h = holdingOf(e, holdings);
-  $('entry-holding').innerHTML = `<option value="">Not in a holding</option>` + holdings.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join('');
-  $('entry-holding').value = h ? h.id : '';
+  // "New holding…" last, so an entry can be sorted even before there is a holding to put it in
+  $('entry-holding').innerHTML = `<option value="">Not in a holding</option>` + holdings.map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join('')
+    + `<option value="${NEW_HOLDING}">New holding…</option>`;
+  $('entry-holding').value = holdingId ?? (h ? h.id : '');
+  $('entry-holding').dataset.was = $('entry-holding').value;
   $('entry-amount').value = e.amount;
   $('entry-date').value = e.date;
   $('entry-msg').className = 'form-msg budget-msg hidden';
   openModal('entry-modal');
   setTimeout(() => $('entry-holding').focus(), 50);
+}
+
+// "New holding…" picked: make the holding (named after the entry, when it has a name), then come back
+function onEntryHolding() {
+  const sel = $('entry-holding');
+  if (sel.value !== NEW_HOLDING) { sel.dataset.was = sel.value; return; }
+  sel.value = sel.dataset.was || '';
+  entryAwaiting = editingEntry;
+  const named = editingEntry.description && editingEntry.description !== '-' ? editingEntry.description : '';
+  closeModal('entry-modal');
+  openHolding(null, named);
+}
+
+// Reopens the waiting entry, with the new holding picked when one was made
+function backToEntry(holdingId) {
+  const e = entryAwaiting;
+  entryAwaiting = null;
+  if (e && expenses.includes(e)) openEntry(e, holdingId);
 }
 
 async function saveEntry() {
@@ -393,6 +424,7 @@ $('inv-add').addEventListener('click', addEntry);
 $('holding-save').addEventListener('click', saveHolding);
 $('holding-delete').addEventListener('click', deleteHolding);
 $('entry-save').addEventListener('click', saveEntry);
+$('entry-holding').addEventListener('change', onEntryHolding);
 $('entry-delete').addEventListener('click', deleteEntry);
 
 document.addEventListener('click', e => {
@@ -407,7 +439,11 @@ document.addEventListener('click', e => {
   // Close: the ✕, or a tap on the backdrop
   for (const id of ['holding-modal', 'entry-modal']) {
     const m = $(id);
-    if (!m.classList.contains('hidden') && (t === m || t.closest(`#${id} .modal-close-btn`))) return closeModal(id);
+    if (!m.classList.contains('hidden') && (t === m || t.closest(`#${id} .modal-close-btn`))) {
+      closeModal(id);
+      if (id === 'holding-modal') backToEntry(); // closed without making one: back to the entry as it was
+      return;
+    }
   }
 });
 ['holding-modal', 'entry-modal'].forEach(id => $(id).addEventListener('keydown', e => {
