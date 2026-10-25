@@ -1665,3 +1665,9 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 .debt-pay-remove { min-height: 44px; padding: 0 4px 0 8px; border: none; background: none; color: var(--danger); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
 .debt-pay-remove:disabled { opacity: 0.5; cursor: progress; }
 .debt-pay-box .debt-pay-hint { margin: 10px 0 12px; }
+
+/* ===== SECTION: Settings › Refresh the app — busy while it fetches the latest files ===== */
+#settings-refresh:disabled { cursor: progress; opacity: 0.7; }
+#settings-refresh:disabled .settings-row-go svg { animation: swSpin 1s linear infinite; }
+@keyframes swSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #settings-refresh:disabled .settings-row-go svg { animation: none; } }
