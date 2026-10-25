@@ -4,6 +4,13 @@
 import { EXPENSE_CATEGORIES } from '../utils/helpers.js';
 import { getSetting, onSettings, saveSettings } from './settings.js';
 import { showToast } from './page-shell.js';
+import { auth, db } from '../config/firebase.js';
+import { callAI } from '../config/ai.js';
+import { todayStr } from '../utils/helpers.js';
+import { budgetFacts, budgetPrompt, checkSuggestion, suggestFromFacts, readReply } from './budget-data.js';
+import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
 const LEGACY_KEY = 'spendwise_budget'; // before the budget was synced: one per device
 const EMPTY = () => ({ total: null, cats: {} });
@@ -56,6 +63,11 @@ function buildDialog() {
         <button type="button" class="modal-close-btn" data-budget-close aria-label="Close"><i data-lucide="x"></i></button>
       </div>
       <p class="budget-note">Saved to your account. Home shows how much of it you've used.</p>
+      <div class="budget-ai">
+        <button type="button" class="budget-ai-btn" data-budget-suggest><i data-lucide="sparkles" aria-hidden="true"></i><span>Suggest from my income</span></button>
+        <p class="budget-ai-note">From your last 3 months of income and spending. Only monthly totals go to the AI, never your entries.</p>
+        <p class="budget-ai-result hidden" aria-live="polite"></p>
+      </div>
       <div class="form-group">
         <label for="budget-total">Monthly limit</label>
         <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="budget-total" autocomplete="off"></div>
@@ -79,6 +91,7 @@ function buildDialog() {
     if (e.target === overlay || e.target.closest('[data-budget-close]')) return closeDialog();
     if (e.target.closest('[data-budget-clear]')) { saveBudget(EMPTY()); return closeDialog(); }
     if (e.target.closest('[data-budget-save]')) save();
+    if (e.target.closest('[data-budget-suggest]')) suggest();
   });
   overlay.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.stopPropagation(); closeDialog(); }
@@ -100,6 +113,70 @@ function save() {
   closeDialog();
 }
 
+// ── Suggest from my income ──────────────────────────────────────────────────
+const moneyText = n => {
+  const c = window.getCurrencyInfo?.(window.getCurrency?.());
+  return `${c?.symbol || '₹'} ${Math.round(n).toLocaleString(c?.locale || 'en-IN')}`;
+};
+
+async function loadRecords() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('NOT_AUTHENTICATED');
+  const get = async name => (await getDocs(query(collection(db, name), where('uid', '==', uid)))).docs.map(d => {
+    const r = d.data();
+    return { date: r.date || '', amount: parseFloat(r.amount) || 0, category: r.category, repeat: r.repeat || '', emiTotal: Number(r.emiTotal) || 0 };
+  });
+  const [expenses, income] = await Promise.all([get('expenses'), get('income')]);
+  return { expenses, income, goals: getSetting('goals') || [] };
+}
+
+// Asks the AI for a plan from the facts; null when it can't be asked or its answer doesn't hold up
+async function askAI(facts) {
+  if (window.isOffline?.() || navigator.onLine === false) return null;
+  try {
+    const p = budgetPrompt(facts, window.getCurrencyInfo?.(window.getCurrency?.()) || { code: 'INR', symbol: '₹' });
+    const res = await callAI({ model: AI_MODEL, messages: [{ role: 'system', content: p.system }, { role: 'user', content: p.user }], max_tokens: 400, temperature: 0.2 });
+    if (!res.ok) return null;
+    return checkSuggestion(readReply((await res.json()).choices?.[0]?.message?.content), facts);
+  } catch (e) {
+    console.warn('Budget suggestion: AI unavailable', e);
+    return null;
+  }
+}
+
+async function suggest() {
+  const btn = overlay.querySelector('[data-budget-suggest]');
+  const out = overlay.querySelector('.budget-ai-result');
+  const say = (html, error = false) => { out.innerHTML = html; out.className = 'budget-ai-result' + (error ? ' error' : ''); };
+  btn.disabled = true;
+  btn.querySelector('span').textContent = 'Working it out…';
+  try {
+    let facts;
+    try { facts = budgetFacts(await loadRecords(), todayStr()); } catch (e) {
+      console.error('Budget suggestion: records', e);
+      return say("Couldn't read your entries. Check your connection and try again.", true);
+    }
+    if (!facts) return say('Add your income first: the suggestion is based on the last 3 months of it. <a href="income.html">Add income</a>', true);
+    const ai = await askAI(facts);
+    const s = ai || suggestFromFacts(facts);
+    if (!s) return say('Not enough spending yet to suggest limits. Try again after a month of entries.', true);
+    // Into the form for a look before saving
+    overlay.querySelector('#budget-total').value = s.total;
+    overlay.querySelectorAll('[data-cat]').forEach(i => { i.value = s.cats[i.dataset.cat] || ''; i.removeAttribute('aria-invalid'); });
+    overlay.querySelector('.budget-cats').open = Object.keys(s.cats).length > 0;
+    const pct = facts.income > 0 ? Math.round((s.saves / facts.income) * 100) : 0;
+    const keeps = s.saves > 0
+      ? `Keeps ${moneyText(s.saves)} a month (${pct}%) of your ${moneyText(facts.income)} average income.`
+      : `Your bills take all of your ${moneyText(facts.income)} average income, so this only covers them.`;
+    const tip = ai?.tip ? ` ${esc(ai.tip)}` : '';
+    const how = ai ? '' : ' Worked out on your device.';
+    say(`<strong>${esc(keeps)}</strong>${tip}${how} Change anything, then save.`);
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'Suggest from my income';
+  }
+}
+
 let opener = null;
 export function openBudget() {
   if (!overlay) buildDialog();
@@ -110,6 +187,7 @@ export function openBudget() {
   overlay.querySelectorAll('[data-cat]').forEach(i => { i.value = b.cats[i.dataset.cat] || ''; });
   overlay.querySelector('.budget-cats').open = Object.keys(b.cats).length > 0;
   overlay.querySelector('.budget-msg').className = 'form-msg budget-msg hidden';
+  overlay.querySelector('.budget-ai-result').className = 'budget-ai-result hidden';
   overlay.classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
   document.getElementById('profile-dropdown')?.classList.add('hidden');
