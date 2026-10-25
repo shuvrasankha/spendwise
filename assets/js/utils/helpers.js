@@ -131,6 +131,16 @@ export function payDebt(d, amount, date) {
   return { paid, settles: n >= left - 0.001 };
 }
 
+// What the person a debt is shared with says they paid (claimDate, claimAmount), waiting for the one
+// who added it to confirm. A claim without an amount is from before part-payments: all that's left.
+export function debtClaim(d) {
+  if (!d?.claimDate || d.settled) return null;
+  const left = debtLeft(d);
+  const n = Number(d.claimAmount);
+  const amount = n > 0 ? Math.min(Math.round(n * 100) / 100, left) : left;
+  return { amount, date: d.claimDate, settles: amount >= left - 0.001 };
+}
+
 export function sharedDebtView(id, raw) {
   return {
     id,
@@ -143,6 +153,7 @@ export function sharedDebtView(id, raw) {
     settled: raw.settled === true,
     settledDate: raw.settledDate || '',
     claimDate: raw.claimDate || '',
+    ...(Number(raw.claimAmount) > 0 ? { claimAmount: Number(raw.claimAmount) } : {}),
     paid: Array.isArray(raw.paid) ? raw.paid : [], // the payments they recorded, so what's left matches
     createdAt: raw.createdAt?.toMillis?.() || 0,
     shared: true,
@@ -173,7 +184,8 @@ export function notificationsFrom(sharedDebts, ownDebts = []) {
   const items = [];
   for (const d of ownDebts) {
     if (!d.claimDate || d.settled) continue;
-    items.push({ id: `${d.id}:claim:${d.claimDate}`, kind: 'claim', type: d.type, at: Date.parse(`${d.claimDate}T23:59:59`) || 0, day: d.claimDate, person: d.person, amount: d.amount, note: d.notes || '' });
+    const c = debtClaim(d);
+    items.push({ id: `${d.id}:claim:${d.claimDate}:${c.amount}`, kind: 'claim', type: d.type, at: Date.parse(`${d.claimDate}T23:59:59`) || 0, day: d.claimDate, person: d.person, amount: c.amount, settles: c.settles, note: d.notes || '' });
   }
   for (const d of sharedDebts) {
     const at = d.createdAt || Date.parse(d.date) || 0;

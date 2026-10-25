@@ -2,7 +2,7 @@
 
 import { db } from './config/firebase.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo, debtLeft, debtPaid, payDebt } from './utils/helpers.js';
+import { sanitize, escapeHtml, bindDateChips, shortDay, todayStr, countTo, debtLeft, debtPaid, payDebt, debtClaim } from './utils/helpers.js';
 import { showToast, requireUser, initCurrencySelector } from './modules/page-shell.js';
 import { fetchSharedDebts, emailError, shareFields, announceDebts, claimSettled, withdrawClaim, confirmClaim, rejectClaim } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
@@ -124,8 +124,12 @@ function renderDebts() {
     return;
   }
   list.innerHTML = active.map(d => {
-    // A settle claim: the person it's shared with says it's settled, and the one who added it confirms
-    const claim = !d.claimDate ? '' : d.shared ? 'You said it’s settled · waiting for them' : `${d.person} says it’s settled`;
+    // A claim: the person it's shared with says what was paid, and the one who added it confirms
+    const c = debtClaim(d);
+    const said = c && `${fmt(c.amount)}${c.settles ? ', all of it' : ''}`;
+    const claim = !c ? ''
+      : d.shared ? `${d.type === 'i-owe' ? 'You said you paid' : `You said ${d.person} paid you`} ${said} · waiting for them`
+      : `${d.person} says ${d.type === 'they-owe' ? 'they paid you' : 'you paid them'} ${said}`;
     const meta = [d.type === 'they-owe' ? 'Owes you' : 'You owe', shortDay(d.date), d.shared ? 'Added by them' : d.withEmail ? 'Shared' : '', claim, d.pending ? 'Waiting to sync' : ''].filter(Boolean).join(' · ');
     const who = escapeHtml(d.person);
     const id = escapeHtml(d.id);
@@ -134,13 +138,14 @@ function renderDebts() {
     if (d.pending) {
       // offline entries have no record to update until they sync
     } else if (d.shared) {
+      // They record it; you say what was paid (part or all), and they confirm
       actions = d.claimDate
-        ? `<button type="button" class="debt-action" data-claim="undo" data-debt-id="${id}" aria-label="Undo saying ${amount} with ${who} is settled">Undo</button>`
-        : `<button type="button" class="debt-action" data-claim="claim" data-debt-id="${id}" aria-label="Tell ${who} ${d.type === 'i-owe' ? `you paid ${amount}` : `you got ${amount}`}">${d.type === 'i-owe' ? 'I paid' : 'I got paid'}</button>`;
+        ? `<button type="button" class="debt-action" data-claim="undo" data-debt-id="${id}" aria-label="Take back what you said was paid to ${who}">Undo</button>`
+        : `<button type="button" class="debt-action" data-action="openDebtSettleModal" data-debt-id="${id}" aria-label="Tell ${who} ${d.type === 'i-owe' ? 'how much you paid' : 'how much you got'} of ${amount}">${d.type === 'i-owe' ? 'I paid' : 'I got paid'}</button>`;
     } else if (d.claimDate) {
       actions = `<div class="debt-claim-actions">
-        <button type="button" class="debt-action debt-action-quiet" data-claim="reject" data-debt-id="${id}" aria-label="Not settled yet: ${amount} with ${who}">Not yet</button>
-        <button type="button" class="debt-action" data-claim="confirm" data-debt-id="${id}" aria-label="Confirm ${amount} with ${who} is settled">Confirm</button>
+        <button type="button" class="debt-action debt-action-quiet" data-claim="reject" data-debt-id="${id}" aria-label="Not paid yet: ${said} with ${who}">Not yet</button>
+        <button type="button" class="debt-action" data-claim="confirm" data-debt-id="${id}" aria-label="Confirm ${said} was paid, with ${who}">Confirm</button>
       </div>`;
     } else {
       actions = `
@@ -305,11 +310,14 @@ function payHint() {
   if (!d) return;
   const n = parseAmount($('debt-pay-amount').value);
   const left = debtLeft(d);
+  const off = n > 0 && n >= left - 0.001 && n <= left + 0.001;
+  // On a debt someone else added, what you say waits for them to confirm
+  const after = d.shared ? ` ${d.person} confirms it, then it counts.` : '';
   $('debt-pay-hint').textContent = !(n > 0) ? ''
     : n > left + 0.001 ? `That's more than the ${fmt(left)} left.`
-    : n >= left - 0.001 ? 'Pays it off: it moves to Settled.'
-    : `${fmt(left - n)} will be left.`;
-  $('debt-pay-save').textContent = n > 0 && n >= left - 0.001 && n <= left + 0.001 ? 'Save and settle' : 'Save';
+    : off ? (d.shared ? `That's all of it.${after}` : 'Pays it off: it moves to Settled.')
+    : `${fmt(left - n)} will be left.${after}`;
+  $('debt-pay-save').textContent = d.shared ? `Tell ${d.person}` : off ? 'Save and settle' : 'Save';
 }
 
 function fillPayDialog(d) {
@@ -326,7 +334,7 @@ function fillPayDialog(d) {
   $('debt-pay-history-wrap').classList.toggle('hidden', !list.length);
   $('debt-pay-history').innerHTML = list.map((p, i) => `<li>
       <span>${escapeHtml(shortDay(p.date))}</span><strong>${fmt(p.amount)}</strong>
-      <button type="button" class="debt-pay-remove" data-pay-remove="${i}" aria-label="Remove the ${fmt(p.amount)} payment on ${escapeHtml(shortDay(p.date))}">Remove</button>
+      ${d.shared ? '' : `<button type="button" class="debt-pay-remove" data-pay-remove="${i}" aria-label="Remove the ${fmt(p.amount)} payment on ${escapeHtml(shortDay(p.date))}">Remove</button>`}
     </li>`).join('');
 }
 
@@ -362,8 +370,10 @@ window.confirmDebtSettle = async () => {
   if (!d) return;
   const date = $('debt-pay-date').value;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return payError('Pick the date it was paid.');
-  const res = payDebt(d, parseAmount($('debt-pay-amount').value), date);
+  const amount = parseAmount($('debt-pay-amount').value);
+  const res = payDebt(d, amount, date);
   if (res.error) return payError(res.left !== undefined ? `That's more than the ${fmt(res.left)} left.` : res.error);
+  if (d.shared) return sendClaim(d, Math.round(amount * 100) / 100, date);
   const fields = res.settles
     ? { paid: res.paid, settled: true, settledDate: date }
     : { paid: res.paid };
@@ -382,6 +392,25 @@ window.confirmDebtSettle = async () => {
     btn.disabled = false;
   }
 };
+
+// On a debt someone else added: tell them what was paid; it counts once they confirm (split.js)
+async function sendClaim(d, amount, date) {
+  const btn = $('debt-pay-save');
+  btn.disabled = true;
+  try {
+    Object.assign(d, await claimSettled(d.id, amount, date));
+    redrawDebts();
+    showToast(`Sent. ${d.person} will confirm it.`, 'success');
+    closeDebtSettleModal();
+  } catch (err) {
+    console.error(err);
+    payError(err?.code === 'permission-denied'
+      ? "SpendWise can't send this yet. Try again later."
+      : "Couldn't send it. Check your connection and try again.");
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // A payment entered by mistake: take it off, and what's left goes back up
 $('debt-pay-history')?.addEventListener('click', async e => {
@@ -410,10 +439,9 @@ $('debt-settle-modal')?.addEventListener('keydown', e => {
 
 // ── Settle claims on shared debts (split.js) ─────────────────────────────────
 const CLAIM_DONE = {
-  claim: 'Sent. They’ll confirm it’s settled.',
   undo: 'Taken back.',
-  confirm: 'Debt settled!',
-  reject: 'Kept open. They can say so again once it’s settled.',
+  confirm: 'Payment confirmed.',
+  reject: 'Not counted. They can say so again once it’s paid.',
 };
 
 document.getElementById('debt-body')?.addEventListener('click', async e => {
@@ -424,13 +452,12 @@ document.getElementById('debt-body')?.addEventListener('click', async e => {
   if (!d) return;
   btn.disabled = true;
   try {
-    if (kind === 'claim') d.claimDate = await claimSettled(d.id);
-    else if (kind === 'undo' || kind === 'reject') { await (kind === 'undo' ? withdrawClaim : rejectClaim)(d.id); d.claimDate = ''; }
-    else if (kind === 'confirm') { await confirmClaim(d.id, d.claimDate); Object.assign(d, { settled: true, settledDate: d.claimDate, claimDate: '' }); }
+    if (kind === 'undo' || kind === 'reject') { await (kind === 'undo' ? withdrawClaim : rejectClaim)(d.id); Object.assign(d, { claimDate: '', claimAmount: 0 }); }
+    else if (kind === 'confirm') Object.assign(d, await confirmClaim(d));
     updateDebtSummary();
     renderDebts();
     renderDebtHistory();
-    showToast(CLAIM_DONE[kind], 'success');
+    showToast(kind === 'confirm' && d.settled ? 'Paid off. Debt settled!' : CLAIM_DONE[kind], 'success');
   } catch (err) {
     console.error(err);
     btn.disabled = false;

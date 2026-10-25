@@ -130,6 +130,7 @@ export async function readDebt(id, idToken, env) {
     withEmail: f.withEmail?.stringValue,
     fromEmail: f.fromEmail?.stringValue,
     claimDate: f.claimDate?.stringValue,
+    claimAmount: Number(f.claimAmount?.doubleValue ?? f.claimAmount?.integerValue) || 0,
     settled: f.settled?.booleanValue === true,
     amount: Number(f.amount?.doubleValue ?? f.amount?.integerValue),
     notes: f.notes?.stringValue || '',
@@ -157,13 +158,15 @@ async function hasDevice(uid, env) {
   return !!await env.DB.prepare('SELECT 1 FROM subscriptions WHERE uid = ?1 LIMIT 1').bind(uid).first();
 }
 
-// What the one who added a shared debt sees when the other person says it's settled: from their side,
-// "they-owe" was owed to them. from is the claimer's verified sign-in email.
+// What the one who added a shared debt sees when the other person says what was paid: from their side,
+// "they-owe" was owed to them. claimAmount is part of it (a claim without one is all of it).
+// from is the claimer's verified sign-in email.
 export function claimMessage(debt, debtId, symbol, from) {
-  const amount = `${symbol || ''}${debt.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const part = debt.claimAmount > 0 && debt.claimAmount < debt.amount;
+  const amount = `${symbol || ''}${(part ? debt.claimAmount : debt.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   const said = debt.type === 'i-owe' ? `You paid them ${amount}` : `They paid you ${amount}`;
   return JSON.stringify({
-    title: `${from} says a debt is settled`.slice(0, 120),
+    title: `${from} says ${part ? 'part of a debt is paid' : 'a debt is settled'}`.slice(0, 120),
     body: `${said} · Confirm it in Debts${debt.notes ? ` · ${debt.notes}` : ''}`.slice(0, 200),
     url: 'debt.html',
     tag: `claim-${debtId}`,
@@ -290,7 +293,7 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
     if (!email || !debt || debt.withEmail !== email || !DATE.test(debt.claimDate || '') || debt.settled || !debt.fromEmail) {
       return [404, { error: 'No such settle claim' }];
     }
-    const state = await claimPush(`claim:${debtId}:${debt.claimDate}`, uid, env);
+    const state = await claimPush(`claim:${debtId}:${debt.claimDate}:${debt.claimAmount}`, uid, env); // each claim told once
     if (state === 'limit') return [429, { error: 'Too many notifications today' }];
     if (state === 'sent') return [200, { sent: 0 }]; // already told
     const message = claimMessage(debt, debtId, /^\p{Sc}$/u.test(symbol || '') ? symbol : '', email);

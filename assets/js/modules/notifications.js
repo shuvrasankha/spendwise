@@ -71,7 +71,7 @@ function render() {
   list.innerHTML = items.length ? items.map(i => {
     const added = `${i.person} ${i.note?.startsWith('Split:') ? 'split a bill' : 'added a debt'} with you`;
     const title = i.kind === 'split' ? added
-      : i.kind === 'claim' ? `${i.person} says ${money(i.amount)} is settled`
+      : i.kind === 'claim' ? `${i.person} says ${money(i.amount)} was paid${i.settles ? ', all of it' : ''}`
       : `${i.person} marked ${money(i.amount)} as paid`;
     const owed = i.type === 'i-owe' ? `You owe ${money(i.amount)}` : `${i.person} owes you ${money(i.amount)}`;
     const detail = [i.kind === 'split' ? owed : i.kind === 'claim' ? 'Confirm it on Debts' : '', i.note].filter(Boolean).join(' · ');
