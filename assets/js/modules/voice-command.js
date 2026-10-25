@@ -4,7 +4,9 @@
 import { app } from '../config/firebase.js';
 import { callAI } from '../config/ai.js';
 import { parseSms } from './sms-parse.js';
-import { EXPENSE_CATEGORIES, normalizeCategory, categoryGuide } from '../utils/helpers.js';
+import { cleanEntry, parseTags, emiCount, isCard, PAYMENT_METHODS, INCOME_PAYMENT_TYPES } from './voice-data.js';
+import { emailError, shareFields, announceDebts } from './split.js';
+import { EXPENSE_CATEGORIES, categoryGuide } from '../utils/helpers.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, doc, writeBatch, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -18,12 +20,6 @@ const fmt = window.fmt;
 const AI_MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct';
 const RECEIPT_MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'; // reads images
 
-
-const PAYMENT_METHODS = ['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Net Banking', 'Other'];
-
-const DEBT_TYPES = ['they-owe', 'i-owe'];
-
-const INCOME_PAYMENT_TYPES = ['Online', 'Cash'];
 
 // Tapping one fills the box, so people see the phrasing that works (nothing is sent)
 const EXAMPLE_COMMANDS = [
@@ -275,7 +271,13 @@ RULES:
 6. For expenses, pick the best matching category, using its exact name from this list:
 ${categoryGuide()}
 7. For expenses, pick payment method from: ${PAYMENT_METHODS.join(', ')}. Default to "UPI" if not mentioned.
-8. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), and bank if mentioned.
+   - cardName: the card's name when one is mentioned with a card payment (e.g. "HDFC Regalia"), else "".
+   - tags: words the user marks as tags or a trip/event the spending belongs to ("for the Goa trip" → ["goa"], "tag wedding" → ["wedding"]), else [].
+   - repeat: true when it is paid every month (rent, a subscription, an SIP, an EMI, "every month", "monthly"), else false.
+   - emiTotal: for an EMI or loan with a stated number of monthly payments ("12 month EMI" → 12), else 0.
+   - notes: anything else the user wants remembered about it, else "".
+8. For income, determine source (e.g. "Salary", "Freelance", "Business", etc.), paymentType ("Online" or "Cash"), bank or wallet if mentioned (e.g. "HDFC", "Paytm"), and notes.
+   For debts, also take the person's email address if the user gives one, else "".
 9. For debts, determining the type is CRITICAL. You MUST carefully distinguish between:
    
    ➤ "they-owe" (someone OWES the user / user LENT or GAVE money):
@@ -304,19 +306,25 @@ ${categoryGuide()}
 12. ALWAYS return a JSON ARRAY (even for a single transaction).
 
 For EXPENSE entries, each element:
-{"type":"expense","amount":<number>,"category":"<category>","date":"YYYY-MM-DD","description":"<short description in English>","payment":"<payment method>","cardName":"","notes":""}
+{"type":"expense","amount":<number>,"category":"<category>","date":"YYYY-MM-DD","description":"<short description in English>","payment":"<payment method>","cardName":"<card name or empty>","notes":"<notes or empty>","tags":[<tag words>],"repeat":<true|false>,"emiTotal":<number or 0>}
 
 For INCOME entries, each element:
 {"type":"income","amount":<number>,"source":"<source in English>","date":"YYYY-MM-DD","paymentType":"<Online|Cash>","bank":"<bank name or empty>","notes":""}
 
 For DEBT entries, each element:
-{"type":"debt","amount":<number>,"debtType":"<they-owe|i-owe>","person":"<person name>","date":"YYYY-MM-DD","notes":"<optional notes>"}
+{"type":"debt","amount":<number>,"debtType":"<they-owe|i-owe>","person":"<person name>","email":"<their email or empty>","date":"YYYY-MM-DD","notes":"<optional notes>"}
 
 Example input: "today I spent 30 rs on breakfast and 100 on lunch. I also bought a fan from Amazon using credit card for 2000 rs"
 Example output: [{"type":"expense","amount":30,"category":"Food & Dining","date":"${today}","description":"Breakfast","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":100,"category":"Food & Dining","date":"${today}","description":"Lunch","payment":"UPI","cardName":"","notes":""},{"type":"expense","amount":2000,"category":"Shopping","date":"${today}","description":"Fan from Amazon","payment":"Credit Card","cardName":"","notes":""}]
 
 Example input: "I lent 5000 to John yesterday"
-Example output: [{"type":"debt","amount":5000,"debtType":"they-owe","person":"John","date":"<yesterday's date>","notes":""}]
+Example output: [{"type":"debt","amount":5000,"debtType":"they-owe","person":"John","email":"","date":"<yesterday's date>","notes":""}]
+
+Example input: "Paid 1200 rent for the flat every month, and 3500 phone EMI on my HDFC Millennia credit card, 12 months, tag gadgets"
+Example output: [{"type":"expense","amount":1200,"category":"Home & Rent","date":"${today}","description":"Flat rent","payment":"UPI","cardName":"","notes":"","tags":[],"repeat":true,"emiTotal":0},{"type":"expense","amount":3500,"category":"Shopping","date":"${today}","description":"Phone EMI","payment":"Credit Card","cardName":"HDFC Millennia","notes":"","tags":["gadgets"],"repeat":true,"emiTotal":12}]
+
+Example input: "Got 20000 from a freelance project into my SBI account, note invoice 42"
+Example output: [{"type":"income","amount":20000,"source":"Freelance","date":"${today}","paymentType":"Online","bank":"SBI","notes":"Invoice 42"}]
 
 Example input: "I borrowed 2000 from Mom"
 Example output: [{"type":"debt","amount":2000,"debtType":"i-owe","person":"Mom","date":"${today}","notes":""}]
@@ -376,57 +384,9 @@ async function callAIModel(model, messages) {
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
-// AI output is untrusted text: keep it a string and within the form fields' limits
-const clip = (v, max) => String(v ?? '').trim().slice(0, max);
-
-function validateSingleEntry(data) {
-  if (!data || typeof data !== 'object') return null;
-  if (!data.type || !['expense', 'income', 'debt'].includes(data.type)) return null;
-  if (!data.amount || isNaN(parseFloat(data.amount)) || parseFloat(data.amount) <= 0) return null;
-
-  // Normalize amount
-  data.amount = parseFloat(data.amount);
-
-  // Validate date
-  if (!data.date || !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
-    data.date = todayStr();
-  }
-
-  if (data.type === 'expense') {
-    // Validate category (the AI may still use an older name such as "Rent" or "Subscription")
-    data.category = normalizeCategory(data.category);
-    if (!EXPENSE_CATEGORIES.includes(data.category)) {
-      // Try fuzzy match
-      const lower = (data.category || '').toLowerCase();
-      const match = EXPENSE_CATEGORIES.find(c => c.toLowerCase().includes(lower) || lower.includes(c.toLowerCase()));
-      data.category = match || 'Other';
-    }
-    // Validate payment
-    if (!PAYMENT_METHODS.includes(data.payment)) {
-      data.payment = 'UPI';
-    }
-    data.description = clip(data.description, 100) || '-';
-    data.cardName = clip(data.cardName, 100);
-    data.notes = clip(data.notes, 500);
-  } else if (data.type === 'income') {
-    // Income
-    data.source = clip(data.source, 100) || 'Other';
-    data.paymentType = INCOME_PAYMENT_TYPES.includes(data.paymentType) ? data.paymentType : 'Online';
-    data.bank = clip(data.bank, 100);
-    data.notes = clip(data.notes, 500);
-  } else {
-    // Debt
-    data.debtType = DEBT_TYPES.includes(data.debtType) ? data.debtType : 'they-owe';
-    data.person = clip(data.person, 100);
-    data.notes = clip(data.notes, 500);
-  }
-
-  return data;
-}
-
 function validateEntries(dataArray) {
   if (!Array.isArray(dataArray)) dataArray = [dataArray];
-  return dataArray.map(d => validateSingleEntry(d)).filter(Boolean);
+  return dataArray.map(d => cleanEntry(d, todayStr())).filter(Boolean);
 }
 
 async function parseVoiceCommand(text) {
@@ -491,13 +451,15 @@ const refFor = (entry, coll) => doc(db, coll, entry.docId ??= doc(collection(db,
 function toDocData(entry) {
   const base = { uid: currentUser.uid, amount: entry.amount, date: entry.date, encoding: 'plain', createdAt: serverTimestamp() };
   if (entry.type === 'expense') {
-    return ['expenses', 'expense', { ...base, category: entry.category, payment: entry.payment, cardName: entry.cardName || '',
-      description: entry.description || '-', notes: entry.notes || '' }];
+    const repeat = entry.repeat ? { repeat: 'monthly', ...(entry.emiTotal && { emiTotal: entry.emiTotal }) } : {};
+    return ['expenses', 'expense', { ...base, category: entry.category, payment: entry.payment, cardName: isCard(entry.payment) ? entry.cardName || '' : '',
+      description: entry.description || '-', notes: entry.notes || '', tags: entry.tags || [], ...repeat }];
   }
   if (entry.type === 'income') {
     return ['income', 'income', { ...base, source: entry.source, paymentType: entry.paymentType, bank: entry.bank || '', notes: entry.notes || '' }];
   }
-  return ['debts', 'debt', { ...base, type: entry.debtType, person: entry.person, notes: entry.notes || '', settled: false, settledDate: '' }];
+  return ['debts', 'debt', { ...base, type: entry.debtType, person: entry.person, notes: entry.notes || '', settled: false, settledDate: '',
+    ...shareFields(entry.email) }];
 }
 
 // Checks the reviewed entries; marks the first bad field and returns a message, or '' when all are fine
@@ -508,6 +470,8 @@ function reviewProblem() {
     if (!(e.amount > 0)) { field = 'amount'; msg = 'Enter an amount above zero.'; }
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) { field = 'date'; msg = 'Pick a date.'; }
     else if (e.type === 'debt' && !e.person) { field = 'person'; msg = 'Add who the debt is with.'; }
+    else if (e.type === 'debt' && emailError(e.email)) { field = 'email'; msg = emailError(e.email); }
+    else if (e.type === 'expense' && e.repeat && e.emiRaw && !e.emiTotal) { field = 'emiTotal'; msg = 'Total payments should be a whole number from 2 to 600.'; }
     if (field) {
       const input = document.querySelector(`.vp-card[data-idx="${i}"] [data-field="${field}"]`);
       if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
@@ -556,8 +520,9 @@ async function saveEntry() {
   try {
     // One batch: all entries save or none do, so a retry after a failure can't make duplicates
     const batch = writeBatch(db);
-    docs.forEach(([coll, , data], i) => batch.set(refFor(parsedData[i], coll), data));
+    const refs = docs.map(([coll, , data], i) => { const ref = refFor(parsedData[i], coll); batch.set(ref, data); return ref; });
     await batch.commit();
+    announceDebts(refs, docs.map(([, , data]) => data)); // pushes the people debts were shared with
     finish(`${what}!`, count === 1 ? 'Entry added by voice.' : `${count} entries added by voice.`, true);
   } catch (err) {
     console.error('Save error:', err);
@@ -645,25 +610,37 @@ function showParsingSpinner(show) {
 // ── Review: every parsed entry is an editable card ───────────────────────────
 const options = (list, current) => list.map(v => `<option value="${escapeHtml(v)}"${v === current ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
 
+const textField = (label, field, value, max, { wide = true, optional = true, type = 'text' } = {}) => `
+      <label class="vp-field${wide ? ' vp-wide' : ''}"><span>${label}${optional ? ' <span class="optional-tag">optional</span>' : ''}</span><input type="${type}" data-field="${field}" maxlength="${max}" value="${escapeHtml(value)}"${type === 'email' ? ' inputmode="email" autocomplete="off"' : ''}></label>`;
+
+// The same fields as the Add forms, so nothing said is lost and nothing needs adding afterwards
 function entryFields(e) {
   if (e.type === 'expense') {
     return `
       <label class="vp-field"><span>Category</span><select data-field="category">${options(EXPENSE_CATEGORIES, e.category)}</select></label>
       <label class="vp-field"><span>Paid by</span><select data-field="payment">${options(PAYMENT_METHODS, e.payment)}</select></label>
-      <label class="vp-field vp-wide"><span>Description</span><input type="text" data-field="description" maxlength="100" value="${escapeHtml(e.description === '-' ? '' : e.description)}" placeholder="What was it for?"></label>`;
+      ${isCard(e.payment) ? textField('Card name', 'cardName', e.cardName, 100) : ''}
+      ${textField('Description', 'description', e.description === '-' ? '' : e.description, 100, { optional: false })}
+      ${textField('Notes', 'notes', e.notes, 500)}
+      ${textField('Tags', 'tags', (e.tags || []).join(' '), 200)}
+      <label class="vp-field vp-wide vp-switch"><span>Repeats every month</span><input type="checkbox" role="switch" class="reminder-switch" data-field="repeat"${e.repeat ? ' checked' : ''}></label>
+      ${e.repeat ? `<label class="vp-field"><span>EMI payments <span class="optional-tag">optional</span></span><input type="number" data-field="emiTotal" inputmode="numeric" min="2" max="600" step="1" value="${e.emiTotal || ''}"></label>` : ''}`;
   }
   if (e.type === 'income') {
     return `
       <label class="vp-field"><span>Source</span><input type="text" data-field="source" maxlength="100" value="${escapeHtml(e.source)}"></label>
-      <label class="vp-field"><span>Received as</span><select data-field="paymentType">${options(INCOME_PAYMENT_TYPES, e.paymentType)}</select></label>`;
+      <label class="vp-field"><span>Received as</span><select data-field="paymentType">${options(INCOME_PAYMENT_TYPES, e.paymentType)}</select></label>
+      ${textField('Bank / wallet', 'bank', e.bank, 100)}
+      ${textField('Notes', 'notes', e.notes, 500)}`;
   }
   return `
-    <label class="vp-field"><span>Person</span><input type="text" data-field="person" maxlength="100" value="${escapeHtml(e.person)}" placeholder="Who?"></label>
+    <label class="vp-field"><span>Person</span><input type="text" data-field="person" maxlength="100" value="${escapeHtml(e.person)}"></label>
     <label class="vp-field"><span>Direction</span><select data-field="debtType">
       <option value="they-owe"${e.debtType === 'they-owe' ? ' selected' : ''}>They owe me</option>
       <option value="i-owe"${e.debtType === 'i-owe' ? ' selected' : ''}>I owe them</option>
     </select></label>
-    <label class="vp-field vp-wide"><span>Notes</span><input type="text" data-field="notes" maxlength="500" value="${escapeHtml(e.notes)}" placeholder="Optional"></label>`;
+    ${textField('Their email, to share it', 'email', e.email, 254, { type: 'email' })}
+    ${textField('Notes', 'notes', e.notes, 500)}`;
 }
 
 const CHECK_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -709,9 +686,26 @@ function onPreviewInput(ev) {
     updateSaveButton();
   } else if (field === 'description') {
     entry.description = input.value.trim() || '-';
+  } else if (field === 'tags') {
+    entry.tags = parseTags(input.value);
+  } else if (field === 'email') {
+    entry.email = input.value.trim().toLowerCase();
+  } else if (field === 'emiTotal') {
+    entry.emiRaw = input.value.trim();
+    entry.emiTotal = emiCount(entry.emiRaw);
+  } else if (field === 'repeat' || field === 'payment') {
+    // Shows or hides a field (EMI payments, Card name): redraw this card once the change is final
+    if (field === 'repeat') entry.repeat = input.checked;
+    else entry.payment = input.value;
+    if (ev.type === 'change') redrawCard(+card.dataset.idx, field);
   } else {
     entry[field] = input.value.trim();
   }
+}
+
+function redrawCard(i, field) {
+  showPreview(parsedData);
+  document.querySelector(`.vp-card[data-idx="${i}"] [data-field="${field}"]`)?.focus();
 }
 
 function onPreviewClick(ev) {

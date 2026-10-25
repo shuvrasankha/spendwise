@@ -42,6 +42,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/insights-data.js',
   './assets/js/modules/ask-data.js',
   './assets/js/modules/sms-parse.js',
+  './assets/js/modules/voice-data.js',
   './assets/js/modules/history-data.js',
   './assets/js/modules/csv-export.js',
   './assets/js/modules/split.js',

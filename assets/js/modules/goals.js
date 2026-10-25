@@ -48,11 +48,11 @@ function buildDialog() {
       <div data-goal-mode="edit">
         <div class="form-group">
           <label for="goal-name">What it's for</label>
-          <input type="text" id="goal-name" maxlength="40" placeholder="e.g. Goa trip" autocomplete="off">
+          <input type="text" id="goal-name" maxlength="40" autocomplete="off">
         </div>
         <div class="form-group">
           <label for="goal-target">Amount</label>
-          <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="goal-target" placeholder="e.g. 30000" autocomplete="off"></div>
+          <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="goal-target" autocomplete="off"></div>
         </div>
         <div class="form-group">
           <label for="goal-by">By</label>
@@ -66,7 +66,7 @@ function buildDialog() {
       <div data-goal-mode="add">
         <div class="form-group">
           <label for="goal-add">Amount put aside</label>
-          <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="goal-add" placeholder="e.g. 5000" autocomplete="off"></div>
+          <div class="budget-money"><span class="budget-sym"></span><input type="text" inputmode="decimal" id="goal-add" autocomplete="off"></div>
         </div>
       </div>
       <p class="form-msg budget-msg hidden" aria-live="polite"></p>

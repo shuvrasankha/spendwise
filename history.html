@@ -84,9 +84,9 @@
       </div>
       <div id="login-form" class="auth-form">
         <div class="form-group">
-          <label>Email</label>
+          <label for="login-email">Email</label>
           <div class="input-icon-wrap"><i data-lucide="mail"></i>
-            <input type="email" id="login-email" placeholder="you@example.com" />
+            <input type="email" id="login-email" />
           </div>
         </div>
         <div class="form-group">
@@ -116,15 +116,15 @@
       </div>
       <div id="signup-form" class="auth-form hidden">
         <div class="form-group">
-          <label>Full Name</label>
+          <label for="signup-name">Full Name</label>
           <div class="input-icon-wrap"><i data-lucide="user"></i>
-            <input type="text" id="signup-name" placeholder="Your Name" />
+            <input type="text" id="signup-name" />
           </div>
         </div>
         <div class="form-group">
-          <label>Email</label>
+          <label for="signup-email">Email</label>
           <div class="input-icon-wrap"><i data-lucide="mail"></i>
-            <input type="email" id="signup-email" placeholder="you@example.com" />
+            <input type="email" id="signup-email" />
           </div>
         </div>
         <div class="form-group">
@@ -438,22 +438,22 @@
             </div>
           </div>
           <div class="form-group" id="edit-card-name-wrap" style="display:none">
-            <label>Card Name <span class="optional-tag">optional</span></label>
+            <label for="edit-card-name">Card Name <span class="optional-tag">optional</span></label>
             <div class="input-icon-wrap">
               <i data-lucide="credit-card"></i>
-              <input type="text" id="edit-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK" />
+              <input type="text" id="edit-card-name" />
             </div>
           </div>
           <div class="form-group">
-            <label>Description</label>
+            <label for="edit-description">Description</label>
             <div class="input-icon-wrap">
               <i data-lucide="pencil-line"></i>
-              <input type="text" id="edit-description" placeholder="What did you spend on?" />
+              <input type="text" id="edit-description" />
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
+            <label for="edit-notes">Notes <span class="optional-tag">optional</span></label>
+            <textarea id="edit-notes" rows="2"></textarea>
           </div>
           <div class="form-group full-width">
             <label class="repeat-row" for="edit-repeat">
@@ -519,10 +519,10 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Source / From *</label>
+            <label for="inc-edit-source">Source / From *</label>
             <div class="input-icon-wrap">
               <i data-lucide="briefcase"></i>
-              <input type="text" id="inc-edit-source" placeholder="e.g. Salary, Freelance" />
+              <input type="text" id="inc-edit-source" />
             </div>
           </div>
           <div class="form-group">
@@ -536,15 +536,15 @@
             </div>
           </div>
           <div class="form-group" id="inc-edit-bank-wrap">
-            <label>Bank / Wallet</label>
+            <label for="inc-edit-bank">Bank / Wallet</label>
             <div class="input-icon-wrap">
               <i data-lucide="building-2"></i>
-              <input type="text" id="inc-edit-bank" placeholder="e.g. HDFC, SBI, Paytm" />
+              <input type="text" id="inc-edit-bank" />
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="inc-edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
+            <label for="inc-edit-notes">Notes <span class="optional-tag">optional</span></label>
+            <textarea id="inc-edit-notes" rows="2"></textarea>
           </div>
         </div>
         <div id="inc-edit-error" class="form-msg error hidden"></div>

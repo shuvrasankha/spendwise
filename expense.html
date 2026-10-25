@@ -84,9 +84,9 @@
       </div>
       <div id="login-form" class="auth-form">
         <div class="form-group">
-          <label>Email</label>
+          <label for="login-email">Email</label>
           <div class="input-icon-wrap"><i data-lucide="mail"></i>
-            <input type="email" id="login-email" placeholder="you@example.com" />
+            <input type="email" id="login-email" />
           </div>
         </div>
         <div class="form-group">
@@ -116,15 +116,15 @@
       </div>
       <div id="signup-form" class="auth-form hidden">
         <div class="form-group">
-          <label>Full Name</label>
+          <label for="signup-name">Full Name</label>
           <div class="input-icon-wrap"><i data-lucide="user"></i>
-            <input type="text" id="signup-name" placeholder="Your Name" />
+            <input type="text" id="signup-name" />
           </div>
         </div>
         <div class="form-group">
-          <label>Email</label>
+          <label for="signup-email">Email</label>
           <div class="input-icon-wrap"><i data-lucide="mail"></i>
-            <input type="email" id="signup-email" placeholder="you@example.com" />
+            <input type="email" id="signup-email" />
           </div>
         </div>
         <div class="form-group">
@@ -330,7 +330,7 @@
             <label for="exp-description">Description</label>
             <div class="input-icon-wrap">
               <i data-lucide="pencil-line"></i>
-              <input type="text" id="exp-description" placeholder="What did you spend on?" enterkeyhint="done" />
+              <input type="text" id="exp-description" enterkeyhint="done" />
             </div>
           </div>
           <details class="form-more full-width" id="exp-more">
@@ -354,12 +354,12 @@
                 <label for="exp-card-name">Card Name <span class="optional-tag">optional</span></label>
                 <div class="input-icon-wrap">
                   <i data-lucide="credit-card"></i>
-                  <input type="text" id="exp-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK" />
+                  <input type="text" id="exp-card-name" />
                 </div>
               </div>
               <div class="form-group full-width">
                 <label for="exp-notes">Notes <span class="optional-tag">optional</span></label>
-                <textarea id="exp-notes" rows="2" placeholder="Any additional notes..."></textarea>
+                <textarea id="exp-notes" rows="2"></textarea>
               </div>
               <div class="form-group full-width">
                 <label class="repeat-row" for="exp-repeat">
@@ -371,7 +371,7 @@
                   <p class="emi-title" id="exp-emi-title">EMI <span class="optional-tag">optional</span></p>
                   <p class="emi-help">For a loan or a no-cost EMI, enter how many payments it has. It stops by itself after the last one. Leave empty for rent or a subscription.</p>
                   <div class="emi-grid">
-                    <label for="exp-emi-total">Total payments<input type="number" id="exp-emi-total" inputmode="numeric" min="2" max="600" step="1" placeholder="e.g. 12"></label>
+                    <label for="exp-emi-total">Total payments<input type="number" id="exp-emi-total" inputmode="numeric" min="2" max="600" step="1"></label>
                     <label for="exp-emi-before">Already paid<input type="number" id="exp-emi-before" inputmode="numeric" min="0" max="599" step="1" placeholder="0"></label>
                   </div>
                 </div>
@@ -380,7 +380,7 @@
                 <label for="exp-tags">Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
                 <div class="tag-input-wrap">
                   <div id="exp-tags-display" class="tags-display"></div>
-                  <input type="text" id="exp-tags" placeholder="e.g. goa2026, wedding, work" />
+                  <input type="text" id="exp-tags" />
                 </div>
               </div>
             </div>
@@ -675,22 +675,22 @@
             </div>
           </div>
           <div class="form-group" id="edit-card-name-wrap" style="display:none">
-            <label>Card Name <span class="optional-tag">optional</span></label>
+            <label for="edit-card-name">Card Name <span class="optional-tag">optional</span></label>
             <div class="input-icon-wrap">
               <i data-lucide="credit-card"></i>
-              <input type="text" id="edit-card-name" placeholder="e.g. HDFC Regalia, SBI SimplyCLICK" />
+              <input type="text" id="edit-card-name" />
             </div>
           </div>
           <div class="form-group">
-            <label>Description</label>
+            <label for="edit-description">Description</label>
             <div class="input-icon-wrap">
               <i data-lucide="pencil-line"></i>
-              <input type="text" id="edit-description" placeholder="What did you spend on?" />
+              <input type="text" id="edit-description" />
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="edit-notes" rows="2" placeholder="Any additional notes..."></textarea>
+            <label for="edit-notes">Notes <span class="optional-tag">optional</span></label>
+            <textarea id="edit-notes" rows="2"></textarea>
           </div>
           <div class="form-group full-width">
             <label class="repeat-row" for="edit-repeat">
@@ -699,10 +699,10 @@
             </label>
           </div>
           <div class="form-group full-width">
-            <label>Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
+            <label for="edit-tags">Tags <span class="optional-tag">optional — press Enter or comma to add</span></label>
             <div class="tag-input-wrap">
               <div id="edit-tags-display" class="tags-display"></div>
-              <input type="text" id="edit-tags" placeholder="e.g. goa2026, wedding, work" />
+              <input type="text" id="edit-tags" />
             </div>
           </div>
         </div>

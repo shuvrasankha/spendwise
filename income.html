@@ -185,7 +185,7 @@
               <label for="inc-source">From</label>
               <div class="input-icon-wrap">
                 <i data-lucide="briefcase"></i>
-                <input type="text" id="inc-source" placeholder="e.g. Salary, Freelance, Business" autocomplete="off" />
+                <input type="text" id="inc-source" autocomplete="off" />
               </div>
               <!-- Sources used before, most frequent first (income.js) -->
               <div class="chips entry-chips" id="inc-source-chips" role="group" aria-label="Recent sources"></div>
@@ -202,13 +202,13 @@
               <label for="inc-bank">Bank or wallet</label>
               <div class="input-icon-wrap">
                 <i data-lucide="building-2"></i>
-                <input type="text" id="inc-bank" placeholder="e.g. HDFC, SBI, Paytm" list="inc-bank-list" autocomplete="off" />
+                <input type="text" id="inc-bank" list="inc-bank-list" autocomplete="off" />
               </div>
               <datalist id="inc-bank-list"></datalist>
             </div>
             <div class="form-group full-width">
               <label for="inc-notes">Notes <span class="optional-tag">optional</span></label>
-              <textarea id="inc-notes" rows="2" placeholder="Anything to remember about it"></textarea>
+              <textarea id="inc-notes" rows="2"></textarea>
             </div>
           </div>
           <div class="form-actions">
@@ -362,10 +362,10 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Source / From *</label>
+            <label for="edit-inc-source">Source / From *</label>
             <div class="input-icon-wrap">
               <i data-lucide="briefcase"></i>
-              <input type="text" id="edit-inc-source" placeholder="e.g. Salary, Freelance" />
+              <input type="text" id="edit-inc-source" />
             </div>
           </div>
           <div class="form-group">
@@ -379,15 +379,15 @@
             </div>
           </div>
           <div class="form-group" id="edit-inc-bank-wrap">
-            <label>Bank / Wallet</label>
+            <label for="edit-inc-bank">Bank / Wallet</label>
             <div class="input-icon-wrap">
               <i data-lucide="building-2"></i>
-              <input type="text" id="edit-inc-bank" placeholder="e.g. HDFC, SBI, Paytm" />
+              <input type="text" id="edit-inc-bank" />
             </div>
           </div>
           <div class="form-group full-width">
-            <label>Notes <span class="optional-tag">optional</span></label>
-            <textarea id="edit-inc-notes" rows="2" placeholder="Any additional notes..."></textarea>
+            <label for="edit-inc-notes">Notes <span class="optional-tag">optional</span></label>
+            <textarea id="edit-inc-notes" rows="2"></textarea>
           </div>
         </div>
         <div id="edit-inc-error" class="form-msg error hidden"></div>
