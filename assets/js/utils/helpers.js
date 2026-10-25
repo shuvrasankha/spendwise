@@ -198,6 +198,23 @@ export function notificationsFrom(sharedDebts, ownDebts = []) {
   return items.sort((a, b) => b.at - a.at);
 }
 
+// The phone notifications (push tags, worker/src/push.js) that belong to bell items: a debt shared
+// with you is pushed as debt-<id>, someone saying they paid as claim-<id>
+export function pushTagsFor(itemIds) {
+  const tags = new Set();
+  for (const id of itemIds) {
+    const [debtId, kind] = String(id).split(':');
+    if (kind === 'split') tags.add(`debt-${debtId}`);
+    if (kind === 'claim') tags.add(`claim-${debtId}`);
+  }
+  return tags;
+}
+
+// Two lists of item ids as one, newest last and at most max (what's kept of seen and cleared)
+export function mergeIds(a, b, max = 200) {
+  return [...new Set([...(a || []), ...(b || [])])].slice(-max);
+}
+
 // Counts a money figure from what it shows now (0 the first time) to value, easing out over 700ms.
 // Instant with reduced motion, in a hidden tab, or when the value is unchanged. format: number → text.
 const countFrames = new WeakMap();

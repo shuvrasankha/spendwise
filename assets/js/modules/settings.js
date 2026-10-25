@@ -1,4 +1,4 @@
-// settings.js — Per-user settings (monthly budget, savings goals, reminder time and switch) in Firestore at
+// settings.js — Per-user settings (monthly budget, savings goals, reminder time and switch, which bell items were seen or cleared) in Firestore at
 // settings/{uid}, so they follow the user to every device. A copy per user stays in localStorage
 // so pages can read a setting at once and offline (getSetting).
 import { auth, db } from '../config/firebase.js';

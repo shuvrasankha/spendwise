@@ -1,11 +1,13 @@
 // notifications.js — The bell in the header of every signed-in page: what other people shared with
 // you (a split bill or a debt added with your email, and when they mark it paid), and someone saying
-// a debt you shared is settled, with an unread count. Built from the debts (split.js); which items
-// were seen is remembered per device.
+// a debt you shared is settled, with an unread count. Built from the debts (split.js). Which items
+// were seen or cleared is kept on the device and in the account (settings.js), so clearing one on the
+// laptop clears it on the phone too; seeing or clearing one also takes its push off the phone's tray.
 import { auth } from '../config/firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { fetchSharedDebts, fetchClaimedDebts } from './split.js';
-import { notificationsFrom, escapeHtml, shortDay } from '../utils/helpers.js';
+import { onSettings, saveSettings } from './settings.js';
+import { notificationsFrom, escapeHtml, shortDay, pushTagsFor, mergeIds } from '../utils/helpers.js';
 
 const SEEN_KEY = 'spendwise_notif_seen_'; // + uid: ids of items already shown
 const CLEARED_KEY = 'spendwise_notif_cleared_'; // + uid: ids cleared from the list (the debts stay)
@@ -15,7 +17,27 @@ function loadIds(key) {
   try { return new Set(JSON.parse(localStorage.getItem(key + user.uid) || '[]')); } catch { return new Set(); }
 }
 function saveIds(key, ids) {
-  try { localStorage.setItem(key + user.uid, JSON.stringify([...ids].slice(-300))); } catch { /* private mode */ }
+  try { localStorage.setItem(key + user.uid, JSON.stringify([...ids].slice(-200))); } catch { /* private mode */ }
+}
+
+// The account's copy, a moment after the last change (Clear all is one write, not one per item)
+let syncTimer = null;
+function syncIds() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    saveSettings({ notif: { seen: mergeIds([], [...seen]), cleared: mergeIds([], [...cleared]) } })
+      .catch(e => console.warn('Notifications sync failed:', e));
+  }, 800);
+}
+
+// Push notifications still in the phone's tray for these items: gone once seen here
+async function closePushes(ids) {
+  const tags = pushTagsFor(ids);
+  if (!tags.size || !('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    (await reg?.getNotifications() || []).filter(n => tags.has(n.tag)).forEach(n => n.close());
+  } catch { /* no service worker yet */ }
 }
 const visible = () => { items = all.filter(i => !cleared.has(i.id)); };
 
@@ -95,6 +117,8 @@ function clear(ids) {
   ids.forEach(id => { cleared.add(id); seen.add(id); });
   saveIds(CLEARED_KEY, cleared);
   saveIds(SEEN_KEY, seen);
+  syncIds();
+  closePushes(ids);
   visible();
   updateBadge();
   render();
@@ -107,8 +131,11 @@ function open() {
   panel.style.maxHeight = `calc(100vh - ${top + 16}px)`;
   panel.classList.remove('hidden');
   btn.setAttribute('aria-expanded', 'true');
+  const fresh = items.filter(i => !seen.has(i.id));
   items.forEach(i => seen.add(i.id));
   saveIds(SEEN_KEY, seen);
+  if (fresh.length) syncIds();
+  closePushes(items.map(i => i.id));
   updateBadge();
 }
 
@@ -134,6 +161,25 @@ onAuthStateChanged(auth, u => {
   seen = loadIds(SEEN_KEY);
   cleared = loadIds(CLEARED_KEY);
   refresh();
+});
+
+// What other devices saw or cleared joins this device's
+onSettings(s => {
+  if (!user || !wrap) return;
+  const n = s.notif && typeof s.notif === 'object' ? s.notif : {};
+  const before = seen.size + cleared.size;
+  seen = new Set(mergeIds([...seen], Array.isArray(n.seen) ? n.seen : []));
+  cleared = new Set(mergeIds([...cleared], Array.isArray(n.cleared) ? n.cleared : []));
+  saveIds(SEEN_KEY, seen);
+  saveIds(CLEARED_KEY, cleared);
+  if (seen.size + cleared.size !== before) {
+    visible();
+    updateBadge();
+    if (!panel.classList.contains('hidden')) render();
+  }
+  // This device had some the account didn't: send them up
+  const has = id => n.seen?.includes(id) || n.cleared?.includes(id);
+  if ([...seen, ...cleared].some(id => !has(id))) syncIds();
 });
 // Back to the app after a while (or from tapping a push): pick up anything new
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wrap) refresh(); });

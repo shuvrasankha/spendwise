@@ -240,6 +240,9 @@ async function init() {
 window.markLoggedToday = async function () {
   const user = auth.currentUser;
   if (!user) return;
+  // Today's "Log today's spending" is done: take it off the phone's tray
+  navigator.serviceWorker?.getRegistration().then(reg => reg?.getNotifications({ tag: 'daily-reminder' }))
+    .then(list => list?.forEach(n => n.close())).catch(() => {});
   const today = todayStr();
   const key = LOGGED_KEY + user.uid;
   try { if (localStorage.getItem(key) === today) return; } catch { /* ignore */ }
