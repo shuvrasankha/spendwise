@@ -3,13 +3,16 @@
 // A debt shared with someone by email (a split bill, or one added on Debts) is one encrypted message
 // to each of their devices (webpush.js); so is their saying it's settled, to the one who added it.
 
-import { importJWK, SignJWT } from 'jose';
+import { importJWK, importPKCS8, SignJWT } from 'jose';
 import { encryptPush } from './webpush.js';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WINDOW_MINUTES = 60; // send if the cron runs within an hour after the chosen time
-// The cron POSTs to every stored endpoint daily, so only browsers' own push services are accepted
+// The cron POSTs to every stored endpoint daily, so only browsers' own push services are accepted,
+// plus native Android devices ("fcm:<token>"), which are only ever sent to FCM v1's fixed URL
+export const FCM_PREFIX = 'fcm:';
+const FCM_TOKEN = /^[A-Za-z0-9_:-]{32,512}$/;
 const PUSH_HOSTS = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com'];
 const PUSH_HOST_SUFFIXES = ['.notify.windows.com', '.push.apple.com'];
 const MAX_DEVICES = 10; // per user; a phone, a laptop and a few browsers fit easily
@@ -109,6 +112,7 @@ export function validTz(tz) {
 }
 
 function validEndpoint(endpoint) {
+  if (typeof endpoint === 'string' && endpoint.startsWith(FCM_PREFIX)) return FCM_TOKEN.test(endpoint.slice(FCM_PREFIX.length));
   try {
     const { protocol, hostname } = new URL(endpoint);
     return protocol === 'https:' && endpoint.length <= 1024 &&
@@ -179,7 +183,7 @@ async function pushToEmail(email, message, env) {
   let sent = 0;
   for (const device of results) {
     let outcome;
-    try { outcome = await sendPush(device.endpoint, env, await encryptPush(message, device)); } catch { outcome = 'failed'; }
+    try { outcome = await deliver(device, env, message); } catch { outcome = 'failed'; }
     if (outcome === 'sent') sent++;
     if (outcome === 'gone') await forget(device.endpoint, env);
   }
@@ -210,13 +214,15 @@ export async function handlePushRoute(path, body, uid, env, { email, idToken } =
       `INSERT INTO subscriptions (endpoint, uid, remind_at, tz, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
        ON CONFLICT(endpoint) DO UPDATE SET uid = ?2, remind_at = ?3, tz = ?4`
     ).bind(endpoint, uid, remindAt, tz, Date.now()).run();
-    // Keys let this device receive message pushes for this email; older clients don't send them
+    // Keys let this device receive message pushes for this email; older clients don't send them.
+    // A native (FCM) device needs none: its messages aren't Web Push encrypted
+    const native = endpoint.startsWith(FCM_PREFIX);
     const { p256dh, auth } = body.keys || {};
-    if (email && KEY.test(p256dh || '') && KEY.test(auth || '')) {
+    if (email && (native || (KEY.test(p256dh || '') && KEY.test(auth || '')))) {
       await env.DB.prepare(
         `INSERT INTO push_keys (endpoint, email, p256dh, auth) VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT(endpoint) DO UPDATE SET email = ?2, p256dh = ?3, auth = ?4`
-      ).bind(endpoint, email, p256dh, auth).run();
+      ).bind(endpoint, email, native ? '' : p256dh, native ? '' : auth).run();
     }
     return [200, { ok: true }];
   }
@@ -330,6 +336,61 @@ export async function sendPush(endpoint, env, body = null) {
   return res.ok ? 'sent' : 'failed';
 }
 
+// An OAuth2 access token for FCM v1 from the service account (secret FCM_SERVICE_ACCOUNT), cached until near expiry
+let fcmAuth;
+async function fcmAccessToken(env) {
+  if (fcmAuth && fcmAuth.expires > Date.now() + 60_000) return fcmAuth.token;
+  const sa = JSON.parse(env.FCM_SERVICE_ACCOUNT);
+  const jwt = await new SignJWT({ scope: 'https://www.googleapis.com/auth/firebase.messaging' })
+    .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+    .setIssuer(sa.client_email)
+    .setAudience('https://oauth2.googleapis.com/token')
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(await importPKCS8(sa.private_key, 'RS256'));
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }),
+  });
+  if (!res.ok) throw new Error(`FCM auth ${res.status}`);
+  const { access_token, expires_in } = await res.json();
+  fcmAuth = { token: access_token, expires: Date.now() + expires_in * 1000 };
+  return access_token;
+}
+
+// The FCM v1 body: a data-only message the app turns into a notification. The reminder has no text of
+// its own (kind "reminder"); a message carries the same title/body/url/tag the browser gets
+export function fcmBody(token, message) {
+  const data = message ? { kind: 'message', ...JSON.parse(message) } : { kind: 'reminder' };
+  return {
+    message: {
+      token,
+      data, // every value a string, as FCM requires
+      android: { priority: 'normal', ttl: message ? '86400s' : '3600s', ...(data.tag && { collapse_key: data.tag }) },
+    },
+  };
+}
+
+// 'sent' | 'gone' | 'failed', like sendPush. Only 404 or UNREGISTERED is gone, so a payload bug can't wipe devices
+export async function sendFcm(token, env, message = null) {
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await fcmAccessToken(env)}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(fcmBody(token, message)),
+  });
+  if (res.ok) return 'sent';
+  if (res.status === 404) return 'gone';
+  const err = await res.json().catch(() => null);
+  return err?.error?.details?.some(d => d.errorCode === 'UNREGISTERED') ? 'gone' : 'failed';
+}
+
+// One push to one device, by its kind. device: { endpoint, p256dh, auth }; message: a JSON string, or null for the reminder
+export async function deliver(device, env, message = null) {
+  if (device.endpoint.startsWith(FCM_PREFIX)) return sendFcm(device.endpoint.slice(FCM_PREFIX.length), env, message);
+  return sendPush(device.endpoint, env, message && await encryptPush(message, device));
+}
+
 // Cron: send due reminders, record them, and drop subscriptions the browser has revoked
 export async function sendDueReminders(env, now = new Date()) {
   // shortcut: reads every subscription each run; fine for thousands, add a UTC-minute column + index beyond that
@@ -338,7 +399,7 @@ export async function sendDueReminders(env, now = new Date()) {
   for (const sub of results) {
     if (!isDue(sub, now)) continue;
     let outcome;
-    try { outcome = await sendPush(sub.endpoint, env); } catch { outcome = 'failed'; }
+    try { outcome = await deliver(sub, env); } catch { outcome = 'failed'; }
     counts[outcome]++;
     if (outcome === 'gone') {
       await forget(sub.endpoint, env);
@@ -363,7 +424,7 @@ export async function sendBillAlerts(env, now = new Date()) {
     if (!billDue(stored, now)) continue;
     const row = { ...stored, due: dueTomorrow(stored, now) };
     let outcome;
-    try { outcome = await sendPush(row.endpoint, env, await encryptPush(billMessage(row), row)); } catch { outcome = 'failed'; }
+    try { outcome = await deliver(row, env, billMessage(row)); } catch { outcome = 'failed'; }
     counts[outcome]++;
     if (outcome === 'gone') await forget(row.endpoint, env);
     if (outcome === 'sent') alerted.set(`${row.uid}\n${row.key}`, row);
@@ -387,7 +448,7 @@ export async function sendMonthSummaries(env, now = new Date()) {
   for (const row of results) {
     if (!summaryDue(row, now)) continue;
     let outcome;
-    try { outcome = await sendPush(row.endpoint, env, await encryptPush(summaryMessage(row), row)); } catch { outcome = 'failed'; }
+    try { outcome = await deliver(row, env, summaryMessage(row)); } catch { outcome = 'failed'; }
     counts[outcome]++;
     if (outcome === 'gone') await forget(row.endpoint, env);
     if (outcome === 'sent') alerted.set(`${row.uid}\n${row.month}`, row);
