@@ -8,6 +8,7 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 
 ### 📊 Dashboard & Analytics
 - Real-time expense & income tracking with daily/weekly/monthly/yearly views
+- Monthly daily-spending calendar with intensity markers and transaction details
 - Interactive spending analytics with visual charts
 - AI-powered insights for better financial decisions
 - Smart categorization of expenses and income sources

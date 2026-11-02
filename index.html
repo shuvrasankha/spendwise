@@ -267,6 +267,51 @@
           <a class="home-more today-more" href="history.html">All transactions <i data-lucide="chevron-right"></i></a>
         </section>
 
+        <section class="home-section spending-calendar" id="spending-calendar" aria-labelledby="spending-calendar-title">
+          <div class="calendar-header">
+            <div class="calendar-heading">
+              <h3 id="spending-calendar-title">Spending calendar</h3>
+              <p id="calendar-month-total" class="calendar-month-total"></p>
+            </div>
+            <div class="calendar-month-controls" role="group" aria-label="Calendar month controls">
+              <button type="button" class="calendar-nav-btn" id="calendar-prev-month" aria-label="Previous month">
+                <i data-lucide="chevron-left" aria-hidden="true"></i>
+              </button>
+              <span id="calendar-month-label" class="calendar-month-label"></span>
+              <button type="button" class="calendar-today-btn hidden" id="calendar-today">Today</button>
+              <button type="button" class="calendar-nav-btn" id="calendar-next-month" aria-label="Next month">
+                <i data-lucide="chevron-right" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div class="calendar-grid" id="calendar-grid" role="group" aria-label="Daily spending calendar"></div>
+          <div class="calendar-legend" aria-label="Spending intensity">
+            <span><i class="calendar-legend-marker calendar-intensity-0" aria-hidden="true"></i>No spending</span>
+            <span><i class="calendar-legend-marker calendar-intensity-1" aria-hidden="true"></i>Lower</span>
+            <span><i class="calendar-legend-marker calendar-intensity-4" aria-hidden="true"></i>Higher</span>
+          </div>
+        </section>
+
+        <div class="modal-overlay hidden calendar-day-dialog" id="calendar-day-dialog" role="dialog" aria-modal="true" aria-labelledby="calendar-day-title">
+          <div class="modal-box calendar-day-dialog-box">
+            <div class="modal-header">
+              <h3 id="calendar-day-title" tabindex="-1"></h3>
+              <button type="button" class="modal-close-btn" id="calendar-day-close" aria-label="Close day details">
+                <i data-lucide="x" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="modal-body calendar-day-body">
+              <p class="calendar-day-total" id="calendar-day-total"></p>
+              <p class="calendar-day-count" id="calendar-day-count"></p>
+              <p class="home-empty calendar-day-empty hidden" id="calendar-day-empty">No spending recorded on this day.</p>
+              <ul class="home-list calendar-transactions" id="calendar-day-transactions"></ul>
+            </div>
+          </div>
+        </div>
+
         <!-- Repeating expenses whose day has come: one tap adds them (dashboard.js renderDue) -->
         <section class="home-section home-due hidden" id="home-due" aria-labelledby="home-due-title">
           <div class="home-section-head">

@@ -529,3 +529,16 @@
     font-size: 16px !important;
   }
 }
+
+@media (max-width: 480px) {
+  .spending-calendar { padding: 14px 12px 12px; }
+  .calendar-header { align-items: flex-start; }
+  .calendar-month-controls { width: 100%; justify-content: space-between; gap: 4px; }
+  .calendar-month-label { min-width: 0; flex: 1; }
+  .calendar-today-btn { padding: 0 8px; }
+  .calendar-weekdays, .calendar-grid { gap: 2px; }
+  .calendar-day { min-height: 44px; }
+  .calendar-day-marker { max-width: 100%; max-height: 36px; }
+  .calendar-legend { gap: 8px 12px; }
+  .calendar-day-dialog-box { width: 100%; max-height: 85vh; }
+}

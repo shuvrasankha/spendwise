@@ -23,6 +23,7 @@ import { getGoals } from './modules/goals.js';
 import { portfolio, linkedToGoals, withLinked } from './modules/invest-data.js';
 import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
+import { aggregateDailySpending, buildCalendarMonth, scaleDailySpending, shiftCalendarMonth } from './modules/spending-calendar.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -80,6 +81,8 @@ function clearCache(uid) {
 }
 
 let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], allHoldings = [], activeTab = "weekly", deleteTarget = null, editingExpenseId = null;
+let calendarYear = new Date().getFullYear(), calendarMonthIndex = new Date().getMonth();
+let selectedCalendarDate = null, calendarTransactionsByDate = new Map(), lastCalendarTrigger = null;
 
 // ── Card shimmer ─────────────────────────────────────────────────────────────
 function showLoader() {
@@ -492,6 +495,8 @@ function renderHome() {
     window.lucide?.createIcons();
   }
 
+  renderSpendingCalendar();
+
   // Tiles: income, saved, debts (owe and owed are separate directions)
   const incomeEl = document.getElementById("home-income");
   if (income > 0) countTo(incomeEl, income, moneyWhole);
@@ -575,6 +580,174 @@ const CATEGORY_ICONS = {
   "Shopping": "shopping-bag", "Bills & Utilities": "zap", "Home & Rent": "home", "Health": "heart-pulse",
   "Entertainment": "clapperboard", "Education": "graduation-cap", "Savings & Investments": "piggy-bank", "Other": "more-horizontal",
 };
+
+function calendarDateLabel(dateKey, options) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", options);
+}
+
+function renderSpendingCalendar() {
+  const grid = document.getElementById("calendar-grid");
+  if (!grid) return;
+
+  const now = new Date();
+  const today = todayStr(now);
+  const isCurrentMonth = calendarYear === now.getFullYear() && calendarMonthIndex === now.getMonth();
+  const { totals, transactionsByDate } = aggregateDailySpending(allExpenses, calendarYear, calendarMonthIndex, {
+    throughDate: isCurrentMonth ? today : null,
+  });
+  calendarTransactionsByDate = transactionsByDate;
+
+  const month = buildCalendarMonth(calendarYear, calendarMonthIndex);
+  const markers = scaleDailySpending(totals);
+  const total = [...totals.values()].reduce((sum, amount) => sum + amount, 0);
+  document.getElementById("calendar-month-label").textContent =
+    new Date(calendarYear, calendarMonthIndex, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  document.getElementById("calendar-month-total").textContent = `Month total · ${moneyWhole(total)}`;
+  document.getElementById("calendar-next-month").disabled = isCurrentMonth;
+  document.getElementById("calendar-today").classList.toggle("hidden", isCurrentMonth);
+
+  const fragment = document.createDocumentFragment();
+  month.cells.forEach(cell => {
+    if (!cell) {
+      const blank = document.createElement("span");
+      blank.className = "calendar-day calendar-day--blank";
+      blank.setAttribute("aria-hidden", "true");
+      fragment.append(blank);
+      return;
+    }
+
+    const amount = totals.get(cell.dateKey) || 0;
+    const markerData = markers.get(cell.dateKey);
+    const isToday = cell.dateKey === today;
+    const isSelected = cell.dateKey === selectedCalendarDate;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `calendar-day${isToday ? " calendar-day--today" : ""}${isSelected ? " calendar-day--selected" : ""}`;
+    button.dataset.date = cell.dateKey;
+    button.setAttribute("aria-pressed", String(isSelected));
+    if (isToday) button.setAttribute("aria-current", "date");
+    const dateLabel = calendarDateLabel(cell.dateKey, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    button.setAttribute("aria-label", `${dateLabel}, ${amount > 0 ? `${moneyWhole(amount)} spent` : "no spending recorded"}`);
+
+    const marker = document.createElement("span");
+    marker.className = `calendar-day-marker calendar-intensity-${markerData?.intensity || 0}`;
+    if (markerData) marker.style.setProperty("--calendar-marker-size", `${markerData.diameter}px`);
+    const number = document.createElement("span");
+    number.className = "calendar-day-number";
+    number.textContent = String(cell.day);
+    marker.append(number);
+    button.append(marker);
+    fragment.append(button);
+  });
+  grid.replaceChildren(fragment);
+  if (window.lucide) lucide.createIcons();
+  if (selectedCalendarDate && !document.getElementById("calendar-day-dialog").classList.contains("hidden")) {
+    renderCalendarDayDetails(selectedCalendarDate);
+  }
+}
+
+function renderCalendarDayDetails(dateKey) {
+  const transactions = calendarTransactionsByDate.get(dateKey) || [];
+  const title = document.getElementById("calendar-day-title");
+  const total = transactions.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  title.textContent = calendarDateLabel(dateKey, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  document.getElementById("calendar-day-total").textContent = `${moneyWhole(total)} spent`;
+  document.getElementById("calendar-day-count").textContent = plural(transactions.length, "transaction", "transactions");
+  document.getElementById("calendar-day-empty").classList.toggle("hidden", transactions.length > 0);
+
+  const list = document.getElementById("calendar-day-transactions");
+  list.replaceChildren(...transactions.map(expense => {
+    const row = document.createElement("li");
+    row.className = "home-row calendar-transaction";
+
+    const icon = document.createElement("span");
+    icon.className = "calendar-transaction-icon";
+    icon.setAttribute("aria-hidden", "true");
+    const iconElement = document.createElement("i");
+    iconElement.setAttribute("data-lucide", CATEGORY_ICONS[normalizeCategory(expense.category)] || "receipt");
+    icon.append(iconElement);
+
+    const body = document.createElement("div");
+    body.className = "home-row-main calendar-transaction-body";
+    const description = document.createElement("span");
+    description.className = "home-row-title";
+    const named = expense.description && expense.description !== "-" ? expense.description : "";
+    description.textContent = named || expense.category || "Expense";
+
+    const meta = document.createElement("span");
+    meta.className = "home-row-meta";
+    meta.textContent = [
+      named && named.toLowerCase() !== String(expense.category || "").toLowerCase() ? expense.category : "",
+      expense.payment,
+      expense.cardName,
+      expense.pending ? "Waiting to sync" : "",
+    ].filter(Boolean).join(" · ");
+    body.append(description, meta);
+
+    const amount = document.createElement("span");
+    amount.className = "home-row-amount";
+    amount.textContent = fmt(expense.amount);
+    row.append(icon, body, amount);
+    if (expense.notes) {
+      const notes = document.createElement("p");
+      notes.className = "calendar-transaction-notes";
+      notes.textContent = `Notes: ${expense.notes}`;
+      row.append(notes);
+    }
+    return row;
+  }));
+  if (window.lucide) lucide.createIcons();
+}
+
+function openCalendarDay(dateKey, trigger) {
+  selectedCalendarDate = dateKey;
+  lastCalendarTrigger = trigger;
+  renderSpendingCalendar();
+  renderCalendarDayDetails(dateKey);
+  const dialog = document.getElementById("calendar-day-dialog");
+  dialog.classList.remove("hidden");
+  document.getElementById("calendar-day-close").focus();
+}
+
+function closeCalendarDay() {
+  const dialog = document.getElementById("calendar-day-dialog");
+  if (!dialog || dialog.classList.contains("hidden")) return;
+  dialog.classList.add("hidden");
+  const grid = document.getElementById("calendar-grid");
+  const selectedButton = [...grid.querySelectorAll(".calendar-day[data-date]")]
+    .find(button => button.dataset.date === selectedCalendarDate);
+  const focusTarget = selectedButton || (lastCalendarTrigger?.isConnected ? lastCalendarTrigger : null);
+  if (focusTarget) focusTarget.focus();
+}
+
+function changeCalendarMonth(amount) {
+  const next = shiftCalendarMonth(calendarYear, calendarMonthIndex, amount);
+  const now = new Date();
+  if (next.year > now.getFullYear() || (next.year === now.getFullYear() && next.monthIndex > now.getMonth())) return;
+  calendarYear = next.year;
+  calendarMonthIndex = next.monthIndex;
+  selectedCalendarDate = null;
+  renderSpendingCalendar();
+}
+
+document.getElementById("calendar-prev-month")?.addEventListener("click", () => changeCalendarMonth(-1));
+document.getElementById("calendar-next-month")?.addEventListener("click", () => changeCalendarMonth(1));
+document.getElementById("calendar-today")?.addEventListener("click", () => {
+  const now = new Date();
+  calendarYear = now.getFullYear();
+  calendarMonthIndex = now.getMonth();
+  selectedCalendarDate = null;
+  renderSpendingCalendar();
+});
+document.getElementById("calendar-grid")?.addEventListener("click", event => {
+  const button = event.target.closest(".calendar-day[data-date]");
+  if (button) openCalendarDay(button.dataset.date, button);
+});
+document.getElementById("calendar-day-close")?.addEventListener("click", closeCalendarDay);
+document.getElementById("calendar-day-dialog")?.addEventListener("click", event => {
+  if (event.target === event.currentTarget) closeCalendarDay();
+});
 
 // ── Savings goals: progress and the monthly pace, against what this month left over ──
 function renderGoals(savedThisMonth) {

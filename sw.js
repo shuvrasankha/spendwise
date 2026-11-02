@@ -51,6 +51,7 @@ const STATIC_ASSETS = [
   './assets/js/modules/people.js',
   './assets/js/modules/notifications.js',
   './assets/js/modules/invest-data.js',
+  './assets/js/modules/spending-calendar.js',
   './assets/js/modules/goals.js',
   './assets/js/modules/settings.js',
   './assets/images/logo-96.png',
