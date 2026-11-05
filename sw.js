@@ -37,6 +37,8 @@ const STATIC_ASSETS = [
   './assets/js/modules/budget.js',
   './assets/js/modules/budget-data.js',
   './assets/js/modules/debt-data.js',
+  './assets/js/modules/credit-card-data.js',
+  './assets/js/modules/credit-card-store.js',
   './assets/js/modules/app-lock.js',
   './assets/js/modules/backup.js',
   './assets/js/modules/accessibility.js',

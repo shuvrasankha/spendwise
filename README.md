@@ -26,6 +26,12 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 - Reactivate settled debts if needed
 - Clear visual summary of outstanding balances
 
+### 💳 Credit Card Manager
+- Save, edit, archive, and reactivate cards with optional statement and credit-limit details
+- Link card purchases to a saved card and review balances, statement periods, and monthly activity
+- Record full statement/current-balance payments separately from spending, and track purchase refunds
+- Keep card actions available offline and include cards, payments, and refunds in backup/restore
+
 ### 🎨 User Experience
 - 🌓 Dark/Light mode with smooth transitions
 - 📱 Fully responsive design (mobile, tablet, desktop)
@@ -75,6 +81,7 @@ A modern, full-featured expense tracking application built with vanilla JavaScri
 | **Income** | Track income sources and earnings |
 | **History** | Complete transaction history with filters and export |
 | **Debt Tracker** | Manage debts - money owed to you and money you owe |
+| **Credit Card Manager** | Track cards, purchases, statements, payments, and refunds |
 | **AI Insights** | Get smart financial insights powered by AI |
 | **Settings** | Appearance, currency, monthly budget, daily reminder, app lock, backup & restore, log out (also in the avatar menu) |
 

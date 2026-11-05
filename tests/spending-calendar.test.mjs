@@ -46,6 +46,18 @@ test('empty input and current-month cutoff produce no fabricated future spending
   assert.deepEqual([...totals], [['2026-10-21', 50], ['2026-10-22', 75]]);
 });
 
+test('credit-card refunds reduce spending on the refund date and remain visible as transactions', () => {
+  const result = aggregateDailySpending([
+    { id: 'purchase', date: '2026-10-22', amount: 125, category: 'Shopping' },
+    { id: 'refund', date: '2026-10-22', amount: -25, category: 'Shopping', transactionType: 'refund' },
+    { id: 'later-refund', date: '2026-10-23', amount: -200, category: 'Shopping', transactionType: 'refund' },
+  ], 2026, 9);
+
+  assert.equal(result.totals.get('2026-10-22'), 100);
+  assert.equal(result.totals.get('2026-10-23'), -200);
+  assert.equal(result.transactionsByDate.get('2026-10-22').length, 2);
+});
+
 test('month grid uses Monday-first alignment and includes complete five- or six-week rows', () => {
   const mondayStart = buildCalendarMonth(2024, 0);
   assert.equal(mondayStart.leadingBlanks, 0);

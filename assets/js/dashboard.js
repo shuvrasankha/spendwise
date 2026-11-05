@@ -2,7 +2,7 @@
 
 import { auth, gProvider, db } from './config/firebase.js';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, onAuthStateChanged, signOut, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp, updateDoc, writeBatch, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -24,6 +24,8 @@ import { portfolio, linkedToGoals, withLinked } from './modules/invest-data.js';
 import { getSplit, resetSplit, splitDebts, fetchSharedDebts, announceDebts } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
 import { aggregateDailySpending, buildCalendarMonth, scaleDailySpending, shiftCalendarMonth } from './modules/spending-calendar.js';
+import { getCreditCards, saveCreditCard } from './modules/credit-card-store.js';
+import { creditCardLabel, refundExpenseRow } from './modules/credit-card-data.js';
 
 // Firebase Web API keys are safe to be public — Firebase explicitly documents this.
 // Security is enforced by Firebase Auth (only authenticated users can read/write)
@@ -80,7 +82,8 @@ function clearCache(uid) {
   try { ['expenses', 'income', 'debts', 'holdings'].forEach(kind => sessionStorage.removeItem(getCacheKey(uid, kind))); } catch { /* ignore */ }
 }
 
-let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], allHoldings = [], activeTab = "weekly", deleteTarget = null, editingExpenseId = null;
+let currentUser = null, allExpenses = [], allIncome = [], allDebts = [], allHoldings = [], creditCards = [], activeTab = "weekly", deleteTarget = null, editingExpenseId = null;
+let inlineCardTarget = 'add';
 let calendarYear = new Date().getFullYear(), calendarMonthIndex = new Date().getMonth();
 let selectedCalendarDate = null, calendarTransactionsByDate = new Map(), lastCalendarTrigger = null;
 
@@ -116,6 +119,10 @@ onAuthStateChanged(auth, user => {
       return;
     }
     currentUser = user;
+    loadCreditCards().catch(error => {
+      console.error('Credit cards could not be loaded:', error);
+      showToast('Credit cards could not be loaded. Check your connection and try again.', 'error');
+    });
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
     updateUserAvatar(user);
@@ -252,13 +259,32 @@ window.showPage = (page) => {
   if (page === "add") { const d = document.getElementById("exp-date"); if (!d.value) d.value = todayStr(); }
 };
 
+function renderCreditCardOptions(select, selectedId = '', includeArchived = false) {
+  if (!select) return;
+  const cards = creditCards.filter(card => card.active !== false || (includeArchived && card.id === selectedId));
+  select.innerHTML = '<option value="">Choose a saved card</option>' + cards.map(card =>
+    `<option value="${escapeHtml(card.id)}">${escapeHtml(creditCardLabel(card))}${card.active === false ? ' (archived)' : ''}</option>`
+  ).join('');
+  select.value = selectedId || '';
+}
+
+async function loadCreditCards() {
+  creditCards = await getCreditCards(currentUser.uid);
+  const addSelect = document.getElementById('exp-credit-card');
+  const editSelect = document.getElementById('edit-credit-card');
+  renderCreditCardOptions(addSelect, addSelect?.value || '');
+  renderCreditCardOptions(editSelect, editSelect?.value || '', true);
+  updatePaymentHint();
+}
+
 async function loadExpenses(isSilentSync = false) {
   if (!currentUser) return;
   if (!isSilentSync) showLoader();
   try {
     const q = query(collection(db, "expenses"), where("uid", "==", currentUser.uid));
-    const snap = await getDocs(q);
-    allExpenses = snap.docs.map(d => {
+    const refundQuery = query(collection(db, "cardRefunds"), where("uid", "==", currentUser.uid));
+    const [snap, refundSnap] = await Promise.all([getDocs(q), getDocs(refundQuery)]);
+    const purchases = snap.docs.map(d => {
       const raw = d.data();
       // Very old records hold base64 amounts, which parse as NaN and show as 0
       const amt = parseFloat(raw.amount);
@@ -271,6 +297,9 @@ async function loadExpenses(isSilentSync = false) {
         notes: raw.notes || ""
       };
     });
+    const purchaseById = new Map(purchases.map(expense => [expense.id, expense]));
+    const refunds = refundSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allExpenses = purchases.concat(refunds.map(refund => refundExpenseRow(refund, purchaseById.get(refund.originalExpenseId))));
     // Sort client-side — no Firestore index required
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -628,10 +657,10 @@ function renderSpendingCalendar() {
     button.setAttribute("aria-pressed", String(isSelected));
     if (isToday) button.setAttribute("aria-current", "date");
     const dateLabel = calendarDateLabel(cell.dateKey, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-    button.setAttribute("aria-label", `${dateLabel}, ${amount > 0 ? `${moneyWhole(amount)} spent` : "no spending recorded"}`);
+    button.setAttribute("aria-label", `${dateLabel}, ${amount > 0 ? `${moneyWhole(amount)} spent` : amount < 0 ? `${moneyWhole(Math.abs(amount))} net refund` : "no net spending recorded"}`);
 
     const marker = document.createElement("span");
-    marker.className = `calendar-day-marker calendar-intensity-${markerData?.intensity || 0}`;
+    marker.className = `calendar-day-marker calendar-intensity-${markerData?.intensity || 0}${markerData?.isRefund ? ' calendar-day-marker--refund' : ''}`;
     if (markerData) marker.style.setProperty("--calendar-marker-size", `${markerData.diameter}px`);
     const number = document.createElement("span");
     number.className = "calendar-day-number";
@@ -825,7 +854,7 @@ function renderDue() {
 async function addDue(item) {
   const t = item.template;
   const data = { uid: currentUser.uid, amount: t.amount, category: t.category, date: item.due, payment: t.payment || "UPI",
-    cardName: t.cardName || "", description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain",
+    cardName: t.cardName || "", ...(t.creditCardId && { creditCardId: t.creditCardId }), description: t.description || "-", notes: "", tags: t.tags || [], repeat: "monthly", encoding: "plain",
     ...(t.holdingId && { holdingId: t.holdingId }), // a SIP stays in its holding (Investments)
     // The newest entry is the series' template, so it carries the EMI on
     ...(t.emiTotal && { emiTotal: t.emiTotal, ...(t.emiPaidBefore && { emiPaidBefore: t.emiPaidBefore }) }) };
@@ -978,13 +1007,21 @@ function updatePaymentHint() {
   const sel = document.getElementById("exp-payment");
   const hint = document.getElementById("exp-more-hint");
   if (sel && hint) hint.textContent = sel.value;
+  const creditWrap = document.getElementById('exp-credit-card-wrap');
+  if (creditWrap) creditWrap.classList.toggle('hidden', sel?.value !== 'Credit Card');
+  const editPayment = document.getElementById('edit-payment')?.value;
+  const editCreditWrap = document.getElementById('edit-credit-card-wrap');
+  if (editCreditWrap) editCreditWrap.classList.toggle('hidden', editPayment !== 'Credit Card');
+  const debitWrap = document.getElementById('exp-card-name-wrap');
+  if (debitWrap) debitWrap.classList.toggle('hidden', sel?.value !== 'Debit Card');
+  const editDebitWrap = document.getElementById('edit-card-name-wrap');
+  if (editDebitWrap) editDebitWrap.classList.toggle('hidden', editPayment !== 'Debit Card');
 }
 
 function applyLastPayment() {
   const sel = document.getElementById("exp-payment");
   if (!sel) return;
   sel.value = lastPayment();
-  toggleCardName("exp-card-name-wrap", sel.value);
   updatePaymentHint();
 }
 
@@ -1049,7 +1086,7 @@ function renderRecentExpenses() {
     amount.className = "recent-amount";
     amount.textContent = fmt(e.amount);
     li.append(main, amount);
-    if (!e.pending) { // queued offline entries have no document to edit yet
+    if (!e.pending && e.transactionType !== 'refund') { // queued entries and refunds have no editable expense document
       const actions = document.createElement("div");
       actions.className = "action-buttons";
       actions.innerHTML = `<button class="btn-action edit" data-edit-expense="${e.id}" aria-label="Edit"><i data-lucide="pencil"></i></button><button class="btn-action delete" data-delete-expense="${e.id}" aria-label="Delete"><i data-lucide="trash-2"></i></button>`;
@@ -1104,6 +1141,7 @@ window.addExpense = async () => {
   const category = document.getElementById("exp-category").value;
   const date = document.getElementById("exp-date").value;
   const payment = document.getElementById("exp-payment").value;
+  const creditCardId = payment === 'Credit Card' ? document.getElementById('exp-credit-card')?.value || '' : '';
   const description = sanitize(document.getElementById("exp-description").value.trim(), 300);
   const notes = sanitize(document.getElementById("exp-notes").value.trim(), 500);
   const tags = getExpenseTags("exp");
@@ -1122,6 +1160,7 @@ window.addExpense = async () => {
   const emi = emiTotal ? { emiTotal, ...(emiPaidBefore && { emiPaidBefore }) } : {};
   if (!category) { showFormMsg("Select a category.", "error"); return; }
   if (!date) { showFormMsg("Select a date.", "error"); return; }
+  if (payment === 'Credit Card' && !creditCardId) { showFormMsg("Choose a saved credit card or add one.", "error"); return; }
   // Split: your share becomes the expense, and each person owes you theirs (modules/split.js)
   const split = getSplit();
   if (split?.error) { showFormMsg(split.error, "error"); return; }
@@ -1140,8 +1179,9 @@ window.addExpense = async () => {
     return;
   }
   try {
-    const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
-    const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
+    const selectedCard = creditCards.find(card => card.id === creditCardId);
+    const cardName = payment === 'Credit Card' ? selectedCard?.name || '' : sanitize(document.getElementById("exp-card-name")?.value.trim() || "", 100);
+    const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", ...(creditCardId && { creditCardId }), description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
     if (repeat) Object.assign(expenseData, { repeat, ...emi });
     
     if (window.isOffline && window.isOffline()) {
@@ -1149,7 +1189,7 @@ window.addExpense = async () => {
         const queueId = window.addToOfflineQueue('expense', expenseData);
         const debtQueueIds = queueDebts();
         const tempId = 'offline-' + Date.now();
-        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
+        allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", ...(creditCardId && { creditCardId }), description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
         allExpenses.sort((a, b) => b.date.localeCompare(a.date));
         dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
         updateCards();
@@ -1178,7 +1218,7 @@ window.addExpense = async () => {
     const debtRefs = debts.map(d => { const r = doc(collection(db, "debts")); batch.set(r, d); return r; });
     await batch.commit();
     announceDebts(debtRefs, debts);
-    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, ...(repeat && { repeat, ...emi }) });
+    allExpenses.unshift({ id: ref.id, amount, category, date, payment, cardName: cardName || "", ...(creditCardId && { creditCardId }), description: description || "-", notes, tags, ...(repeat && { repeat, ...emi }) });
     allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
     updateCards();
@@ -1201,13 +1241,14 @@ window.addExpense = async () => {
   } catch (e) { 
     console.error(e);
     if (window.addToOfflineQueue && navigator.onLine === false) {
-      const cardName = sanitize(document.getElementById("exp-card-name") ? document.getElementById("exp-card-name").value.trim() : "", 100);
-      const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
+      const selectedCard = creditCards.find(card => card.id === creditCardId);
+      const cardName = payment === 'Credit Card' ? selectedCard?.name || '' : sanitize(document.getElementById("exp-card-name")?.value.trim() || "", 100);
+      const expenseData = { uid: currentUser.uid, amount, category, date, payment, cardName: cardName || "", ...(creditCardId && { creditCardId }), description: description || "-", notes, tags, encoding: "plain", createdAt: serverTimestamp() };
     if (repeat) Object.assign(expenseData, { repeat, ...emi });
       const queueId = window.addToOfflineQueue('expense', expenseData);
       const debtQueueIds = queueDebts();
       const tempId = 'offline-' + Date.now();
-      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
+      allExpenses.unshift({ id: tempId, amount, category, date, payment, cardName: cardName || "", ...(creditCardId && { creditCardId }), description: description || "-", notes, tags, pending: true, ...(repeat && { repeat, ...emi }) });
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
       dashboardPage = 1; dashboardShown = DASHBOARD_PER_PAGE;
       updateCards();
@@ -1231,31 +1272,76 @@ window.addExpense = async () => {
 
 window.resetForm = () => {
   resetSplit();
-  ["exp-amount", "exp-description", "exp-notes", "exp-card-name", "exp-tags"].forEach(id => {
+  ["exp-amount", "exp-description", "exp-notes", "exp-card-name", "exp-tags", "exp-credit-card"].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = "";
   });
   document.getElementById("exp-category").value = "";
   document.getElementById("exp-payment").value = "UPI";
-  const wrap = document.getElementById("exp-card-name-wrap");
-  if (wrap) wrap.style.display = "none";
+  updatePaymentHint();
   document.getElementById("exp-date").value = todayStr();
   document.getElementById("form-msg").classList.add("hidden");
   renderTagsDisplay("exp", []);
 };
 
-// Show/hide the card name input based on payment method
 window.toggleCardName = (wrapId, paymentValue) => {
-  const wrap = document.getElementById(wrapId);
-  if (!wrap) return;
-  const show = paymentValue === 'Credit Card' || paymentValue === 'Debit Card';
-  wrap.style.display = show ? '' : 'none';
-  if (!show) {
-    const input = wrap.querySelector('input');
+  const editing = wrapId.startsWith('edit-');
+  if (paymentValue !== 'Credit Card') {
+    const select = document.getElementById(editing ? 'edit-credit-card' : 'exp-credit-card');
+    if (select) select.value = '';
+  }
+  if (paymentValue !== 'Debit Card') {
+    const input = document.getElementById(editing ? 'edit-card-name' : 'exp-card-name');
     if (input) input.value = '';
   }
+  updatePaymentHint();
 };
 
-window.deleteExpense = (id) => { deleteTarget = id; document.getElementById("modal").classList.remove("hidden"); };
+function openInlineCreditCard(target) {
+  inlineCardTarget = target;
+  ['name', 'issuer', 'last4', 'network', 'limit', 'statement-day', 'due-day'].forEach(field => {
+    const input = document.getElementById(`inline-card-${field}`);
+    if (input) input.value = '';
+  });
+  document.getElementById('inline-card-error').classList.add('hidden');
+  document.getElementById('inline-credit-card-modal').classList.remove('hidden');
+  window.lucide?.createIcons();
+}
+
+async function saveInlineCreditCard() {
+  const errorEl = document.getElementById('inline-card-error');
+  const card = {
+    name: document.getElementById('inline-card-name').value,
+    issuer: document.getElementById('inline-card-issuer').value,
+    last4: document.getElementById('inline-card-last4').value,
+    network: document.getElementById('inline-card-network').value,
+    creditLimit: document.getElementById('inline-card-limit').value,
+    statementDay: document.getElementById('inline-card-statement-day').value,
+    dueDay: document.getElementById('inline-card-due-day').value,
+    active: true,
+  };
+  try {
+    const saved = await saveCreditCard(currentUser.uid, card);
+    await loadCreditCards();
+    const select = document.getElementById(inlineCardTarget === 'edit' ? 'edit-credit-card' : 'exp-credit-card');
+    if (select) select.value = saved.id;
+    document.getElementById('inline-credit-card-modal').classList.add('hidden');
+    showToast('Credit card saved.', 'success');
+  } catch (error) {
+    console.error('Could not save credit card:', error);
+    errorEl.textContent = error.message || 'Credit card could not be saved.';
+    errorEl.classList.remove('hidden');
+  }
+}
+
+window.deleteExpense = (id) => {
+  const expense = allExpenses.find(item => item.id === id);
+  if (Number(expense?.refundedTotal || 0) > 0) {
+    showToast('This purchase has a recorded refund and cannot be deleted.', 'error');
+    return;
+  }
+  deleteTarget = id;
+  document.getElementById("modal").classList.remove("hidden");
+};
 window.closeModal = () => { document.getElementById("modal").classList.add("hidden"); deleteTarget = null; };
 window.confirmDelete = async () => {
   if (!deleteTarget) return;
@@ -1285,7 +1371,7 @@ window.confirmDelete = async () => {
 // ============================================================
 window.openEditExpense = (id) => {
   const expense = allExpenses.find(e => e.id === id);
-  if (!expense || expense.pending) return; // queued offline: no record to edit or delete until it syncs
+  if (!expense || expense.pending || expense.transactionType === 'refund') return; // queued offline and refunds have no editable expense document
 
   editingExpenseId = id;
   const editRepeat = document.getElementById("edit-repeat");
@@ -1297,8 +1383,13 @@ window.openEditExpense = (id) => {
   document.getElementById("edit-payment").value = expense.payment;
   document.getElementById("edit-description").value = expense.description;
   document.getElementById("edit-notes").value = expense.notes || "";
+  document.getElementById('edit-credit-card').value = expense.creditCardId || '';
+  renderCreditCardOptions(document.getElementById('edit-credit-card'), expense.creditCardId || '', true);
+  const legacyCard = document.getElementById('edit-legacy-card-name');
+  legacyCard.textContent = !expense.creditCardId && expense.cardName ? `Legacy card name: ${expense.cardName}` : '';
+  legacyCard.classList.toggle('hidden', !legacyCard.textContent);
   const editCardName = document.getElementById("edit-card-name");
-  if (editCardName) editCardName.value = expense.cardName || "";
+  if (editCardName) editCardName.value = expense.payment === 'Debit Card' ? expense.cardName || '' : '';
   toggleCardName('edit-card-name-wrap', expense.payment);
 
   // Set category tile selection
@@ -1329,6 +1420,7 @@ window.saveEditExpense = async () => {
   const category = document.getElementById("edit-category").value;
   const date = document.getElementById("edit-date").value;
   const payment = document.getElementById("edit-payment").value;
+  const selectedCardId = payment === 'Credit Card' ? document.getElementById('edit-credit-card')?.value || '' : '';
   const description = sanitize(document.getElementById("edit-description").value.trim(), 300);
   const notes = sanitize(document.getElementById("edit-notes").value.trim(), 500);
   const tags = getExpenseTags("edit");
@@ -1351,13 +1443,27 @@ window.saveEditExpense = async () => {
     return;
   }
 
+  const before = allExpenses.find(e => e.id === editingExpenseId);
+  if (payment === 'Credit Card' && !selectedCardId && !before?.creditCardId && !before?.cardName) {
+    errEl.textContent = 'Choose a saved credit card or add one.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (Number(before?.refundedTotal || 0) > 0
+    && (payment !== 'Credit Card' || (selectedCardId && selectedCardId !== before.creditCardId) || amount < Number(before.refundedTotal))) {
+    errEl.textContent = 'This purchase has a refund. Keep its credit card and an amount at least as large as the refund.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
   try {
     showLoader();
     const expenseRef = doc(db, "expenses", editingExpenseId);
     const editCardName = document.getElementById("edit-card-name");
-    const cardName = sanitize(editCardName ? editCardName.value.trim() : "", 100);
+    const creditCardId = payment === 'Credit Card' ? selectedCardId || before?.creditCardId || '' : '';
+    const selectedCard = creditCards.find(card => card.id === creditCardId);
+    const cardName = payment === 'Credit Card' ? selectedCard?.name || before?.cardName || '' : sanitize(editCardName ? editCardName.value.trim() : "", 100);
     // Repeating: tick to start; unticking a repeating entry stops the series (it stays in the list)
-    const before = allExpenses.find(e => e.id === editingExpenseId);
     const repeatOn = document.getElementById("edit-repeat")?.checked;
     const repeat = repeatOn ? "monthly" : before?.repeat === "monthly" ? "stopped" : before?.repeat;
     await updateDoc(expenseRef, {
@@ -1366,6 +1472,7 @@ window.saveEditExpense = async () => {
       date,
       payment,
       cardName: cardName || "",
+      creditCardId: creditCardId || deleteField(),
       description: description || "-",
       notes: notes,
       tags,
@@ -1382,12 +1489,14 @@ window.saveEditExpense = async () => {
         category,
         date,
         payment,
-        cardName: document.getElementById("edit-card-name") ? document.getElementById("edit-card-name").value.trim() : "",
+        cardName: cardName || "",
+        ...(creditCardId && { creditCardId }),
         description: description || "-",
         notes,
         tags,
         ...(repeat && { repeat })
       };
+      if (!creditCardId) delete allExpenses[idx].creditCardId;
       allExpenses.sort((a, b) => b.date.localeCompare(a.date));
     }
 
@@ -1415,6 +1524,11 @@ window.saveEditExpense = async () => {
 
 window.deleteFromEdit = async () => {
   if (!editingExpenseId) return;
+  const expense = allExpenses.find(item => item.id === editingExpenseId);
+  if (Number(expense?.refundedTotal || 0) > 0) {
+    showToast('This purchase has a recorded refund and cannot be deleted.', 'error');
+    return;
+  }
   deleteTarget = editingExpenseId;
   closeEditModal();
   document.getElementById("modal").classList.remove("hidden");
@@ -1584,7 +1698,7 @@ const HISTORY_TABS = {
     rows: () => allExpenses,
     kind: e => e.category,
     title: e => e.description || e.category,
-    meta: e => [e.category, e.cardName ? `${e.payment} (${e.cardName})` : e.payment, ...(e.tags || []).map(t => "#" + t)],
+    meta: e => [e.transactionType === 'refund' ? 'Credit card refund' : e.category, e.cardName ? `${e.payment} (${e.cardName})` : e.payment, ...(e.tags || []).map(t => "#" + t)],
     text: e => [e.description, e.category, e.notes, e.payment, e.cardName, ...(e.tags || [])],
     tags: e => e.tags || [],
     attr: "data-edit-expense", kindsLabel: "Categories", one: "expense", many: "expenses",
@@ -1678,7 +1792,7 @@ function renderHistory() {
     // An offline entry has no record yet: deleting it here would let the queue re-add it later
     if (r.pending) meta.push("Waiting to sync");
     if (r.repeat === "monthly") meta.push(r.emiTotal ? `EMI · ${r.emiTotal} payments` : "Repeats monthly");
-    return `<li><button type="button" class="hist-row" ${t.attr}="${escapeHtml(r.id)}"${r.pending ? " disabled" : ""}>
+    return `<li><button type="button" class="hist-row"${r.transactionType === 'refund' ? ' disabled aria-label="Credit card refund"' : ` ${t.attr}="${escapeHtml(r.id)}"`}${r.pending ? " disabled" : ""}>
       <span class="hist-row-main">
         <span class="hist-row-title">${escapeHtml(t.title(r))}</span>
         <span class="hist-row-meta">${escapeHtml(meta.join(" · "))}</span>
@@ -1855,7 +1969,7 @@ function renderTable(tbodyId, rows, del) {
     if (del) {
       const tdAct = document.createElement('td');
       tdAct.className = 'text-center';
-      tdAct.innerHTML = `<div class='action-buttons'><button class='btn-action edit' data-edit-expense='${e.id}' title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' data-delete-expense='${e.id}' title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
+      tdAct.innerHTML = e.transactionType === 'refund' ? '<span>Refund</span>' : `<div class='action-buttons'><button class='btn-action edit' data-edit-expense='${e.id}' title='Edit'><i class='lucide' data-lucide='pencil'></i></button><button class='btn-action delete' data-delete-expense='${e.id}' title='Delete'><i class='lucide' data-lucide='trash-2'></i></button></div>`;
       tr.appendChild(tdAct);
     }
 
@@ -2279,6 +2393,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === "Enter") { e.preventDefault(); window.addExpense(); }
   }));
   document.getElementById("exp-payment")?.addEventListener("change", updatePaymentHint);
+  document.getElementById("edit-payment")?.addEventListener("change", updatePaymentHint);
+  document.getElementById('add-credit-card-inline')?.addEventListener('click', () => openInlineCreditCard('add'));
+  document.getElementById('edit-add-credit-card-inline')?.addEventListener('click', () => openInlineCreditCard('edit'));
+  document.getElementById('save-inline-credit-card')?.addEventListener('click', saveInlineCreditCard);
+  document.getElementById('inline-credit-card-modal')?.addEventListener('click', event => {
+    if (event.target.closest('[data-inline-card-close]') || event.target.id === 'inline-credit-card-modal') {
+      document.getElementById('inline-credit-card-modal').classList.add('hidden');
+    }
+  });
   document.getElementById("exp-repeat")?.addEventListener("change", syncEmiFields);
   applyLastPayment();
   syncDateChips();

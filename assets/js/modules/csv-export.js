@@ -15,7 +15,7 @@ export function csvCell(value) {
 const text = v => (v && v !== '-' ? v : '');
 const COLUMNS = [
   ['Date', e => e.row.date],
-  ['Type', e => (e.kind === 'income' ? 'Income' : 'Expense')],
+  ['Type', e => (e.kind === 'income' ? 'Income' : e.row.transactionType === 'refund' ? 'Refund' : 'Expense')],
   ['Category or source', e => (e.kind === 'income' ? e.row.source : e.row.category)],
   ['Description', e => (e.kind === 'income' ? '' : text(e.row.description))],
   ['Payment', e => (e.kind === 'income' ? e.row.paymentType : e.row.payment)],

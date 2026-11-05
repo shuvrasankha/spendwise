@@ -4,7 +4,18 @@
   'use strict';
 
   const QUEUE_KEY = 'spendwise_offline_queue';
-  const COLLECTIONS = { expense: 'expenses', income: 'income', debt: 'debts' };
+  const toCents = value => {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? Math.round((amount + Number.EPSILON) * 100) : 0;
+  };
+  const COLLECTIONS = {
+    expense: 'expenses',
+    income: 'income',
+    debt: 'debts',
+    creditCard: 'creditCards',
+    cardRefund: 'cardRefunds',
+    cardPayment: 'cardPayments'
+  };
 
   function getQueue() {
     try {
@@ -24,12 +35,13 @@
     }
   }
 
-  function addToQueue(type, data) {
+  function addToQueue(type, data, docId) {
     const queue = getQueue();
     const item = {
       id: generateId(),
       type: type,
       data: data,
+      ...(docId ? { docId } : {}),
       timestamp: Date.now(),
       retries: 0
     };
@@ -70,8 +82,12 @@
     }
   }
 
-  window.addToOfflineQueue = function(type, data) {
-    return addToQueue(type, data);
+  window.addToOfflineQueue = function(type, data, docId) {
+    return addToQueue(type, data, docId);
+  };
+
+  window.getOfflineQueueItems = function() {
+    return getQueue();
   };
 
   window.getOfflineQueueCount = function() {
@@ -91,7 +107,7 @@
 
     // This is a classic script, so load Firebase the same way the pages do
     const { db, auth } = await import('../config/firebase.js');
-    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const { doc, getDoc, setDoc, serverTimestamp, runTransaction } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
     await auth.authStateReady();
     const uid = auth.currentUser?.uid;
     if (!uid) return { synced: 0, failed: 0 }; // keep everything until someone signs in
@@ -103,9 +119,39 @@
       try {
         const coll = COLLECTIONS[item.type];
         if (!coll) throw new Error(`Unknown transaction type: ${item.type}`);
-        // Doc id = queue id, so a retry after a lost response overwrites instead of duplicating.
+        // A stable target id makes retries idempotent, including full card payments.
+        const docId = item.docId || item.id;
+        const ref = doc(db, coll, docId);
+        if (item.type === 'cardRefund') {
+          await runTransaction(db, async transaction => {
+            const existing = await transaction.get(ref);
+            if (existing.exists()) return;
+            const expenseRef = doc(db, 'expenses', item.data.originalExpenseId);
+            const purchase = await transaction.get(expenseRef);
+            if (!purchase.exists() || purchase.data().uid !== uid
+              || purchase.data().payment !== 'Credit Card' || purchase.data().creditCardId !== item.data.creditCardId) {
+              throw new Error('The original credit-card purchase could not be found.');
+            }
+            const refunded = toCents(purchase.data().refundedTotal || 0);
+            const amount = toCents(item.data.amount);
+            if (refunded + amount > toCents(purchase.data().amount)) {
+              throw new Error('Refund exceeds the remaining amount for this purchase.');
+            }
+            transaction.update(expenseRef, { refundedTotal: (refunded + amount) / 100 });
+            transaction.set(ref, { ...item.data, createdAt: serverTimestamp() });
+          });
+          synced.add(item.id);
+          continue;
+        }
+        if (item.type === 'cardPayment') {
+          const existing = await getDoc(ref);
+          if (existing.exists()) {
+            synced.add(item.id);
+            continue;
+          }
+        }
         // createdAt is set here: serverTimestamp() does not survive JSON in localStorage.
-        await setDoc(doc(db, coll, item.id), { ...item.data, createdAt: serverTimestamp() });
+        await setDoc(ref, { ...item.data, createdAt: serverTimestamp() });
         synced.add(item.id);
       } catch (e) {
         console.error(`Failed to sync ${item.type} (${item.id}):`, e);

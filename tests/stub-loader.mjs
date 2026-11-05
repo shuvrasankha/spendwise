@@ -3,13 +3,16 @@
 const firestore = `
 export const collection = (db, coll) => ({ coll });
 // doc(collectionRef) makes an auto id; doc(db, coll, id) a fixed one
-export const doc = (a, coll, id) => coll === undefined ? { coll: a.coll, id: 'AUTO' } : { coll, id };
+export const doc = (a, coll, id) => coll === undefined
+  ? { coll: a.coll, id: globalThis.__firebase.autoId ? globalThis.__firebase.autoId() : 'AUTO' }
+  : { coll, id };
 export const setDoc = (ref, data, opts) => globalThis.__firebase.setDoc(ref, data, opts);
-export const getDoc = ref => globalThis.__firebase.getDoc(ref);
+export const getDoc = ref => globalThis.__firebase.getDoc ? globalThis.__firebase.getDoc(ref) : Promise.resolve({ exists: () => false, data: () => undefined });
+export const runTransaction = (db, callback) => globalThis.__firebase.runTransaction(db, callback);
 export const writeBatch = () => globalThis.__firebase.writeBatch();
 export const serverTimestamp = () => 'SERVER_TS';
-export const getDocs = async () => ({ docs: [] });
-export const query = () => ({});
+export const getDocs = async ref => globalThis.__firebase.getDocs ? globalThis.__firebase.getDocs(ref) : ({ docs: [] });
+export const query = ref => ref;
 export const where = () => ({});
 export const addDoc = async () => ({});
 `;

@@ -26,7 +26,35 @@ beforeEach(() => {
   store.clear();
   toasts.length = 0;
   synced.length = 0;
-  globalThis.__firebase = { user: { uid: 'me' }, writes: [], setDoc: async (ref, data) => { globalThis.__firebase.writes.push({ ref, data }); } };
+  const docs = new Map();
+  globalThis.__firebase = {
+    user: { uid: 'me' }, writes: [], docs,
+    setDoc: async (ref, data) => { globalThis.__firebase.writes.push({ ref, data }); docs.set(`${ref.coll}/${ref.id}`, data); },
+    getDoc: async ref => {
+      const data = docs.get(`${ref.coll}/${ref.id}`);
+      return { exists: () => !!data, data: () => data };
+    },
+    runTransaction: async (_db, callback) => {
+      const writes = [];
+      const tx = {
+        get: async ref => {
+          const data = docs.get(`${ref.coll}/${ref.id}`);
+          return { exists: () => !!data, data: () => data };
+        },
+        set: (ref, data) => writes.push({ kind: 'set', ref, data }),
+        update: (ref, data) => writes.push({ kind: 'update', ref, data }),
+      };
+      const result = await callback(tx);
+      for (const write of writes) {
+        const key = `${write.ref.coll}/${write.ref.id}`;
+        if (write.kind === 'set') {
+          docs.set(key, write.data);
+          globalThis.__firebase.writes.push({ ref: write.ref, data: write.data });
+        } else docs.set(key, { ...docs.get(key), ...write.data });
+      }
+      return result;
+    },
+  };
 });
 
 test('writes the signed-in user\'s items with a fresh createdAt and empties the queue', async () => {
@@ -83,4 +111,34 @@ test('an item queued during a sync is not lost', async () => {
   await window.syncOfflineQueue();
 
   assert.deepEqual(queue().map(i => i.data.amount), [99]);
+});
+
+test('offline card records keep their document IDs and payments are retry-safe', async () => {
+  const payment = { uid: 'me', creditCardId: 'card-1', amount: 125, paymentDate: '2026-11-05', idempotencyKey: 'pay-stable' };
+  window.addToOfflineQueue('cardPayment', payment, 'pay-stable');
+  await window.syncOfflineQueue();
+  window.addToOfflineQueue('cardPayment', payment, 'pay-stable');
+  await window.syncOfflineQueue();
+
+  assert.equal(__firebase.writes.length, 1);
+  assert.deepEqual(__firebase.writes[0].ref, { coll: 'cardPayments', id: 'pay-stable' });
+  assert.deepEqual(queue(), []);
+});
+
+test('offline refunds atomically update the linked purchase and do not duplicate on retry', async () => {
+  __firebase.docs.set('expenses/purchase-1', {
+    uid: 'me', payment: 'Credit Card', creditCardId: 'card-1', amount: 100, refundedTotal: 0,
+  });
+  const refund = {
+    uid: 'me', creditCardId: 'card-1', originalExpenseId: 'purchase-1',
+    amount: 35, refundDate: '2026-11-08', description: 'Return',
+  };
+  window.addToOfflineQueue('cardRefund', refund, 'refund-stable');
+  await window.syncOfflineQueue();
+  window.addToOfflineQueue('cardRefund', refund, 'refund-stable');
+  await window.syncOfflineQueue();
+
+  assert.equal(__firebase.docs.get('expenses/purchase-1').refundedTotal, 35);
+  assert.equal(__firebase.writes.filter(write => write.ref.coll === 'cardRefunds').length, 1);
+  assert.deepEqual(queue(), []);
 });

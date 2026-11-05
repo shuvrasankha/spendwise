@@ -20,6 +20,48 @@ service cloud.firestore {
       return request.resource.data.uid == resource.data.uid;
     }
 
+    function ownsCardReference(cardId) {
+      return cardId is string && exists(/databases/$(database)/documents/creditCards/$(cardId))
+        && get(/databases/$(database)/documents/creditCards/$(cardId)).data.uid == request.auth.uid;
+    }
+
+    function ownsCardReferenceAfter(cardId) {
+      return cardId is string && existsAfter(/databases/$(database)/documents/creditCards/$(cardId))
+        && getAfter(/databases/$(database)/documents/creditCards/$(cardId)).data.uid == request.auth.uid;
+    }
+
+    function validExpenseCard(d) {
+      return !('creditCardId' in d)
+        || (d.payment == 'Credit Card' && ownsCardReferenceAfter(d.creditCardId));
+    }
+
+    function validRefundTotal(d) {
+      return !('refundedTotal' in d)
+        || (d.refundedTotal is number && d.refundedTotal >= 0
+          && d.amount is number && d.refundedTotal <= d.amount);
+    }
+
+    function keepsRefundedTotal() {
+      return request.resource.data.get('refundedTotal', 0) >= resource.data.get('refundedTotal', 0)
+        && request.resource.data.get('refundedTotal', 0) <= request.resource.data.amount
+        && (resource.data.get('refundedTotal', 0) == 0
+          || (request.resource.data.payment == 'Credit Card'
+            && request.resource.data.creditCardId == resource.data.creditCardId));
+    }
+
+    function validCreditCard(d) {
+      return d.keys().hasOnly(['uid', 'name', 'issuer', 'network', 'last4', 'creditLimit',
+          'statementDay', 'dueDay', 'active', 'createdAt', 'updatedAt'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.issuer is string && d.issuer.size() > 0 && d.issuer.size() <= 60
+        && (!('network' in d) || d.network in ['', 'Visa', 'Mastercard', 'RuPay', 'Amex', 'Other'])
+        && (!('last4' in d) || (d.last4 is string && (d.last4 == '' || d.last4.matches('^[0-9]{4}$'))))
+        && (!('creditLimit' in d) || (d.creditLimit is number && d.creditLimit >= 0))
+        && (!('statementDay' in d) || (d.statementDay is int && d.statementDay >= 1 && d.statementDay <= 31))
+        && (!('dueDay' in d) || (d.dueDay is int && d.dueDay >= 1 && d.dueDay <= 31))
+        && (!('active' in d) || d.active is bool);
+    }
+
     function emailVerified() {
       return request.auth.token.email_verified == true;
     }
@@ -29,9 +71,66 @@ service cloud.firestore {
     }
 
     match /expenses/{id} {
-      allow read, delete: if owns();
-      allow create: if createsOwn();
-      allow update: if owns() && keepsOwner();
+      allow read: if owns();
+      allow delete: if owns() && resource.data.get('refundedTotal', 0) == 0;
+      allow create: if createsOwn() && validExpenseCard(request.resource.data) && validRefundTotal(request.resource.data);
+      allow update: if owns() && keepsOwner()
+        && validExpenseCard(request.resource.data) && validRefundTotal(request.resource.data) && keepsRefundedTotal();
+    }
+
+    match /creditCards/{id} {
+      allow read: if owns();
+      allow create: if createsOwn() && validCreditCard(request.resource.data);
+      allow update: if owns() && keepsOwner() && validCreditCard(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /cardPayments/{id} {
+      allow read: if owns();
+      allow create: if createsOwn()
+        && request.resource.data.keys().hasOnly(['uid', 'creditCardId', 'statementId', 'amount',
+          'paymentDate', 'paymentType', 'idempotencyKey', 'createdAt'])
+        && ownsCardReferenceAfter(request.resource.data.creditCardId)
+        && request.resource.data.amount is number && request.resource.data.amount > 0
+        && request.resource.data.paymentDate is string
+        && request.resource.data.paymentDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.paymentType in ['full_statement', 'full_current_outstanding']
+        && request.resource.data.idempotencyKey == id
+        && (!('statementId' in request.resource.data) || request.resource.data.statementId is string);
+      allow update: if owns() && keepsOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt'])
+        && request.resource.data.creditCardId == resource.data.creditCardId
+        && request.resource.data.amount == resource.data.amount
+        && request.resource.data.idempotencyKey == id;
+      allow delete: if false;
+    }
+
+    match /cardRefunds/{id} {
+      allow read: if owns();
+      allow create: if createsOwn()
+        && request.resource.data.keys().hasOnly(['uid', 'creditCardId', 'originalExpenseId',
+          'amount', 'refundDate', 'description', 'createdAt'])
+        && ownsCardReferenceAfter(request.resource.data.creditCardId)
+        && request.resource.data.originalExpenseId is string
+        && existsAfter(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId))
+        && getAfter(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId)).data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId)).data.payment == 'Credit Card'
+        && getAfter(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId)).data.creditCardId == request.resource.data.creditCardId
+        && request.resource.data.amount is number && request.resource.data.amount > 0
+        && request.resource.data.amount <= getAfter(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId)).data.amount
+        && request.resource.data.refundDate is string
+        && request.resource.data.refundDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.description is string
+        && (getAfter(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId)).data.get('refundedTotal', 0)
+          >= ((exists(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId))
+            ? get(/databases/$(database)/documents/expenses/$(request.resource.data.originalExpenseId)).data.get('refundedTotal', 0) : 0)
+            + request.resource.data.amount));
+      allow update: if owns() && keepsOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['createdAt'])
+        && request.resource.data.creditCardId == resource.data.creditCardId
+        && request.resource.data.originalExpenseId == resource.data.originalExpenseId
+        && request.resource.data.amount == resource.data.amount;
+      allow delete: if false;
     }
 
     match /income/{id} {

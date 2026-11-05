@@ -171,6 +171,46 @@
           </div>
         </div>
 
+        <section class="hist-day credit-card-debt" aria-labelledby="credit-cards-title">
+          <div class="hist-day-head entry-list-head">
+            <span><span id="credit-cards-title">Credit cards</span><small class="credit-card-total-label">Current tracked outstanding</small></span>
+            <strong id="credit-card-total">₹0</strong>
+          </div>
+          <div id="credit-card-list" class="credit-card-debt-list"><p class="hist-empty">Loading cards…</p></div>
+        </section>
+
+        <section class="hist-day credit-card-report" aria-labelledby="credit-card-report-title">
+          <h2 class="hist-day-head entry-list-head"><span id="credit-card-report-title">Credit card report</span></h2>
+          <div class="credit-card-report-filters">
+            <label for="credit-card-report-filter">Card<select id="credit-card-report-filter"><option value="">All cards</option></select></label>
+            <label for="credit-card-report-month">Month<input type="month" id="credit-card-report-month"></label>
+          </div>
+          <div class="credit-card-report-totals" aria-live="polite">
+            <span>Purchases <strong id="credit-card-purchases-total">₹0</strong></span>
+            <span>Refunds <strong id="credit-card-refunds-total">₹0</strong></span>
+            <span>Net spending <strong id="credit-card-net-total">₹0</strong></span>
+          </div>
+          <div class="credit-card-report-table-wrap">
+            <table class="credit-card-report-table">
+              <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Card</th><th>Type</th><th class="text-right">Amount</th></tr></thead>
+              <tbody id="credit-card-report-body"><tr><td colspan="6" class="empty-row">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <details class="credit-card-refund-form">
+          <summary>Record a credit-card refund</summary>
+          <div class="form-grid">
+            <div class="form-group"><label for="credit-card-refund-card">Card</label><select id="credit-card-refund-card"><option value="">Choose a card</option></select></div>
+            <div class="form-group"><label for="credit-card-refund-purchase">Original purchase</label><select id="credit-card-refund-purchase"><option value="">Choose a purchase</option></select></div>
+            <div class="form-group"><label for="credit-card-refund-amount">Refund amount (<span class="currency-symbol">₹</span>)</label><input id="credit-card-refund-amount" type="number" min="0.01" step="0.01" inputmode="decimal"></div>
+            <div class="form-group"><label for="credit-card-refund-date">Refund date</label><input id="credit-card-refund-date" type="date"></div>
+            <div class="form-group full-width"><label for="credit-card-refund-description">Description <span class="optional-tag">optional</span></label><input id="credit-card-refund-description" type="text" maxlength="200"></div>
+          </div>
+          <p id="credit-card-refund-error" class="form-msg error hidden" role="alert"></p>
+          <button type="button" class="btn-primary" id="save-credit-card-refund">Save refund</button>
+        </details>
+
         <div class="form-card" id="add-debt-section">
           <h2 class="entry-form-title" id="debt-form-heading">Add a debt</h2>
           <div class="seg" role="group" aria-label="Who owes whom">

@@ -9,16 +9,38 @@ register('./stub-loader.mjs', import.meta.url);
 const fb = globalThis.__firebase = {
   user: { uid: 'me' },
   commits: [],
+  docs: new Map(),
   failCommitNumber: 0,
   writeBatch() {
     const sets = [];
     return {
-      set: (ref, data) => sets.push({ ref, data }),
+      set: (ref, data, options) => sets.push({ ref, data, options }),
       commit: async () => {
         if (fb.commits.length + 1 === fb.failCommitNumber) { fb.failCommitNumber = 0; throw new Error('unavailable'); }
         fb.commits.push(sets);
+        for (const { ref, data, options } of sets) {
+          const key = `${ref.coll}/${ref.id}`;
+          fb.docs.set(key, options?.merge ? { ...fb.docs.get(key), ...data } : data);
+        }
       },
     };
+  },
+  async runTransaction(_db, callback) {
+    const writes = [];
+    const transaction = {
+      get: async ref => {
+        const data = fb.docs.get(`${ref.coll}/${ref.id}`);
+        return { exists: () => data !== undefined, data: () => data };
+      },
+      set: (ref, data) => writes.push({ kind: 'set', ref, data }),
+      update: (ref, data) => writes.push({ kind: 'update', ref, data }),
+    };
+    const result = await callback(transaction);
+    for (const write of writes) {
+      const key = `${write.ref.coll}/${write.ref.id}`;
+      fb.docs.set(key, write.kind === 'set' ? write.data : { ...fb.docs.get(key), ...write.data });
+    }
+    return result;
   },
 };
 
@@ -45,6 +67,7 @@ const refs = () => fb.commits.flat().map(w => `${w.ref.coll}/${w.ref.id}`);
 
 beforeEach(() => {
   fb.commits = [];
+  fb.docs.clear();
   fb.failCommitNumber = 0;
   statuses.length = 0;
 });
@@ -101,4 +124,32 @@ test('holdings come back with their ids and only the fields the rules allow; old
   const { createdAt, ...saved } = fb.commits[0][0].data;
   assert.deepEqual(saved, { uid: 'me', name: 'Axis Bluechip', kind: 'mf', value: 12000, valueDate: '2026-10-01', goalId: 'g1' });
   assert.equal(fb.commits[0][1].data.holdingId, 'h1');
+});
+
+test('credit-card backups restore each payment once and replay refunds without changing totals', async () => {
+  const purchase = expense(1, { payment: 'Credit Card', creditCardId: 'card-1' });
+  fileText = JSON.stringify({
+    version: '1.0',
+    expenses: [purchase],
+    income: [],
+    debts: [],
+    creditCards: [{ id: 'card-1', uid: 'me', name: 'Daily', issuer: 'Bank' }],
+    cardPayments: [{
+      id: 'payment-1', idempotencyKey: 'payment-1', uid: 'me', creditCardId: 'card-1',
+      amount: 10, paymentDate: '2026-10-25', paymentType: 'full_current_outstanding',
+    }],
+    cardRefunds: [{
+      id: 'refund-1', uid: 'me', creditCardId: 'card-1', originalExpenseId: 'exp1',
+      amount: 4, refundDate: '2026-10-22', description: 'Returned',
+    }],
+  });
+
+  await window.handleImportClick();
+  assert.equal(fb.commits.flat().filter(write => write.ref.coll === 'cardPayments').length, 1);
+  assert.equal(fb.docs.get('expenses/exp1').refundedTotal, 4);
+  assert.equal(fb.docs.get('cardRefunds/refund-1').amount, 4);
+
+  await window.handleImportClick();
+  assert.equal(fb.commits.flat().filter(write => write.ref.coll === 'cardPayments').length, 2);
+  assert.equal(fb.docs.get('expenses/exp1').refundedTotal, 4);
 });

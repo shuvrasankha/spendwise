@@ -1704,3 +1704,62 @@ button.settings-row:hover .settings-row-text strong, a.settings-row:hover .setti
 }
 .debt-filter-clear.hidden { display: none; }
 @media (prefers-reduced-motion: reduce) { .debt-person { transition: none; } .debt-person:active { transform: none; } }
+
+/* ===== SECTION: credit cards — saved cards, liability overview and transaction report ===== */
+.credit-card-settings-head,
+.credit-card-settings-row,
+.credit-card-debt-row,
+.credit-card-debt-balance { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.credit-card-settings-head { padding: 16px; }
+.credit-card-settings-head p { margin: 0; color: var(--text2); font-size: var(--text-sm); }
+.credit-card-settings-list { padding: 0 16px 8px; }
+.credit-card-settings-list h3 { margin: 10px 0; color: var(--text2); font-size: var(--text-sm); }
+.credit-card-settings-list ul { margin: 0; padding: 0; list-style: none; }
+.credit-card-settings-row { min-height: 60px; padding: 10px 0; border-top: 1px solid var(--border-light); }
+.credit-card-settings-row > div:first-child,
+.credit-card-debt-main { display: grid; gap: 4px; min-width: 0; }
+.credit-card-settings-row strong,
+.credit-card-debt-row strong { overflow-wrap: anywhere; }
+.credit-card-settings-row span,
+.credit-card-debt-main > span,
+.credit-card-debt-balance small { color: var(--text2); font-size: var(--text-sm); }
+.credit-card-settings-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.credit-card-settings-actions button,
+.credit-card-debt-balance button { min-height: 40px; }
+.credit-card-debt { padding: 16px; }
+.credit-card-debt .hist-day-head { margin: 0 0 8px; }
+.credit-card-debt .hist-day-head > span { display: grid; gap: 3px; }
+.credit-card-total-label { color: var(--text2); font-size: var(--text-sm); font-weight: 500; }
+.credit-card-debt-row { padding: 14px 0; border-top: 1px solid var(--border-light); }
+.credit-card-debt-balance { flex-direction: column; align-items: flex-end; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.credit-card-debt-balance > strong { color: var(--danger); }
+.credit-card-report { padding: 16px; }
+.credit-card-report-filters,
+.credit-card-report-totals { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; padding: 10px 0; }
+.credit-card-report-filters label { display: grid; gap: 6px; min-width: 180px; color: var(--text2); font-size: var(--text-sm); }
+.credit-card-report-totals { justify-content: space-between; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); }
+.credit-card-report-totals span { display: grid; gap: 3px; color: var(--text2); font-size: var(--text-sm); }
+.credit-card-report-totals strong { color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.credit-card-report-table-wrap { overflow-x: auto; }
+.credit-card-report-table { width: 100%; border-collapse: collapse; }
+.credit-card-report-table th,
+.credit-card-report-table td { padding: 11px 9px; border-bottom: 1px solid var(--border-light); text-align: left; vertical-align: top; }
+.credit-card-report-table th { color: var(--text2); font-size: var(--text-sm); font-weight: 600; }
+.credit-card-report-table td { overflow-wrap: anywhere; }
+.credit-card-report-table .text-right { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.credit-card-refund-form { margin: 16px 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow-xs); }
+.credit-card-refund-form summary { min-height: 44px; color: var(--accent); font-weight: 600; cursor: pointer; }
+.credit-card-refund-form .form-grid { padding: 12px 0; }
+.credit-card-modal-box { max-height: min(90vh, 760px); overflow-y: auto; }
+.credit-card-modal-box .modal-actions { margin-top: 16px; }
+.calendar-day-marker--refund { border-color: var(--success); background: var(--success-bg); color: var(--success); }
+@media (max-width: 767px) {
+  .credit-card-settings-head,
+  .credit-card-settings-row,
+  .credit-card-debt-row { align-items: flex-start; flex-direction: column; }
+  .credit-card-settings-head { align-items: stretch; }
+  .credit-card-settings-actions { width: 100%; }
+  .credit-card-settings-actions button { flex: 1; }
+  .credit-card-debt-balance { align-items: flex-start; }
+  .credit-card-report-table { min-width: 720px; }
+}

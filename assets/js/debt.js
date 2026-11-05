@@ -7,6 +7,8 @@ import { showToast, requireUser, initCurrencySelector } from './modules/page-she
 import { fetchSharedDebts, emailError, shareFields, announceDebts, claimSettled, withdrawClaim, confirmClaim, rejectClaim } from './modules/split.js';
 import { setKnownPeople } from './modules/people.js';
 import { debtsByPerson, isPersons } from './modules/debt-data.js';
+import { getCreditCards, getCreditCardTransactions, createCardRefund, createCardPayment } from './modules/credit-card-store.js';
+import { cardOutstanding, currentStatementPeriod, statementPeriodFor, statementAmount, refundRemaining, cardPaymentId, creditCardLabel } from './modules/credit-card-data.js';
 
 // Currency helpers from global scope (currency.js loads before this module)
 const fmt = window.fmt;
@@ -20,6 +22,10 @@ let reactivateDebtTarget = null;
 let currentDebtType = 'they-owe';
 let editingDebtId = null;
 let personFilter = null; // a debtsByPerson row: the Open list shows only theirs
+let creditCards = [];
+let cardExpenses = [];
+let cardRefunds = [];
+let cardPayments = [];
 
 function showDebtFormMsg(msg, type) {
   const el = document.getElementById('debt-form-msg');
@@ -37,6 +43,10 @@ requireUser(user => {
   if (dateEl && !dateEl.value) dateEl.value = todayStr();
   syncDateChips();
   loadDebts();
+  document.getElementById('credit-card-refund-date').value = todayStr();
+  const month = document.getElementById('credit-card-report-month');
+  month.value = todayStr().slice(0, 7);
+  loadCreditCardManager();
 });
 
 // ── Load Debts ───────────────────────────────────────────────────────────────
@@ -65,6 +75,239 @@ async function loadDebts() {
     showToast('Error loading debt data.', 'error');
   }
 }
+
+async function loadCreditCardManager() {
+  if (!currentUser) return;
+  try {
+    creditCards = await getCreditCards(currentUser.uid);
+    const transactions = await getCreditCardTransactions(currentUser.uid);
+    cardExpenses = transactions.expenses;
+    cardRefunds = transactions.refunds;
+    cardPayments = transactions.payments;
+    if (navigator.onLine === false) {
+      const cache = JSON.parse(sessionStorage.getItem(`spendwise_expenses_${currentUser.uid}`) || '{"data":[]}');
+      const cachedRows = Array.isArray(cache.data) ? cache.data : [];
+      const expenseIds = new Set(cardExpenses.map(item => item.id));
+      const refundIds = new Set(cardRefunds.map(item => item.id));
+      for (const row of cachedRows) {
+        if (row.transactionType === 'refund' && row.creditCardId && row.originalExpenseId) {
+          const id = String(row.id).replace(/^refund-/, '');
+          if (!refundIds.has(id)) cardRefunds.push({
+            id, uid: currentUser.uid, creditCardId: row.creditCardId,
+            originalExpenseId: row.originalExpenseId, amount: Math.abs(Number(row.amount) || 0),
+            refundDate: row.date, description: row.description || '',
+          });
+        } else if (row.payment === 'Credit Card' && row.creditCardId && !expenseIds.has(row.id)) {
+          cardExpenses.push(row);
+        }
+      }
+    }
+    const queued = (window.getOfflineQueueItems?.() || []).filter(item => item.data?.uid === currentUser.uid);
+    const addOrMarkPending = (items, record) => {
+      const index = items.findIndex(existing => existing.id === record.id);
+      if (index < 0) items.push(record);
+      else items[index] = { ...items[index], ...record };
+    };
+    for (const item of queued) {
+      const record = { id: item.docId || item.id, ...item.data, pending: true };
+      if (item.type === 'expense' && item.data.payment === 'Credit Card') addOrMarkPending(cardExpenses, record);
+      if (item.type === 'cardRefund') addOrMarkPending(cardRefunds, record);
+      if (item.type === 'cardPayment') addOrMarkPending(cardPayments, record);
+    }
+    cardExpenses = cardExpenses.filter(expense => expense.payment === 'Credit Card' && expense.creditCardId);
+    renderCreditCardManager();
+    renderCreditCardReport();
+    renderRefundPurchaseOptions();
+  } catch (error) {
+    console.error('Could not load credit card data:', error);
+    document.getElementById('credit-card-list').innerHTML = '<p class="hist-empty">Credit card details could not be loaded. Check your connection and try again.</p>';
+    document.getElementById('credit-card-report-body').innerHTML = '<tr><td colspan="6" class="empty-row">Credit card report could not be loaded.</td></tr>';
+  }
+}
+
+const cardById = id => creditCards.find(card => card.id === id);
+const cardLabel = id => creditCardLabel(cardById(id) || { name: 'Archived card', issuer: '', last4: '' });
+const inReportMonth = date => {
+  const month = document.getElementById('credit-card-report-month').value;
+  return !month || String(date || '').startsWith(month);
+};
+
+function renderCreditCardManager() {
+  const total = creditCards.reduce((sum, card) => sum + cardOutstanding(card.id, cardExpenses, cardRefunds, cardPayments), 0);
+  document.getElementById('credit-card-total').textContent = fmt(total);
+  const list = document.getElementById('credit-card-list');
+  if (!creditCards.length) {
+    list.innerHTML = '<p class="hist-empty">No credit cards yet. <a href="settings.html">Add one in Settings</a>.</p>';
+    return;
+  }
+  list.innerHTML = creditCards.map(card => {
+    const outstanding = cardOutstanding(card.id, cardExpenses, cardRefunds, cardPayments);
+    const latestPeriod = card.statementDay ? currentStatementPeriod(todayStr(), card.statementDay) : null;
+    const latestAmount = latestPeriod ? statementAmount(card.id, latestPeriod, cardExpenses, cardRefunds, cardPayments) : 0;
+    const periodKeys = new Map();
+    [...cardExpenses.filter(item => item.creditCardId === card.id).map(item => ({ date: item.date, id: item.id })),
+      ...cardRefunds.filter(item => item.creditCardId === card.id).map(item => ({ date: item.refundDate, id: item.id }))]
+      .forEach(item => {
+        const period = statementPeriodFor(item.date, card.statementDay);
+        if (period && period.end <= todayStr()) periodKeys.set(period.id, period);
+      });
+    const unpaidPeriods = [...periodKeys.values()].sort((a, b) => a.start.localeCompare(b.start))
+      .filter(period => statementAmount(card.id, period, cardExpenses, cardRefunds, cardPayments) > 0);
+    const paymentPeriod = unpaidPeriods[0] || latestPeriod;
+    const amount = card.statementDay
+      ? paymentPeriod ? statementAmount(card.id, paymentPeriod, cardExpenses, cardRefunds, cardPayments) : 0
+      : outstanding;
+    const latestPaid = latestPeriod && cardPayments.some(payment => payment.creditCardId === card.id && payment.statementId === latestPeriod.id);
+    const afterLatest = latestPeriod
+      ? cardExpenses.filter(item => item.creditCardId === card.id && item.date > latestPeriod.end).reduce((sum, item) => sum + Number(item.amount || 0), 0)
+        - cardRefunds.filter(item => item.creditCardId === card.id && item.refundDate > latestPeriod.end).reduce((sum, item) => sum + Number(item.amount || 0), 0)
+      : 0;
+    const status = latestPeriod
+      ? (latestAmount > 0 ? `Latest statement · ${fmt(latestAmount)}${latestPaid ? ' · Paid' : ' · Unpaid'}`
+        : latestPaid ? 'Latest statement · Paid' : 'No tracked purchases in the latest statement')
+      : 'Current tracked outstanding · no statement cycle configured';
+    const utilization = card.creditLimit > 0
+      ? `<span>${Math.round(outstanding / card.creditLimit * 100)}% of ${fmt(card.creditLimit)} limit</span>`
+      : '';
+    const due = card.dueDay ? `<span>Payment due day ${card.dueDay}</span>` : '';
+    const paymentAction = amount > 0
+      ? `<button type="button" class="btn-secondary" data-pay-card="${escapeHtml(card.id)}" data-statement-id="${paymentPeriod?.id || ''}">${paymentPeriod ? `Pay full statement · ${escapeHtml(paymentPeriod.start)}–${escapeHtml(paymentPeriod.end)}` : 'Pay full outstanding'}</button>`
+      : '';
+    return `<article class="credit-card-debt-row">
+      <div class="credit-card-debt-main"><strong>${escapeHtml(creditCardLabel(card))}${card.active === false ? ' · Archived' : ''}</strong>
+        <span>${escapeHtml(status)}</span>${latestPeriod && afterLatest > 0 ? `<span>Purchases after statement · ${fmt(afterLatest)}</span>` : ''}<span>${utilization}${utilization && due ? ' · ' : ''}${due}</span>
+      </div>
+      <div class="credit-card-debt-balance"><strong>${fmt(outstanding)}</strong><small>Outstanding</small>${paymentAction}</div>
+    </article>`;
+  }).join('');
+}
+
+function renderCreditCardReport() {
+  const filter = document.getElementById('credit-card-report-filter');
+  const selected = filter.value;
+  filter.innerHTML = '<option value="">All cards</option>' + creditCards.map(card =>
+    `<option value="${escapeHtml(card.id)}">${escapeHtml(creditCardLabel(card))}${card.active === false ? ' (archived)' : ''}</option>`
+  ).join('');
+  filter.value = selected;
+  const allowed = id => !filter.value || id === filter.value;
+  const purchases = cardExpenses.filter(item => allowed(item.creditCardId) && inReportMonth(item.date));
+  const refunds = cardRefunds.filter(item => allowed(item.creditCardId) && inReportMonth(item.refundDate));
+  const payments = cardPayments.filter(item => allowed(item.creditCardId) && inReportMonth(item.paymentDate));
+  const purchaseTotal = purchases.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const refundTotal = refunds.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  document.getElementById('credit-card-purchases-total').textContent = fmt(purchaseTotal);
+  document.getElementById('credit-card-refunds-total').textContent = fmt(refundTotal);
+  document.getElementById('credit-card-net-total').textContent = fmt(purchaseTotal - refundTotal);
+  const rows = [
+    ...purchases.map(item => ({ date: item.date, description: item.description || '-', category: item.category || '-', cardId: item.creditCardId, type: 'Purchase', amount: Number(item.amount || 0) })),
+    ...refunds.map(item => ({ date: item.refundDate, description: item.description || 'Credit card refund', category: 'Refund', cardId: item.creditCardId, type: 'Refund', amount: -Number(item.amount || 0) })),
+    ...payments.map(item => ({ date: item.paymentDate, description: 'Credit-card bill payment', category: '-', cardId: item.creditCardId, type: 'Card payment', amount: -Number(item.amount || 0), pending: item.pending })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+  document.getElementById('credit-card-report-body').innerHTML = rows.length ? rows.map(row => `<tr>
+    <td data-label="Date">${escapeHtml(shortDay(row.date))}</td>
+    <td data-label="Description">${escapeHtml(row.description)}</td>
+    <td data-label="Category">${escapeHtml(row.category)}</td>
+    <td data-label="Card">${escapeHtml(cardLabel(row.cardId))}</td>
+    <td data-label="Type">${row.type}${row.pending ? ' · Waiting to sync' : ''}</td>
+    <td data-label="Amount" class="text-right">${fmt(row.amount)}</td>
+  </tr>`).join('') : '<tr><td colspan="6" class="empty-row">No credit-card transactions in this period.</td></tr>';
+}
+
+function renderRefundPurchaseOptions() {
+  const cardSelect = document.getElementById('credit-card-refund-card');
+  const purchaseSelect = document.getElementById('credit-card-refund-purchase');
+  const selectedCard = cardSelect.value;
+  cardSelect.innerHTML = '<option value="">Choose a card</option>' + creditCards.map(card =>
+    `<option value="${escapeHtml(card.id)}">${escapeHtml(creditCardLabel(card))}${card.active === false ? ' (archived)' : ''}</option>`
+  ).join('');
+  cardSelect.value = selectedCard;
+  const purchases = cardExpenses.filter(expense => (!selectedCard || expense.creditCardId === selectedCard)
+    && refundRemaining(expense, cardRefunds) > 0);
+  purchaseSelect.innerHTML = '<option value="">Choose a purchase</option>' + purchases.map(expense =>
+    `<option value="${escapeHtml(expense.id)}">${escapeHtml(shortDay(expense.date))} · ${escapeHtml(expense.description || expense.category || 'Purchase')} · ${fmt(expense.amount)} remaining</option>`
+  ).join('');
+}
+
+async function payCreditCard(cardId, statementId) {
+  const card = cardById(cardId);
+  if (!card) return;
+  const [start, end] = statementId.split('_');
+  const period = statementId && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end)
+    ? { start, end, id: statementId } : null;
+  if (statementId && !period) return showToast('This statement is invalid. Refresh the page before paying.', 'error');
+  const amount = period
+    ? statementAmount(cardId, period, cardExpenses, cardRefunds, cardPayments)
+    : cardOutstanding(cardId, cardExpenses, cardRefunds, cardPayments);
+  if (!(amount > 0)) return;
+  const scope = period ? `statement ${period.start} to ${period.end}` : 'current tracked outstanding';
+  if (!window.confirm(`Pay ${fmt(amount)} for ${card.name} (${scope})? This records a bill payment, not a new expense.`)) return;
+  const scopedExpenses = period ? cardExpenses.filter(item => item.creditCardId === cardId && item.date >= period.start && item.date <= period.end) : cardExpenses.filter(item => item.creditCardId === cardId);
+  const scopedRefunds = period ? cardRefunds.filter(item => item.creditCardId === cardId && item.refundDate >= period.start && item.refundDate <= period.end) : cardRefunds.filter(item => item.creditCardId === cardId);
+  const id = cardPaymentId(cardId, period?.id || '', [...scopedExpenses, ...scopedRefunds]);
+  try {
+    await createCardPayment(currentUser.uid, id, {
+      creditCardId: cardId,
+      ...(period && { statementId: period.id }),
+      amount,
+      paymentDate: todayStr(),
+      paymentType: period ? 'full_statement' : 'full_current_outstanding',
+    });
+    await loadCreditCardManager();
+    showToast('Full card payment recorded. It was not added to expenses.', 'success');
+  } catch (error) {
+    console.error('Could not record credit card payment:', error);
+    showToast(error.message || 'Credit card payment could not be saved.', 'error');
+  }
+}
+
+async function saveCreditCardRefund() {
+  const errorEl = document.getElementById('credit-card-refund-error');
+  const cardId = document.getElementById('credit-card-refund-card').value;
+  const originalExpenseId = document.getElementById('credit-card-refund-purchase').value;
+  const expense = cardExpenses.find(item => item.id === originalExpenseId);
+  const amount = Number(document.getElementById('credit-card-refund-amount').value);
+  const refundDate = document.getElementById('credit-card-refund-date').value;
+  if (!expense || expense.creditCardId !== cardId) {
+    errorEl.textContent = 'Choose a purchase made with the selected card.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  const remaining = refundRemaining(expense, cardRefunds);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > remaining) {
+    errorEl.textContent = `Refund must be greater than zero and no more than ${fmt(remaining)} remaining.`;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  const saveButton = document.getElementById('save-credit-card-refund');
+  if (saveButton.disabled) return;
+  saveButton.disabled = true;
+  try {
+    await createCardRefund(currentUser.uid, {
+      creditCardId: cardId, originalExpenseId, amount, refundDate,
+      description: document.getElementById('credit-card-refund-description').value,
+    });
+    document.getElementById('credit-card-refund-amount').value = '';
+    document.getElementById('credit-card-refund-description').value = '';
+    errorEl.classList.add('hidden');
+    await loadCreditCardManager();
+    showToast('Credit-card refund recorded and net spending updated.', 'success');
+  } catch (error) {
+    console.error('Could not record credit card refund:', error);
+    errorEl.textContent = error.message || 'Credit-card refund could not be saved.';
+    errorEl.classList.remove('hidden');
+  } finally {
+    saveButton.disabled = false;
+  }
+}
+
+document.getElementById('credit-card-list')?.addEventListener('click', event => {
+  const button = event.target.closest('[data-pay-card]');
+  if (button) payCreditCard(button.dataset.payCard, button.dataset.statementId || '');
+});
+document.getElementById('credit-card-report-filter')?.addEventListener('change', renderCreditCardReport);
+document.getElementById('credit-card-report-month')?.addEventListener('change', renderCreditCardReport);
+document.getElementById('credit-card-refund-card')?.addEventListener('change', renderRefundPurchaseOptions);
+document.getElementById('save-credit-card-refund')?.addEventListener('click', saveCreditCardRefund);
 
 // ── Summary: net balance and each direction ──────────────────────────────────
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

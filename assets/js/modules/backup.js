@@ -2,8 +2,9 @@
 
 import { auth, db } from '../config/firebase.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, getDocs, query, where, addDoc, writeBatch, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, getDocs, query, where, addDoc, writeBatch, doc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { todayStr } from '../utils/helpers.js';
+import { moneyFromCents, moneyToCents } from './credit-card-data.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = null;
@@ -61,13 +62,19 @@ async function exportData() {
       expenses: [],
       income: [],
       debts: [],
-      holdings: []
+      holdings: [],
+      creditCards: [],
+      cardPayments: [],
+      cardRefunds: []
     };
 
     // Fetch expenses
     const expQuery = query(collection(db, 'expenses'), where('uid', '==', uid));
     const expSnap = await getDocs(expQuery);
-    data.expenses = expSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    data.expenses = expSnap.docs.map(d => {
+      const { refundedTotal, ...record } = d.data();
+      return { id: d.id, ...record };
+    });
 
     // Fetch income
     const incQuery = query(collection(db, 'income'), where('uid', '==', uid));
@@ -85,6 +92,14 @@ async function exportData() {
       data.holdings = holdSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     } catch (e) { console.warn('Holdings not exported:', e); }
 
+    const [cards, payments, refunds] = await Promise.all(
+      ['creditCards', 'cardPayments', 'cardRefunds']
+        .map(name => getDocs(query(collection(db, name), where('uid', '==', uid))))
+    );
+    data.creditCards = cards.docs.map(d => creditCardBackupRecord(d.id, d.data()));
+    data.cardPayments = payments.docs.map(d => cardPaymentBackupRecord(d.id, d.data()));
+    data.cardRefunds = refunds.docs.map(d => cardRefundBackupRecord(d.id, d.data()));
+
     // Create and download JSON file
     const jsonStr = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -98,7 +113,8 @@ async function exportData() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    const totalItems = data.expenses.length + data.income.length + data.debts.length + data.holdings.length;
+    const totalItems = data.expenses.length + data.income.length + data.debts.length + data.holdings.length
+      + data.creditCards.length + data.cardPayments.length + data.cardRefunds.length;
     showBackupStatus(`Exported ${totalItems} items successfully!`, 'success');
     showToast('Backup exported!', 'success');
 
@@ -119,6 +135,22 @@ async function exportData() {
 
 const BATCH_LIMIT = 500;
 const DOC_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
+function pickFields(record, fields) {
+  return Object.fromEntries(fields.filter(key => record[key] !== undefined).map(key => [key, record[key]]));
+}
+
+function creditCardBackupRecord(id, record) {
+  return { id, ...pickFields(record, ['uid', 'name', 'issuer', 'network', 'last4', 'creditLimit', 'statementDay', 'dueDay', 'active', 'createdAt', 'updatedAt']) };
+}
+
+function cardPaymentBackupRecord(id, record) {
+  return { id, ...pickFields(record, ['uid', 'creditCardId', 'statementId', 'amount', 'paymentDate', 'paymentType', 'idempotencyKey', 'createdAt']) };
+}
+
+function cardRefundBackupRecord(id, record) {
+  return { id, ...pickFields(record, ['uid', 'creditCardId', 'originalExpenseId', 'amount', 'refundDate', 'description', 'createdAt']) };
+}
 
 // Validate a single record before importing
 function validateRecord(record, type) {
@@ -159,6 +191,48 @@ function holdingRecord(r) {
   };
 }
 
+function creditCardRecord(r) {
+  if (!r || typeof r !== 'object' || !DOC_ID.test(r.id || '')
+    || typeof r.name !== 'string' || !r.name.trim() || r.name.length > 60
+    || typeof r.issuer !== 'string' || !r.issuer.trim() || r.issuer.length > 60
+    || (r.last4 && !/^\d{4}$/.test(r.last4))
+    || (r.creditLimit !== undefined && (!Number.isFinite(r.creditLimit) || r.creditLimit < 0))
+    || (r.statementDay !== undefined && (!Number.isInteger(r.statementDay) || r.statementDay < 1 || r.statementDay > 31))
+    || (r.dueDay !== undefined && (!Number.isInteger(r.dueDay) || r.dueDay < 1 || r.dueDay > 31))) return null;
+  return {
+    id: r.id, uid: r.uid, name: r.name.trim(), issuer: r.issuer.trim(),
+    ...(r.network && ['Visa', 'Mastercard', 'RuPay', 'Amex', 'Other'].includes(r.network) && { network: r.network }),
+    ...(r.last4 && { last4: r.last4 }),
+    ...(r.creditLimit !== undefined && { creditLimit: r.creditLimit }),
+    ...(r.statementDay !== undefined && { statementDay: r.statementDay }),
+    ...(r.dueDay !== undefined && { dueDay: r.dueDay }),
+    active: r.active !== false,
+  };
+}
+
+function cardPaymentRecord(r) {
+  if (!r || !DOC_ID.test(r.id || '') || r.id !== r.idempotencyKey
+    || typeof r.creditCardId !== 'string' || !(r.amount > 0) || !Number.isFinite(r.amount)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(r.paymentDate || '')
+    || !['full_statement', 'full_current_outstanding'].includes(r.paymentType)) return null;
+  return {
+    id: r.id, uid: r.uid, creditCardId: r.creditCardId, amount: r.amount,
+    paymentDate: r.paymentDate, paymentType: r.paymentType,
+    ...(typeof r.statementId === 'string' && { statementId: r.statementId }),
+  };
+}
+
+function cardRefundRecord(r) {
+  if (!r || !DOC_ID.test(r.id || '') || typeof r.creditCardId !== 'string'
+    || typeof r.originalExpenseId !== 'string' || !(r.amount > 0) || !Number.isFinite(r.amount)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(r.refundDate || '')
+    || typeof (r.description || '') !== 'string' || (r.description || '').length > 200) return null;
+  return {
+    id: r.id, uid: r.uid, creditCardId: r.creditCardId, originalExpenseId: r.originalExpenseId,
+    amount: r.amount, refundDate: r.refundDate, description: r.description || '',
+  };
+}
+
 async function importData(file) {
   if (!currentUser) {
     showToast('Please log in first.', 'error');
@@ -185,6 +259,7 @@ async function importData(file) {
 
     const uid = currentUser.uid;
     const writes = [];
+    const refundWrites = [];
 
     showBackupStatus('Preparing import…', 'loading');
 
@@ -193,15 +268,33 @@ async function importData(file) {
       const h = record?.uid === uid && holdingRecord(record);
       if (h) writes.push(['holdings', h]);
     }
+    const backupCards = new Set();
+    for (const record of Array.isArray(data.creditCards) ? data.creditCards : []) {
+      if (record?.uid !== uid) continue;
+      const card = creditCardRecord(record);
+      if (card) { backupCards.add(card.id); writes.push(['creditCards', card]); }
+    }
     for (const [type, coll, records] of [['expense', 'expenses', data.expenses], ['income', 'income', data.income], ['debt', 'debts', data.debts]]) {
       for (const record of records) {
         if (record.uid !== uid) continue;
         if (!validateRecord(record, type)) continue;
+        if (type === 'expense' && record.creditCardId && !backupCards.has(record.creditCardId)) continue;
         writes.push([coll, record]);
       }
     }
+    for (const record of Array.isArray(data.cardPayments) ? data.cardPayments : []) {
+      if (record?.uid !== uid || !backupCards.has(record.creditCardId)) continue;
+      const payment = cardPaymentRecord(record);
+      if (payment) writes.push(['cardPayments', payment]);
+    }
+    const backupExpenses = new Set(writes.filter(([coll]) => coll === 'expenses').map(([, record]) => record.id));
+    for (const record of Array.isArray(data.cardRefunds) ? data.cardRefunds : []) {
+      if (record?.uid !== uid || !backupCards.has(record.creditCardId) || !backupExpenses.has(record.originalExpenseId)) continue;
+      const refund = cardRefundRecord(record);
+      if (refund) refundWrites.push(refund);
+    }
 
-    if (writes.length === 0) {
+    if (writes.length === 0 && refundWrites.length === 0) {
       showBackupStatus('No items found for your account in this backup.', 'warning');
       showToast('No items to import.', 'error');
       return;
@@ -209,16 +302,37 @@ async function importData(file) {
 
     // Firestore allows at most 500 writes per batch. Reusing the exported id means a
     // retry after a failed chunk (or restoring twice) overwrites instead of duplicating.
-    for (let i = 0; i < writes.length; i += BATCH_LIMIT) {
+    const chunkLimit = writes.some(([coll]) => ['creditCards', 'cardPayments'].includes(coll)) ? 5 : BATCH_LIMIT;
+    for (let i = 0; i < writes.length; i += chunkLimit) {
       const batch = writeBatch(db);
-      for (const [coll, { id, ...rest }] of writes.slice(i, i + BATCH_LIMIT)) {
+      for (const [coll, { id, ...rest }] of writes.slice(i, i + chunkLimit)) {
         const ref = typeof id === 'string' && DOC_ID.test(id) ? doc(db, coll, id) : doc(collection(db, coll));
-        batch.set(ref, { ...rest, createdAt: serverTimestamp() });
+        if (coll === 'expenses') delete rest.refundedTotal;
+        batch.set(ref, { ...rest, createdAt: serverTimestamp() }, coll === 'expenses' ? { merge: true } : undefined);
       }
-      showBackupStatus(`Importing ${Math.min(i + BATCH_LIMIT, writes.length)} of ${writes.length} items…`, 'loading');
+      showBackupStatus(`Importing ${Math.min(i + chunkLimit, writes.length)} of ${writes.length} items…`, 'loading');
       await batch.commit();
     }
-    const importedCount = writes.length;
+    for (const { id, ...refund } of refundWrites) {
+      await runTransaction(db, async transaction => {
+        const refundRef = doc(db, 'cardRefunds', id);
+        const purchaseRef = doc(db, 'expenses', refund.originalExpenseId);
+        if ((await transaction.get(refundRef)).exists()) return;
+        const purchase = await transaction.get(purchaseRef);
+        if (!purchase.exists() || purchase.data().uid !== uid
+          || purchase.data().creditCardId !== refund.creditCardId || purchase.data().payment !== 'Credit Card') {
+          throw new Error('A refunded purchase is missing from this backup.');
+        }
+        const refundedTotal = moneyToCents(purchase.data().refundedTotal || 0);
+        const refundAmount = moneyToCents(refund.amount);
+        if (refundedTotal + refundAmount > moneyToCents(purchase.data().amount)) {
+          throw new Error('The backup contains refunds greater than the original purchase.');
+        }
+        transaction.update(purchaseRef, { refundedTotal: moneyFromCents(refundedTotal + refundAmount) });
+        transaction.set(refundRef, { ...refund, createdAt: serverTimestamp() });
+      });
+    }
+    const importedCount = writes.length + refundWrites.length;
 
     showBackupStatus(`Imported ${importedCount} items successfully!`, 'success');
     showToast(`Backup restored! ${importedCount} items imported.`, 'success');

@@ -18,7 +18,7 @@ export function aggregateDailySpending(expenses, year, monthIndex, { throughDate
     if (throughDate && expense.date > throughDate) continue;
 
     const amount = Number(expense.amount);
-    if (!Number.isFinite(amount) || amount <= 0) continue;
+    if (!Number.isFinite(amount) || (amount <= 0 && expense.transactionType !== 'refund')) continue;
 
     const total = (totals.get(expense.date) || 0) + amount;
     if (!Number.isFinite(total)) continue;
@@ -54,18 +54,19 @@ export function shiftCalendarMonth(year, monthIndex, amount) {
 }
 
 export function scaleDailySpending(totals, minDiameter = 18, maxDiameter = 36) {
-  const positiveEntries = [...totals].filter(([, amount]) => Number.isFinite(amount) && amount > 0);
-  const distinctAmounts = [...new Set(positiveEntries.map(([, amount]) => amount))].sort((a, b) => a - b);
+  const markedEntries = [...totals].filter(([, amount]) => Number.isFinite(amount) && amount !== 0);
+  const distinctAmounts = [...new Set(markedEntries.map(([, amount]) => Math.abs(amount)))].sort((a, b) => a - b);
   const intensityByAmount = new Map(distinctAmounts.map((amount, index) => [
     amount,
     distinctAmounts.length === 1 ? 2 : 1 + Math.round(index * 3 / (distinctAmounts.length - 1)),
   ]));
   const maxAmount = distinctAmounts[distinctAmounts.length - 1] || 0;
 
-  return new Map(positiveEntries.map(([dateKey, amount]) => {
-    const ratio = Math.sqrt(amount / maxAmount);
+  return new Map(markedEntries.map(([dateKey, amount]) => {
+    const magnitude = Math.abs(amount);
+    const ratio = Math.sqrt(magnitude / maxAmount);
     const diameter = Math.min(maxDiameter, Math.max(minDiameter,
       Math.round(minDiameter + ratio * (maxDiameter - minDiameter))));
-    return [dateKey, { amount, diameter, intensity: intensityByAmount.get(amount) }];
+    return [dateKey, { amount, diameter, intensity: intensityByAmount.get(magnitude), isRefund: amount < 0 }];
   }));
 }

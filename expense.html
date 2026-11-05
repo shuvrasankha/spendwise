@@ -350,11 +350,20 @@
                   </select>
                 </div>
               </div>
-              <div class="form-group" id="exp-card-name-wrap" style="display:none">
-                <label for="exp-card-name">Card Name <span class="optional-tag">optional</span></label>
+              <div class="form-group hidden" id="exp-credit-card-wrap">
+                <label for="exp-credit-card">Credit card *</label>
                 <div class="input-icon-wrap">
                   <i data-lucide="credit-card"></i>
-                  <input type="text" id="exp-card-name" />
+                  <select id="exp-credit-card" aria-describedby="exp-credit-card-help"><option value="">Choose a saved card</option></select>
+                </div>
+                <small id="exp-credit-card-help"></small>
+                <button type="button" class="btn-secondary" id="add-credit-card-inline">Add credit card</button>
+              </div>
+              <div class="form-group hidden" id="exp-card-name-wrap">
+                <label for="exp-card-name">Debit card name <span class="optional-tag">optional</span></label>
+                <div class="input-icon-wrap">
+                  <i data-lucide="credit-card"></i>
+                  <input type="text" id="exp-card-name" maxlength="100" />
                 </div>
               </div>
               <div class="form-group full-width">
@@ -674,11 +683,20 @@
               </select>
             </div>
           </div>
-          <div class="form-group" id="edit-card-name-wrap" style="display:none">
-            <label for="edit-card-name">Card Name <span class="optional-tag">optional</span></label>
+          <div class="form-group hidden" id="edit-credit-card-wrap">
+            <label for="edit-credit-card">Credit card *</label>
             <div class="input-icon-wrap">
               <i data-lucide="credit-card"></i>
-              <input type="text" id="edit-card-name" />
+              <select id="edit-credit-card"><option value="">Choose a saved card</option></select>
+            </div>
+            <p id="edit-legacy-card-name" class="hist-row-meta hidden"></p>
+            <button type="button" class="btn-secondary" id="edit-add-credit-card-inline">Add credit card</button>
+          </div>
+          <div class="form-group hidden" id="edit-card-name-wrap">
+            <label for="edit-card-name">Debit card name <span class="optional-tag">optional</span></label>
+            <div class="input-icon-wrap">
+              <i data-lucide="credit-card"></i>
+              <input type="text" id="edit-card-name" maxlength="100" />
             </div>
           </div>
           <div class="form-group">
@@ -722,6 +740,27 @@
     </div>
   </div>
 
+  <div id="inline-credit-card-modal" class="modal-overlay hidden">
+    <div class="modal-box credit-card-modal-box" role="dialog" aria-modal="true" aria-labelledby="inline-credit-card-title">
+      <div class="modal-header">
+        <h3 id="inline-credit-card-title">Add a credit card</h3>
+        <button type="button" class="modal-close-btn" data-inline-card-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label for="inline-card-name">Card name</label><input id="inline-card-name" type="text" maxlength="60" required></div>
+          <div class="form-group"><label for="inline-card-issuer">Bank or issuer</label><input id="inline-card-issuer" type="text" maxlength="60" required></div>
+          <div class="form-group"><label for="inline-card-last4">Last four digits <span class="optional-tag">optional</span></label><input id="inline-card-last4" type="text" inputmode="numeric" maxlength="4"></div>
+          <div class="form-group"><label for="inline-card-network">Network <span class="optional-tag">optional</span></label><select id="inline-card-network"><option value="">Not set</option><option>Visa</option><option>Mastercard</option><option>RuPay</option><option>Amex</option><option>Other</option></select></div>
+          <div class="form-group"><label for="inline-card-limit">Credit limit <span class="optional-tag">optional</span></label><input id="inline-card-limit" type="number" min="0" step="0.01"></div>
+          <div class="form-group"><label for="inline-card-statement-day">Statement closing day <span class="optional-tag">optional</span></label><input id="inline-card-statement-day" type="number" min="1" max="31" step="1"></div>
+          <div class="form-group"><label for="inline-card-due-day">Payment due day <span class="optional-tag">optional</span></label><input id="inline-card-due-day" type="number" min="1" max="31" step="1"></div>
+        </div>
+        <p id="inline-card-error" class="form-msg error hidden" role="alert"></p>
+        <div class="modal-actions"><button type="button" class="btn-secondary" data-inline-card-close>Cancel</button><button type="button" class="btn-primary" id="save-inline-credit-card">Save card</button></div>
+      </div>
+    </div>
+  </div>
 
   <script src="assets/js/utils/currency.js"></script>
   <script src="assets/js/modules/network-status.js"></script>
